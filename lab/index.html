@@ -1,0 +1,14 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MIDI HUD · Banco de pruebas</title>
+<style>:root{font-family:system-ui;background:#0b1019;color:#eaf4ff}body{max-width:900px;margin:auto;padding:14px}.panel{background:#192433;border-radius:12px;padding:14px;margin:12px 0}iframe{width:100%;height:610px;border:1px solid #66809b;border-radius:12px;background:#0b1019}button{background:#24516a;color:white;border:1px solid #73a8c0;border-radius:8px;padding:12px;margin:4px}input{width:100%}small{color:#a5bdd3}a{color:#80d9f2}</style>
+<h1>MIDI HUD · Banco de pruebas</h1><p><small>Laboratorio de simulación. Los mandos inferiores no envían MIDI ni modifican los presets guardados.</small></p>
+<iframe id="live" title="Pantalla LIVE bajo prueba" src="../worship-demo/"></iframe>
+<section class="panel"><h2>Mandos virtuales</h2><div><button id="previous">◀ Canción</button><button id="next">Canción ▶</button></div><div id="switches"></div><label>Morph <output id="mv">0%</output><input id="morph" type="range" min="0" max="100" value="0"></label><label>Volumen <output id="vv">100%</output><input id="volume" type="range" min="0" max="100" value="100"></label><p id="status" role="status"></p></section><p><a href="../editor/">♫ Configuración</a> · <a href="../worship-demo/">LIVE sin mandos de prueba</a></p>
+<script>
+const frame=document.querySelector('#live'),$=s=>document.querySelector(s);
+function doc(){try{return frame.contentDocument}catch{return null}}
+function press(selector){const el=doc()?.querySelector(selector);if(el&&!el.disabled){el.click();refresh()}else $('#status').textContent='Control no disponible'}
+function refresh(){const d=doc();if(!d)return;const buttons=[...d.querySelectorAll('#presetNav button')],box=$('#switches');box.replaceChildren(...buttons.map((b,i)=>{const x=document.createElement('button');x.textContent=b.textContent;x.onclick=()=>press('#presetNav button[data-i="'+i+'"]');return x}));$('#status').textContent='Canción: '+(d.querySelector('#songName')?.textContent||'cargando')+' · Estado: '+(d.querySelector('#title')?.textContent||'cargando');$('#mv').textContent=(d.querySelector('#morph')?.value||0)+'%';$('#vv').textContent=(d.querySelector('#volume')?.value||100)+'%'}
+$('#previous').onclick=()=>press('#prevSong');$('#next').onclick=()=>press('#nextSong');
+for(const id of ['morph','volume'])$('#'+id).oninput=e=>{const el=doc()?.querySelector('#'+id);if(el){el.value=e.target.value;el.dispatchEvent(new Event('input',{bubbles:true}));refresh()}};
+frame.addEventListener('load',()=>{refresh();setTimeout(refresh,600)});setInterval(refresh,1800);
+</script></html>
