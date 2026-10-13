@@ -1,0 +1,29 @@
+{
+  "name": "Worship test",
+  "version": "0.2",
+  "simulated": true,
+  "states": [
+    {
+      "id": 1,
+      "name": "Crystal Clean",
+      "morph": {
+        "heel": "dry clean",
+        "toe": "more delay and long reverb"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Overdrive",
+      "morph": null
+    },
+    {
+      "id": 3,
+      "name": "Solo",
+      "morph": {
+        "heel": "normal solo",
+        "toe": "boost +3 dB"
+      }
+    }
+  ],
+  "volumePedal": "global both routes"
+}
