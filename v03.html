@@ -515,10 +515,18 @@ function render(){
  sheet(vm.song.leadSheet);
  const slots=[...document.querySelectorAll(".switch-grid .switch")];
  for(let i=0;i<slots.length;i++){
+  const cfg=vm.song.displaySlots?.[i]||{name:"—",sub:"Sin asignar"};
+  const name=slots[i].querySelector(".name"),sub=slots[i].querySelector(".sub");
+  if(name)name.textContent=cfg.name;
+  if(sub){
+   if(cfg.sub==="GT"){
+    const gt=document.createElement("span");gt.className="gt";gt.textContent="GT";
+    sub.replaceChildren(gt);
+   }else sub.textContent=cfg.sub;
+  }
   const selected=i===vm.state.displayIndex;
   slots[i].style.boxShadow=selected?"inset 0 0 0 3px #f3ffff,0 0 14px #00d6f455":"";
-  slots[i].setAttribute("aria-label",(selected?"Estado seleccionado: ":"Indicador programado: ")+
-    (slots[i].querySelector(".name")?.textContent||""));
+  slots[i].setAttribute("aria-label",(selected?"Estado seleccionado: ":"Indicador programado: ")+cfg.name);
  }
  const expressions=[...document.querySelectorAll(".expression")];
  for(const el of expressions){
