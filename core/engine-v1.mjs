@@ -178,7 +178,7 @@ export function createEngine(source, {midiChannel=1}={}) {
         position:rep.songIds.indexOf(song.id)+1,total:rep.songIds.length},
       repertoire:{id:rep.id,name:rep.name},
       state:{id:st.id,name:st.name,gtPatch:st.gtPatch??null,
-        indicators,position:song.stateIds.indexOf(st.id)+1,total:song.stateIds.length},
+        displayIndex:st.displayIndex??null,indicators,position:song.stateIds.indexOf(st.id)+1,total:song.stateIds.length},
       active:{songId:session.activeSongId,stateId:session.activeStateId},
       isPreview:!!session.previewSongId,
       midiChannel:session.midiChannel, sequence:session.sequence
