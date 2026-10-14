@@ -10,6 +10,10 @@ export function createLeadSheetEditor({getSong,commit,storage=localStorage,delay
   const status=$("leadStatus"),errors=$("leadErrors"),draftWarning=$("leadDraftWarning");
   const PREFIX="hudLeadSheetDraft:";
   let currentId=null,timer=null,lastResult=null;
+  const chip=$("saveStatus");
+  function chipStatus(label,color){
+    if(chip){chip.textContent=label;chip.style.color=color;}
+  }
   const make=(tag,cls,content)=>{
     const element=document.createElement(tag);if(cls)element.className=cls;
     if(content!==undefined)element.textContent=String(content);
@@ -50,6 +54,7 @@ export function createLeadSheetEditor({getSong,commit,storage=localStorage,delay
       }
       preview.append(make("p","sheet-draft-warning","Corrige los errores para actualizar la partitura."));
       status.textContent=result.errors.length+" error(es) · borrador conservado";
+      chipStatus("Borrador pendiente","#ffd59e");
       draftWarning.hidden=false;
       return;
     }
@@ -103,9 +108,10 @@ export function createLeadSheetEditor({getSong,commit,storage=localStorage,delay
     const success=commit(id,leadSheet);
     if(success){
       storage.removeItem(PREFIX+id);
-      status.textContent+=" · guardado";
+      status.textContent=status.textContent.replace(/ · guardando…$/,"")+" · guardado";
     }else{
-      status.textContent+=" · pendiente de guardar";
+      status.textContent=status.textContent.replace(/ · guardando…$/,"")+" · pendiente de guardar";
+      chipStatus("Pendiente","#ffd59e");
       draftWarning.hidden=false;
     }
     return !!success;
@@ -117,6 +123,7 @@ export function createLeadSheetEditor({getSong,commit,storage=localStorage,delay
     clearTimeout(timer);
     if(lastResult.errors.length===0&&textarea.value.trim()){
       status.textContent+=" · guardando…";
+      chipStatus("Guardando…","#ffe8b6");
       timer=setTimeout(saveNow,delay);
     }
   }
@@ -137,5 +144,8 @@ export function createLeadSheetEditor({getSong,commit,storage=localStorage,delay
   textarea.addEventListener("scroll",syncScroll,{passive:true});
   textarea.addEventListener("click",()=>{if(lastResult)renderNumbers(lastResult)});
   textarea.addEventListener("keyup",()=>{if(lastResult)renderNumbers(lastResult)});
-  return {load,saveNow,refresh,getSource:()=>textarea.value};
+  function reset(){
+    clearTimeout(timer);timer=null;currentId=null;
+  }
+  return {load,reset,saveNow,refresh,getSource:()=>textarea.value};
 }
