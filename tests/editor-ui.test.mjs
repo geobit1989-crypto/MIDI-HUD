@@ -50,7 +50,7 @@ test("texto y preview reemplazan los botones de guardar manualmente",()=>{
 test("LIVE contiene acceso directo al Editor y menú de herramientas rediseñado",()=>{
  assert.match(engineUI,/class="hud-editor-shortcut"/);
  assert.match(engineUI,/href="\.\/editor\/"/);
- assert.match(engineUI,/class="hud-config-panel"/);
+ assert.match(engineUI,/dialog\.className="hud-config-panel"/);
  assert.match(engineUI,/href="\.\/lab\/"/);
  assert.match(engineUI,/href="\.\/"/);
  assert.match(engineUI,/config-menu-v2\.css/);
