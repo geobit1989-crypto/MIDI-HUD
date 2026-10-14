@@ -211,7 +211,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 .bar .beat{min-width:0;align-self:start;padding:clamp(2px,.4cqw,6px) clamp(1px,.35cqw,5px);white-space:nowrap;line-height:inherit}
 .bar.dual{gap:0}
 /* El signo de repetición de compás sigue centrado y no es un acorde. */
-.bar.slash{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));justify-items:stretch;align-items:start;gap:0;padding:0;text-align:center}
+.bar.slash{display:flex;grid-template-columns:none;align-items:center;justify-content:center;gap:0;padding:0;text-align:center}
 .bar.slash::first-letter{font-weight:900}
 @media (orientation:portrait){
  .bar .beat{padding:2px 1px}
