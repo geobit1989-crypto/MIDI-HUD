@@ -157,6 +157,8 @@ export function createEngine(source, {midiChannel=1}={}) {
     activeSongId:initialSong.id,
     activeStateId:initialSong.initialStateId,
     previewSongId:null,
+    previewStateId:null,
+    previewModuleIndex:null,
     rememberedStates:{[initialSong.id]:initialSong.initialStateId},
     indicatorOverrides:{},
     sequence:0
@@ -185,7 +187,7 @@ export function createEngine(source, {midiChannel=1}={}) {
   function getViewModel() {
     const songId=session.previewSongId||session.activeSongId;
     const song=songs.get(songId);
-    const stateId=(session.previewSongId
+    const stateId=session.previewStateId || (session.previewSongId
       ? session.rememberedStates[songId] || song.initialStateId
       : session.activeStateId);
     const st=states.get(stateId);
@@ -204,6 +206,7 @@ export function createEngine(source, {midiChannel=1}={}) {
         displayIndex:st.displayIndex??null,indicators,position:song.stateIds.indexOf(st.id)+1,total:song.stateIds.length},
       active:{songId:session.activeSongId,stateId:session.activeStateId},
       isPreview:!!session.previewSongId,
+      previewModuleIndex:session.previewModuleIndex,
       midiChannel:session.midiChannel, sequence:session.sequence
     });
   }
@@ -219,10 +222,27 @@ export function createEngine(source, {midiChannel=1}={}) {
       case "PREVIEW_SONG":
         insist(songs.has(event.songId), "cancion de consulta desconocida");
         next.previewSongId=event.songId;
-        changed=next.previewSongId!==session.previewSongId;
+        next.previewStateId=null;next.previewModuleIndex=null;
+        changed=JSON.stringify(next)!==JSON.stringify(session);
+        break;
+      case "PREVIEW_STATE": {
+        const st=states.get(event.stateId);
+        insist(st,"estado de consulta desconocido");
+        next.previewSongId=st.songId;
+        next.previewStateId=st.id;
+        next.previewModuleIndex=st.displayIndex??null;
+        changed=JSON.stringify(next)!==JSON.stringify(session);
+        break;
+      }
+      case "PREVIEW_MODULE":
+        insist(integer(event.index,0,8),"módulo de consulta invalido");
+        next.previewSongId=session.previewSongId||session.activeSongId;
+        next.previewStateId=null;
+        next.previewModuleIndex=event.index;
+        changed=JSON.stringify(next)!==JSON.stringify(session);
         break;
       case "RETURN_TO_ACTIVE":
-        next.previewSongId=null;
+        next.previewSongId=null;next.previewStateId=null;next.previewModuleIndex=null;
         changed=session.previewSongId!==null;
         break;
       case "MIDI_CC": {
@@ -238,7 +258,7 @@ export function createEngine(source, {midiChannel=1}={}) {
           else if(a.type==="SELECT_SONG") enterSong(next,a.songId);
           else if(a.type==="SET_INDICATOR") next.indicatorOverrides[a.indicatorId]=a.active;
         }
-        next.previewSongId=null;
+        next.previewSongId=null;next.previewStateId=null;next.previewModuleIndex=null;
         changed=JSON.stringify(next)!==JSON.stringify(session);
         break;
       }
