@@ -27,7 +27,7 @@ test("el editor contiene los campos musicales aprobados sin canal por canción",
  assert.match(engineUI,/key\.textContent=vm\.song\.tono/);
 });
 test("módulos y MIDI disponen de controles de entrada sin editar JSON directamente",()=>{
- for(const id of ["moduleGrid","barGrid","midiMatrix","actionType","actionTarget","bindingsTable"]){
+ for(const id of ["moduleGrid","leadText","leadPreview","leadGutter","midiMatrix","actionType","actionTarget","bindingsTable"]){
   assert.ok(ids.has(id),id);
  }
  assert.doesNotMatch(page,/textarea[^>]+id="actions"/);
@@ -37,4 +37,25 @@ test("se preserva la versión anterior del editor para recuperación",()=>{
  const index=readFileSync(new URL("../editor/index.html",import.meta.url),"utf8");
  assert.match(backup,/Configura|Configuración/);
  assert.match(index,/v2\.html/);
+});
+
+test("texto y preview reemplazan los botones de guardar manualmente",()=>{
+ for(const id of ["songSave","stateSave","sectionSave","barAdd","sheetCreate"])
+  assert.ok(!ids.has(id),"Debe desaparecer "+id);
+ assert.match(script,/createLeadSheetEditor/);
+ assert.match(script,/flushPendingEdits/);
+ assert.match(script,/setTimeout\(\(\)=>flushPendingEdits\(\),580\)/);
+ assert.match(page,/Guardado automático/);
+});
+test("LIVE contiene acceso directo al Editor y menú de herramientas rediseñado",()=>{
+ assert.match(engineUI,/class="hud-editor-shortcut"/);
+ assert.match(engineUI,/href="\.\/editor\/"/);
+ assert.match(engineUI,/class="hud-config-panel"/);
+ assert.match(engineUI,/href="\.\/lab\/"/);
+ assert.match(engineUI,/href="\.\/"/);
+ assert.match(engineUI,/config-menu-v2\.css/);
+});
+test("la vista previa admite los marcadores de repetición compilados",()=>{
+ assert.match(engineUI,/section\.repeatStartBars\?\.includes\(index\)/);
+ assert.match(engineUI,/section\.repeatEndBars\?\.includes\(index\)/);
 });
