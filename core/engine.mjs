@@ -3,7 +3,7 @@
  * Pure state machine: no DOM, network, localStorage or MIDI device access.
  * Compatible with config/midi-hud-data-v1.json (schema 1.0.0).
  */
-export const ENGINE_VERSION = "0.1.1";
+export const ENGINE_VERSION = "0.2.0";
 
 function requireValid(ok, message) {
   if (!ok) throw new Error("MIDI HUD: " + message);
@@ -92,6 +92,14 @@ export function validateLibrary(data) {
   return reps.size > 0;
 }
 
+/** Remove legacy volume metadata without changing other repertoire settings. */
+export function normalizeLibrary(input) {
+  const db = copy(input);
+  if (object(db.midi) && object(db.midi.cc)) delete db.midi.cc.volume;
+  if (object(db.controls)) delete db.controls.volume;
+  return db;
+}
+
 /**
  * Events: SELECT_REPERTOIRE {repertoireId}, SELECT_SONG {songId},
  * NEXT_SONG, PREVIOUS_SONG, SELECT_PRESET {presetId},
@@ -102,8 +110,8 @@ export function validateLibrary(data) {
  * hardware adapter. The engine NEVER transmits MIDI.
  */
 export function createEngine(input) {
-  validateLibrary(input);
-  const db = copy(input);
+  const db = normalizeLibrary(input);
+  validateLibrary(db);
   const reps = new Map(db.repertoires.map(x => [x.id, x]));
   const songs = new Map(db.songs.map(x => [x.id, x]));
   const presets = new Map(db.presets.map(x => [x.id, x]));
