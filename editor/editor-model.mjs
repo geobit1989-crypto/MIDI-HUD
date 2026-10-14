@@ -81,10 +81,15 @@ function removeOrphanSong(db,songId){
  db.songs=db.songs.filter(s=>s.id!==songId);
  pruneActions(db,a=>(a.type==="ACTIVATE_STATE"&&dead.has(a.stateId))||
    (a.type==="SELECT_SONG"&&a.songId===songId));
+ pruneOrphanIndicators(db);
 }
 function pruneActions(db,pred){
  for(const b of db.bindings)b.actions=b.actions.filter(a=>!pred(a));
  db.bindings=db.bindings.filter(b=>b.actions.length);
+}
+function pruneOrphanIndicators(db){
+ const known=new Set(db.states.flatMap(st=>(st.indicators||[]).map(x=>x.id)));
+ pruneActions(db,a=>a.type==="SET_INDICATOR"&&!known.has(a.indicatorId));
 }
 export function deleteSong(db,repertoireId,songId){
  const rep=locate(db.repertoires,repertoireId,"repertorio");
@@ -130,6 +135,7 @@ export function deleteState(db,stateId){
  if(song.initialStateId===stateId)song.initialStateId=song.stateIds[0];
  db.states=db.states.filter(s=>s.id!==stateId);
  pruneActions(db,a=>a.type==="ACTIVATE_STATE"&&a.stateId===stateId);
+ pruneOrphanIndicators(db);
 }
 export function moveState(db,stateId,delta){
  const st=locate(db.states,stateId,"estado"),song=locate(db.songs,st.songId,"canción");
