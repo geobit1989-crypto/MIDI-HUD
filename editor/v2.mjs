@@ -146,12 +146,15 @@ function renderStates(){
  options("stateSlot",[["","Sin módulo"]].concat(Array.from({length:9},(_,i)=>[i,String(i+1)+" · "+(s.displaySlots?.[i]?.name||"—")])),
   st.displayIndex==null?"":st.displayIndex);
  $("statePatch").value=st.gtPatch??"";
+ options("indicatorSlot",[["","Sin módulo"]].concat(Array.from({length:9},(_,i)=>[i,
+   String(i+1)+" · "+(s.displaySlots?.[i]?.name||"—")])),"");
  const list=$("indicatorList");
  list.replaceChildren();
  if(!st.indicators?.length)list.append(el("p","Este estado no tiene indicadores definidos.","help"));
  for(const indicator of st.indicators||[]){
   const row=el("div",undefined,"action-row");
-  row.append(el("span",(indicator.active?"● ":"○ ")+indicator.label+" ("+indicator.id+")","name"));
+  row.append(el("span",(indicator.active?"● ":"○ ")+indicator.label+" ("+indicator.id+")"+
+   (indicator.displayIndex==null?"":" · Módulo "+(indicator.displayIndex+1)),"name"));
   const remove=button("Eliminar",()=>{
    if(!confirmation("¿Eliminar el indicador? Las asignaciones que lo utilicen deberán revisarse."))return;
    transact(data=>{
@@ -432,9 +435,11 @@ function register(){
   transact(data=>{
    const st=data.states.find(x=>x.id===stateId);
    if(st.indicators.some(x=>x.id===id))throw Error("Identificador repetido dentro del estado.");
-   st.indicators.push({id,label,active:$("indicatorActive").checked});
+   st.indicators.push({id,label,active:$("indicatorActive").checked,
+    displayIndex:$("indicatorSlot").value===""?null:Number($("indicatorSlot").value)});
   },"Indicador añadido.");
-  $("indicatorId").value="";$("indicatorLabel").value="";$("indicatorActive").checked=false;
+  $("indicatorId").value="";$("indicatorLabel").value="";
+  $("indicatorActive").checked=false;$("indicatorSlot").value="";
  };
  $("sheetCreate").onclick=()=>transact(data=>{
   data.songs.find(s=>s.id===songId).leadSheet={sections:[{letter:"A",label:"INTRO",bars:[["","","",""]]}]};
