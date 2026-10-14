@@ -1,3 +1,30 @@
+# Motor MIDI HUD v1.0 — beta de desarrollo
+
+Esta rama implementa el motor de **visualización** MIDI basado en los acuerdos del 14/10/2026. Se mantiene el prototipo visual LIVE v0.3 y el código v0.2 como respaldo. **No envía mensajes a la GT-1000CORE.**
+
+## Qué se añadió (sin sustituir los respaldos)
+
+- Motor puro: [core/engine-v1.mjs](core/engine-v1.mjs): interpreta canal MIDI global + CC + valor; ejecuta las acciones configuradas; separa canción/estado activos de previsualización; recuerda último estado por canción en la sesión; no envía MIDI ni reinicia Morph/Wah.
+- Datos v2: [config/midi-hud-data-v2.json](config/midi-hud-data-v2.json): TONO (valor), BPM, lead sheet, estado inicial, estados y correspondencias CC/valor→acciones. **Los valores son ejemplos no verificados en Chocolate o GT.**
+- Ajustes: [core/settings-v1.mjs](core/settings-v1.mjs): canal MIDI 1–16 persistido globalmente, nunca por canción.
+- Entrada MIDI opcional: [core/midi-browser.mjs](core/midi-browser.mjs). Solo para navegadores/sistemas con Web MIDI y puertos de entrada expuestos. Safari iOS no ofrece Web MIDI estándar; la integración BLE del iPhone queda pendiente de adaptador nativo u otra plataforma probada.
+- LIVE: [v03.html](v03.html) mantiene CSS y composición original; ahora carga motor y puede abrir Configuración desde ⚙, cambiar canal, consultar canciones y autorizar MIDI donde sea compatible. Refleja tono como valor (sin etiqueta), BPM, banco, título, módulos por canción y estado seleccionado.
+- [LAB v1](lab/midi-v1.html): simula los CC del controlador, prueba canales, cero/127, estado activo y previsualización; sin MIDI de salida.
+- [Editor v1](editor/v1.html): edita canciones, tonalidad, lead sheets, estados, estado inicial, matrices visuales y asociaciones CC + valor. La política de colisiones presenta advertencias.
+- [Pruebas](tests/engine-v1.test.mjs): 12 casos reproducibles con \`node --test tests/engine-v1.test.mjs\`.
+
+## Cómo probar sin hardware
+
+Servir la carpeta completa desde un servidor HTTP bajo un mismo origen, para permitir importaciones ES module y carga de JSON. Por ejemplo con Python: \`python -m http.server 8000\`; después abrir \`http://localhost:8000/lab/midi-v1.html\`, \`/editor/v1.html\` y \`/v03.html\`. No abrir los archivos individuales mediante file:// ni subir solamente v03.html a Drive: la versión modular depende de los otros archivos.
+
+**Aislamiento:** editor v1 usa \`hudLibraryV1\`; LAB v1 usa \`hudLabLibraryV1\`; configuración global \`midiHudSettingsV1\`. No sustituyen las claves ni archivos del prototipo anterior.
+
+**Pendiente antes de producción:** comprobar entrada BLE MIDI real en la plataforma final, verificar valores emitidos por Chocolate, validar la interfaz en tamaño móvil con el usuario y decidir cómo desplegar el conjunto de archivos en Drive sin romper el HTML actualmente utilizable. La prueba automatizada no equivale a prueba con hardware ni a una validación visual.
+
+---
+
+## Documentación del prototipo anterior
+
 # MIDI HUD
 
 Prototipo del sistema SIG. Estructura consolidada el **14 de octubre de 2026**.
