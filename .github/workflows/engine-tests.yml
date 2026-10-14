@@ -27,11 +27,11 @@ jobs:
       - name: Assemble standalone static website
         run: |
           mkdir -p build/MIDI-HUD-BETA/{core,editor,lab,config}
-          cp index.html v03.html build/MIDI-HUD-BETA/
-          cp core/engine-v1.mjs core/settings-v1.mjs core/midi-browser.mjs build/MIDI-HUD-BETA/core/
-          cp editor/index.html editor/v2.html editor/v2.mjs editor/editor-model.mjs editor/legacy.html build/MIDI-HUD-BETA/editor/
+          cp index.html v03.html README.md build/MIDI-HUD-BETA/
+          cp core/engine.mjs core/engine-v1.mjs core/settings-v1.mjs core/midi-browser.mjs build/MIDI-HUD-BETA/core/
+          cp editor/index.html editor/v1.html editor/v2.html editor/v2.mjs editor/editor-model.mjs editor/legacy.html build/MIDI-HUD-BETA/editor/
           cp lab/index.html lab/midi-v1.html lab/legacy.html build/MIDI-HUD-BETA/lab/
-          cp config/midi-hud-data-v2.json build/MIDI-HUD-BETA/config/
+          cp config/midi-hud-data-v1.json config/midi-hud-data-v2.json build/MIDI-HUD-BETA/config/
           touch build/MIDI-HUD-BETA/.nojekyll
           cat > build/MIDI-HUD-BETA/LEEME.txt <<'INSTRUCTIONS'
           MIDI HUD — BETA INTEGRADA (14 de octubre de 2026)
