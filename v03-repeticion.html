@@ -247,15 +247,20 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
   text-align:center;
   padding:0;
 }
+/* El signo tiene la altura aproximada de un acorde, nunca la del compás.
+   Posicionamiento absoluto: no influye en las filas de la partitura. */
+.bar.repeat-measure{position:relative;min-height:0}
 .bar.repeat-measure .repeat-glyph {
+  position:absolute;
+  left:50%;top:50%;
+  transform:translate(-50%,-50%);
   display:block;
-  width:clamp(34px,3.4cqw,58px);
-  max-width:84%;
-  height:auto;
-  max-height:74%;
+  width:1em;height:.84em;
+  max-width:none;max-height:none;
   overflow:visible;
-  flex:0 1 auto;
+  flex:none;
   color:inherit;
+  pointer-events:none;
 }
 </style>
 </head>
