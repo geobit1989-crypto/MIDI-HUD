@@ -550,8 +550,10 @@ function render(){
    }else sub.textContent=cfg.sub;
   }
   const selected=i===vm.state.displayIndex;
-  slots[i].style.boxShadow=selected?"inset 0 0 0 3px #f3ffff,0 0 14px #00d6f455":"";
-  slots[i].setAttribute("aria-label",(selected?"Estado seleccionado: ":"Indicador programado: ")+cfg.name);
+  const lit=vm.state.indicators.some(ind=>ind.active&&ind.displayIndex===i);
+  slots[i].style.boxShadow=selected?"inset 0 0 0 3px #f3ffff,0 0 14px #00d6f455":
+    lit?"inset 0 0 0 3px #5fe9f0,0 0 12px #00d6f455":"";
+  slots[i].setAttribute("aria-label",(selected?"Estado seleccionado: ":lit?"Indicador activo: ":"Indicador programado: ")+cfg.name);
  }
  const expressions=[...document.querySelectorAll(".expression")];
  for(const el of expressions){
