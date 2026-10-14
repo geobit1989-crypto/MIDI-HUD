@@ -284,6 +284,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
   transform:translateX(-50%);
 }
 </style>
+<link rel="stylesheet" href="./live/responsive-v1.css">
 </head>
 <body>
   <!-- MIDI HUD sólo visualiza información. No crea, envía ni recibe comandos MIDI. -->
@@ -299,7 +300,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
       <div class="sheet-section"><div class="section-label"><span class="section-letter">D</span><span>PONTE</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar repeat-start" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="Am   "><span class="beat">Am</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar repeat-end" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div></div></div>
     </section>
     <section class="hud-panel" aria-label="Información del banco y controles asignados">
-      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-left"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div></div><div class="brand">MIDI HUD <span>LIVE</span></div><div class="hud-right"><strong class="bank" id="bank">C1</strong><div class="settings" aria-label="Configuración">⚙</div></div></div><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1></header>
+      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-left"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div></div><div class="brand">MIDI HUD <span>LIVE</span></div><div class="hud-right"><strong class="bank" id="bank">C1</strong><div class="settings" aria-label="Configuración">⚙</div></div></div><div class="song-navigation"><button class="song-nav" id="hud-prev" type="button" aria-label="Consultar canción anterior">‹</button><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1><button class="song-nav" id="hud-next" type="button" aria-label="Consultar canción siguiente">›</button><button type="button" class="return-active" id="hud-return" hidden>Volver a activa</button></div></header>
       <div class="switch-grid" aria-label="Nueve funciones visualizadas">
         <div class="switch" style="--light:#075eff;--dark:#003088;--meter:#02ddf4;--fill:49%"><span class="number">1</span><span class="icon-wrap">✦</span><div class="details"><div class="name">CLEAN</div><div class="sub">Twin Clean</div></div><span class="arrow">›</span><div class="meter"></div></div>
         <div class="switch" style="--light:#08b7ae;--dark:#005251;--meter:#09ffff;--fill:50%"><span class="number">2</span><span class="icon-wrap">≋</span><div class="details"><div class="name">AMBIENT</div><div class="sub">Delay · Reverb</div></div><span class="arrow">›</span><div class="meter"></div></div>
@@ -314,6 +315,9 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
       <div class="expression-row" aria-label="Pedales de expresión"><div class="expression" style="--edge:#cf61ff;--exp-a:#4b006d;--exp-b:#200036;--fill:45%"><div class="exhead"><strong class="exname">MORPH</strong><strong class="value">45%</strong></div><div class="exsub">Preset → Solo</div><div class="exmeter" aria-hidden="true"></div></div><div class="expression" style="--edge:#00e5ff;--exp-a:#003a55;--exp-b:#003345;--fill:75%"><div class="exhead"><strong class="exname">WAH / EXP</strong><strong class="value">75%</strong></div><div class="exsub">Wah · Whammy</div><div class="exmeter" aria-hidden="true"></div></div></div>
     </section>
   </main>
+  <div id="hud-toast" role="status" aria-live="polite" class="hud-toast" hidden></div>
+  <div id="hud-boot-status" role="status" class="hud-boot">Inicializando motor…</div>
+  <noscript><div class="hud-noscript">MIDI HUD necesita JavaScript para funcionar.</div></noscript>
 
   <script>
     /* Cada acorde ocupa un pulso; cada espacio literal es un pulso vacío.
@@ -479,7 +483,7 @@ function sheet(source){
  }
  root.replaceChildren();
  const sections=source.sections.slice(0,4);
- root.style.gridTemplateRows=sections.map((_,i)=>i===1?"3fr":"1fr").join(" ");
+ root.style.gridTemplateRows=sections.map(section=>Math.max(1,Math.ceil((section.bars||[]).length/4))+"fr").join(" ");
  for(const section of sections){
   const block=document.createElement("div");block.className="sheet-section";
   const heading=document.createElement("div");heading.className="section-label";
@@ -538,6 +542,8 @@ function render(){
  $(".topbar .tempo").textContent=vm.song.tempoBpm==null?"— BPM":vm.song.tempoBpm+" BPM";
  $("#bank").textContent=vm.song.bank||"—";
  sheet(vm.song.leadSheet);
+ document.querySelector("#hud-return").hidden=!vm.isPreview;
+ const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
  const slots=[...document.querySelectorAll(".switch-grid .switch")];
  for(let i=0;i<slots.length;i++){
   const cfg=vm.song.displaySlots?.[i]||{name:"—",sub:"Sin asignar"};
@@ -549,11 +555,12 @@ function render(){
     sub.replaceChildren(gt);
    }else sub.textContent=cfg.sub;
   }
-  const selected=i===vm.state.displayIndex;
+  const selected=(vm.previewModuleIndex==null?vm.state.displayIndex:vm.previewModuleIndex)===i;
   const lit=vm.state.indicators.some(ind=>ind.active&&ind.displayIndex===i);
   slots[i].style.boxShadow=selected?"inset 0 0 0 3px #f3ffff,0 0 14px #00d6f455":
     lit?"inset 0 0 0 3px #5fe9f0,0 0 12px #00d6f455":"";
-  slots[i].setAttribute("aria-label",(selected?"Estado seleccionado: ":lit?"Indicador activo: ":"Indicador programado: ")+cfg.name);
+  slots[i].setAttribute("aria-label",(vm.isPreview?"Consulta visual: ":selected?"Estado seleccionado: ":lit?"Indicador activo: ":"Indicador programado: ")+cfg.name);
+  slots[i].setAttribute("aria-pressed",String(selected));
  }
  const expressions=[...document.querySelectorAll(".expression")];
  for(const el of expressions){
@@ -576,9 +583,14 @@ function render(){
   }
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel});
   library=engine.getLibrary();prepare();
-  engine.subscribe(()=>render());render();
- }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);}
+  window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
+  engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
+  render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
+ }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);
+  const boot=document.querySelector("#hud-boot-status");if(boot)boot.textContent="Error de inicialización: "+err.message;
+ }
 })();
 </script>
+<script src="./live/live-controls-v1.js" defer></script>
 </body>
 </html>
