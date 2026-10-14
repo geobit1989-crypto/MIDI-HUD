@@ -3,7 +3,7 @@
  * Pure state machine: no DOM, network, localStorage or MIDI device access.
  * Compatible with config/midi-hud-data-v1.json (schema 1.0.0).
  */
-export const ENGINE_VERSION = "0.1.0";
+export const ENGINE_VERSION = "0.1.1";
 
 function requireValid(ok, message) {
   if (!ok) throw new Error("MIDI HUD: " + message);
@@ -34,7 +34,7 @@ export function validateLibrary(data) {
   requireValid(data.midi.programNumbering === "zero-based",
     "solo se admiten programas MIDI de 0 a 127");
   requireValid(object(data.midi.cc), "faltan los CC MIDI");
-  for (const name of ["morph", "volume", "wah"]) {
+  for (const name of ["morph", "wah"]) {
     requireValid(uint(data.midi.cc[name], 0, 127), "CC " + name + " inválido");
   }
   requireValid(Array.isArray(data.repertoires) && data.repertoires.length > 0,
@@ -44,10 +44,8 @@ export function validateLibrary(data) {
   const reps = uniqueIds(data.repertoires, "repertorios");
   const songs = uniqueIds(data.songs, "canciones");
   const presets = uniqueIds(data.presets, "presets");
-  requireValid(object(data.controls) && object(data.controls.volume) &&
-    object(data.controls.morph), "controles globales no definidos");
-  const initialVolume = data.controls.volume.initialDisplayPercent;
-  requireValid(uint(initialVolume, 0, 100), "volumen inicial fuera de 0..100");
+  requireValid(object(data.controls) && object(data.controls.morph),
+    "control Morph no definido");
   for (const rep of data.repertoires) {
     requireValid(Array.isArray(rep.songIds) && rep.songIds.length > 0,
       "repertorio " + rep.id + " sin canciones");
@@ -98,7 +96,7 @@ export function validateLibrary(data) {
  * Events: SELECT_REPERTOIRE {repertoireId}, SELECT_SONG {songId},
  * NEXT_SONG, PREVIOUS_SONG, SELECT_PRESET {presetId},
  * NEXT_PRESET, PREVIOUS_PRESET, SET_MORPH {value:0..127},
- * SET_VOLUME {percent:0..100}, SET_WAH {percent:0..100}.
+ * SET_WAH {percent:0..100}.
  *
  * dispatch returns {state, intents}. Intents describe MIDI messages for a future
  * hardware adapter. The engine NEVER transmits MIDI.
@@ -119,7 +117,6 @@ export function createEngine(input) {
     presetId: firstPreset.id,
     tempoBpm: firstSong.tempoBpm ?? null,
     morphValue: firstPreset.morph.onLoad,
-    volumePercent: db.controls.volume.initialDisplayPercent,
     wahPercent: 0,
     sequence: 0
   };
@@ -142,11 +139,7 @@ export function createEngine(input) {
     const s = songs.get(songId);
     const next = { ...state, songId: songId, presetId: id,
       tempoBpm: s.tempoBpm ?? null, morphValue: p.morph.onLoad };
-    // Volume is deliberately preserved: the expression pedal can stay at 0
-    // for silence or 100 for normal playing through patch changes.
-    const intents = [pcIntent(p),
-      ccIntent("morph", p.morph.onLoad),
-      ccIntent("volume", percentToMidi(state.volumePercent))];
+    const intents = [pcIntent(p), ccIntent("morph", p.morph.onLoad)];
     return { next, intents };
   }
   function selectSong(id, repId = state.repertoireId) {
@@ -183,7 +176,7 @@ export function createEngine(input) {
         position: song.presetIds.indexOf(preset.id) + 1, total: song.presetIds.length },
       morph: { value: state.morphValue, assignment: m.assignment,
         min: m.min, max: m.max, parameters: values },
-      volumePercent: state.volumePercent, wahPercent: state.wahPercent,
+      wahPercent: state.wahPercent,
       sequence: state.sequence
     });
   }
@@ -230,15 +223,6 @@ export function createEngine(input) {
         if (value !== state.morphValue) {
           next = {...state, morphValue: value};
           intents = [ccIntent("morph", value)];
-        }
-        break;
-      }
-      case "SET_VOLUME": {
-        requireValid(Number.isFinite(event.percent), "volumen no numérico");
-        const percent = clamp(event.percent, 0, 100);
-        if (percent !== state.volumePercent) {
-          next = {...state, volumePercent: percent};
-          intents = [ccIntent("volume", percentToMidi(percent))];
         }
         break;
       }
