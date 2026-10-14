@@ -110,7 +110,8 @@ export function validateLibrary(raw) {
     insist(typeof st.name === "string" && !!st.name.trim(), "estado sin nombre");
     insist(st.indicators === undefined || (Array.isArray(st.indicators) &&
       st.indicators.every(x=>isObject(x) && typeof x.id==="string" &&
-      typeof x.label==="string" && typeof x.active==="boolean")),
+      typeof x.label==="string" && typeof x.active==="boolean" &&
+      (x.displayIndex == null || integer(x.displayIndex,0,8)))),
       "indicadores invalidos");
     insist(st.displayIndex == null || integer(st.displayIndex,0,8), "posicion visual invalida");
     insist(st.gtPatch == null || integer(st.gtPatch,0,127), "referencia de patch invalida");
