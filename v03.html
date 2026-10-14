@@ -285,6 +285,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 }
 </style>
 <link rel="stylesheet" href="./live/responsive-v1.css">
+<link rel="stylesheet" href="./live/config-menu-v2.css">
 </head>
 <body>
   <!-- MIDI HUD sólo visualiza información. No crea, envía ni recibe comandos MIDI. -->
@@ -300,7 +301,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
       <div class="sheet-section"><div class="section-label"><span class="section-letter">D</span><span>PONTE</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar repeat-start" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="Am   "><span class="beat">Am</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar repeat-end" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div></div></div>
     </section>
     <section class="hud-panel" aria-label="Información del banco y controles asignados">
-      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-left"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div></div><div class="brand">MIDI HUD <span>LIVE</span></div><div class="hud-right"><strong class="bank" id="bank">C1</strong><div class="settings" aria-label="Configuración">⚙</div></div></div><div class="song-navigation"><button class="song-nav" id="hud-prev" type="button" aria-label="Consultar canción anterior">‹</button><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1><button class="song-nav" id="hud-next" type="button" aria-label="Consultar canción siguiente">›</button><button type="button" class="return-active" id="hud-return" hidden>Volver a activa</button></div></header>
+      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-left"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div></div><div class="brand">MIDI HUD <span>LIVE</span></div><div class="hud-right"><strong class="bank" id="bank">C1</strong><div class="settings" aria-label="Configuración">⚙</div><a class="hud-editor-shortcut" href="./editor/" aria-label="Abrir Editor" title="Ir al Editor">✎</a></div></div><div class="song-navigation"><button class="song-nav" id="hud-prev" type="button" aria-label="Consultar canción anterior">‹</button><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1><button class="song-nav" id="hud-next" type="button" aria-label="Consultar canción siguiente">›</button><button type="button" class="return-active" id="hud-return" hidden>Volver a activa</button></div></header>
       <div class="switch-grid" aria-label="Nueve funciones visualizadas">
         <div class="switch" style="--light:#075eff;--dark:#003088;--meter:#02ddf4;--fill:49%"><span class="number">1</span><span class="icon-wrap">✦</span><div class="details"><div class="name">CLEAN</div><div class="sub">Twin Clean</div></div><span class="arrow">›</span><div class="meter"></div></div>
         <div class="switch" style="--light:#08b7ae;--dark:#005251;--meter:#09ffff;--fill:50%"><span class="number">2</span><span class="icon-wrap">≋</span><div class="details"><div class="name">AMBIENT</div><div class="sub">Delay · Reverb</div></div><span class="arrow">›</span><div class="meter"></div></div>
@@ -422,22 +423,52 @@ overlay.id="hud-settings-overlay";
 overlay.hidden=true;
 overlay.style.cssText="position:fixed;inset:0;background:#000c;z-index:1000;display:none;align-items:center;justify-content:center;padding:18px;font-family:system-ui,sans-serif";
 const dialog=document.createElement("section");
-dialog.style.cssText="background:#132130;border:1px solid #58778b;border-radius:12px;color:white;padding:20px;width:min(430px,100%);max-height:90dvh;overflow:auto;box-shadow:0 20px 80px #000";
-dialog.setAttribute("role","dialog");dialog.setAttribute("aria-modal","true");dialog.setAttribute("aria-label","Configuración MIDI HUD");
-dialog.innerHTML=`<h2 style="margin:0 0 14px">Configuración de MIDI HUD</h2>
-<label for="hud-channel" style="display:block;margin:8px 0">Canal MIDI de recepción (global)</label>
-<select id="hud-channel" style="background:#243c4b;color:white;padding:10px;width:100%;font:inherit;border-radius:7px"></select>
-<p style="font-size:13px;line-height:1.5;color:#c9d6e2">Los controladores que envían al HUD deben utilizar este canal. No cambia el canal de la GT ni de las canciones.</p>
-<label for="hud-preview" style="display:block;margin:12px 0 7px">Consultar canción sin modificar el estado activo</label>
-<select id="hud-preview" style="background:#243c4b;color:white;padding:10px;width:100%;font:inherit;border-radius:7px"></select>
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-<button id="hud-preview-btn" type="button">Consultar</button><button id="hud-active-btn" type="button">Volver a activa</button>
+dialog.className="hud-config-panel";
+dialog.setAttribute("role","dialog");
+dialog.setAttribute("aria-modal","true");
+dialog.setAttribute("aria-label","Configuración MIDI HUD");
+dialog.innerHTML=`
+<header class="hud-config-top">
+  <div><div class="hud-config-eyebrow">MIDI HUD · Herramientas</div><h2>Configuración</h2></div>
+  <button id="hud-close-btn" class="hud-config-close" type="button" aria-label="Cerrar configuración">×</button>
+</header>
+<div class="hud-config-content">
+  <div class="hud-config-grid">
+    <section class="hud-config-group" aria-labelledby="hud-midi-heading">
+      <h3 id="hud-midi-heading">Recepción MIDI</h3>
+      <p>Canal global de entrada, compartido por todas las canciones.</p>
+      <label for="hud-channel">Canal de recepción
+        <select id="hud-channel"></select>
+      </label>
+      <div class="hud-config-actions">
+        <button id="hud-midi-btn" type="button" class="hud-primary">Autorizar entrada MIDI</button>
+      </div>
+      <p id="hud-midi-status" role="status" class="hud-config-readout">Entrada MIDI no solicitada. La simulación manual funciona sin hardware.</p>
+    </section>
+    <section class="hud-config-group" aria-labelledby="hud-nav-heading">
+      <h3 id="hud-nav-heading">Consulta de canciones</h3>
+      <p>Consultar una canción o un estado no modifica el estado MIDI operativo.</p>
+      <label for="hud-preview">Canción de consulta
+        <select id="hud-preview"></select>
+      </label>
+      <div class="hud-config-actions">
+        <button id="hud-preview-btn" type="button" class="hud-primary">Consultar</button>
+        <button id="hud-active-btn" type="button">Volver a activa</button>
+      </div>
+      <p id="hud-current-info" class="hud-config-readout"></p>
+    </section>
+  </div>
 </div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-<button id="hud-midi-btn" type="button">Autorizar entrada MIDI</button>
-<button id="hud-close-btn" type="button">Cerrar</button>
-</div><p id="hud-midi-status" role="status" style="color:#bcd2df;font-size:12px"></p>`;
-for(const button of dialog.querySelectorAll("button")) button.style.cssText="background:#254c61;border:1px solid #719bb1;color:white;padding:10px;border-radius:7px;font:inherit;cursor:pointer";
+<nav class="hud-config-tools" aria-label="Herramientas MIDI HUD">
+  <h3>Ir a otra herramienta</h3>
+  <div class="hud-config-links">
+    <a href="./editor/">✎ Editor<small>Modificar canciones, estados y lead sheets</small></a>
+    <a href="./lab/">◇ LAB<small>Simular los mensajes CC y sus acciones</small></a>
+    <a href="./">▦ Inicio<small>Panel de acceso a MIDI HUD</small></a>
+  </div>
+</nav>
+<footer class="hud-config-foot">El HUD únicamente representa estados visuales. No transmite MIDI a la GT ni supervisa sus cambios físicos.</footer>
+`;
 overlay.append(dialog);document.body.append(overlay);
 function popup(open){overlay.hidden=!open;overlay.style.display=open?"flex":"none";if(open)dialog.querySelector("#hud-channel").focus();else gear.focus();}
 function prepare(){
@@ -497,7 +528,10 @@ function sheet(source){
    const line=document.createElement("div");line.className="chord-line";
    for(let j=0;j<4;j++){
     const bar=document.createElement("div");bar.className="bar";
-    const beats=bars[row*4+j]||["","","",""];
+    const index=row*4+j;
+    if(section.repeatStartBars?.includes(index))bar.classList.add("repeat-start");
+    if(section.repeatEndBars?.includes(index))bar.classList.add("repeat-end");
+    const beats=bars[index]||["","","",""];
     if(beats[0]==="/"&&beats.slice(1).every(x=>x==="")){
       const ns="http://www.w3.org/2000/svg";
       const svg=document.createElementNS(ns,"svg");
@@ -570,6 +604,9 @@ function render(){
   el.style.setProperty("--fill","0%");
  }
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
+ const currentInfo=dialog.querySelector("#hud-current-info");
+ if(currentInfo)currentInfo.textContent=(vm.isPreview?"Vista de consulta: ":"Vista operativa: ")+
+  vm.song.title+" · "+vm.state.name;
 }
 (async()=>{
  try{
