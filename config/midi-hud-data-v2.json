@@ -151,7 +151,45 @@
             ]
           }
         ]
-      }
+      },
+      "displaySlots": [
+        {
+          "name": "CLEAN",
+          "sub": "Twin Clean"
+        },
+        {
+          "name": "AMBIENT",
+          "sub": "Delay · Reverb"
+        },
+        {
+          "name": "DRIVE",
+          "sub": "OD · Crunch"
+        },
+        {
+          "name": "SOLO",
+          "sub": "Lead · Boost"
+        },
+        {
+          "name": "DELAY",
+          "sub": "Dotted 8th"
+        },
+        {
+          "name": "BOOST",
+          "sub": "+3 dB"
+        },
+        {
+          "name": "COMP",
+          "sub": "GT"
+        },
+        {
+          "name": "OD",
+          "sub": "GT"
+        },
+        {
+          "name": "DIST",
+          "sub": "GT"
+        }
+      ]
     },
     {
       "id": "uma-vez",
@@ -164,7 +202,45 @@
         "u-solo"
       ],
       "initialStateId": "u-clean",
-      "leadSheet": null
+      "leadSheet": null,
+      "displaySlots": [
+        {
+          "name": "CLEAN",
+          "sub": "GT: pendiente"
+        },
+        {
+          "name": "SOLO",
+          "sub": "GT: pendiente"
+        },
+        {
+          "name": "—",
+          "sub": "Sin asignar"
+        },
+        {
+          "name": "—",
+          "sub": "Sin asignar"
+        },
+        {
+          "name": "—",
+          "sub": "Sin asignar"
+        },
+        {
+          "name": "—",
+          "sub": "Sin asignar"
+        },
+        {
+          "name": "COMP",
+          "sub": "GT"
+        },
+        {
+          "name": "OD",
+          "sub": "GT"
+        },
+        {
+          "name": "DIST",
+          "sub": "GT"
+        }
+      ]
     }
   ],
   "states": [
@@ -241,7 +317,7 @@
       "id": "u-solo",
       "songId": "uma-vez",
       "name": "Solo",
-      "displayIndex": 3,
+      "displayIndex": 1,
       "gtPatch": null,
       "indicators": []
     }
