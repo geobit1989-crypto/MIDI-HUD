@@ -238,6 +238,25 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 .hud-left>.key,.hud-left>.tempo{justify-self:center;max-width:100%}
 .hud-right>.bank{grid-area:auto;grid-column:1;grid-row:1;justify-self:center}
 .hud-right>.settings{grid-area:auto;grid-column:2;grid-row:1;justify-self:end}
+
+/* Repetición de un compás: símbolo musical en SVG, siempre centrado. */
+.bar.repeat-measure, .bar.slash.repeat-measure {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:0;
+}
+.bar.repeat-measure .repeat-glyph {
+  display:block;
+  width:clamp(34px,3.4cqw,58px);
+  max-width:84%;
+  height:auto;
+  max-height:74%;
+  overflow:visible;
+  flex:0 1 auto;
+  color:inherit;
+}
 </style>
 </head>
 <body>
@@ -246,9 +265,9 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
     <section class="lead-sheet" aria-label="Hoja de acordes de Quão Grande É o Meu Deus">
       <div class="sheet-section"><div class="section-label"><span class="section-letter">A</span><span>INTRO</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar" data-beats="C   "><span class="beat">C</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" style="border:0" data-beats="    "><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" style="border:0" data-beats="    "><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div></div></div>
       <div class="sheet-section"><div class="section-label"><span class="section-letter">B</span><span>VERSO</span></div><div class="chord-lines" style="--rows:3">
-        <div class="chord-line"><div class="bar" data-beats="C   "><span class="beat">C</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar slash">/</div><div class="bar dual" data-beats="F Am "><span class="beat">F</span><span class="beat"></span><span class="beat">Am</span><span class="beat"></span></div><div class="bar" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div>
-        <div class="chord-line"><div class="bar" data-beats="Am   "><span class="beat">Am</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar slash">/</div><div class="bar dual" data-beats="G C "><span class="beat">G</span><span class="beat"></span><span class="beat">C</span><span class="beat"></span></div><div class="bar slash">/</div></div>
-        <div class="chord-line"><div class="bar" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar slash">/</div><div class="bar dual" data-beats="Am G "><span class="beat">Am</span><span class="beat"></span><span class="beat">G</span><span class="beat"></span></div><div class="bar slash">/</div></div>
+        <div class="chord-line"><div class="bar" data-beats="C   "><span class="beat">C</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar slash" data-beats="/">/</div><div class="bar dual" data-beats="F Am "><span class="beat">F</span><span class="beat"></span><span class="beat">Am</span><span class="beat"></span></div><div class="bar" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div>
+        <div class="chord-line"><div class="bar" data-beats="Am   "><span class="beat">Am</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar slash" data-beats="/">/</div><div class="bar dual" data-beats="G C "><span class="beat">G</span><span class="beat"></span><span class="beat">C</span><span class="beat"></span></div><div class="bar slash" data-beats="/">/</div></div>
+        <div class="chord-line"><div class="bar" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar slash" data-beats="/">/</div><div class="bar dual" data-beats="Am G "><span class="beat">Am</span><span class="beat"></span><span class="beat">G</span><span class="beat"></span></div><div class="bar slash" data-beats="/">/</div></div>
       </div></div>
       <div class="sheet-section"><div class="section-label"><span class="section-letter">C</span><span>CORO</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar repeat-start" data-beats="C   "><span class="beat">C</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar dual" data-beats="Am G "><span class="beat">Am</span><span class="beat"></span><span class="beat">G</span><span class="beat"></span></div><div class="bar repeat-end" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div></div></div>
       <div class="sheet-section"><div class="section-label"><span class="section-letter">D</span><span>PONTE</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar repeat-start" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="Am   "><span class="beat">Am</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar repeat-end" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div></div></div>
@@ -278,6 +297,47 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
        |F#m7 Am | => ["F#m7", "", "Am", ""]: el nombre no consume pulsos.
        Para acordes especiales, encierra el nombre entre { }.
        Los dos acordes nunca se asignan automáticamente a pulsos 1 y 3. */
+
+    // La barra / sola (con o sin espacios) representa un compás repetido.
+    // C/G, D/F# y otros acordes con bajo alternativo conservan la barra literal.
+    // Se genera el glifo de la referencia musical mediante SVG integrado;
+    // no depende de que el dispositivo tenga instalada una fuente musical.
+    function renderRepeatMeasure(bar) {
+      const input = bar.hasAttribute('data-beats')
+        ? bar.getAttribute('data-beats')
+        : bar.textContent;
+      if (input.trim() !== '/') return false;
+
+      const ns = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(ns, 'svg');
+      svg.setAttribute('viewBox', '0 0 100 84');
+      svg.setAttribute('class', 'repeat-glyph');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.setAttribute('focusable', 'false');
+      const slash = document.createElementNS(ns, 'path');
+      slash.setAttribute('d', 'M19 71 L81 13');
+      slash.setAttribute('fill', 'none');
+      slash.setAttribute('stroke', 'currentColor');
+      slash.setAttribute('stroke-width', '14');
+      slash.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(slash);
+      for (const [cx, cy] of [[31, 16], [69, 68]]) {
+        const dot = document.createElementNS(ns, 'circle');
+        dot.setAttribute('cx', String(cx));
+        dot.setAttribute('cy', String(cy));
+        dot.setAttribute('r', '8');
+        dot.setAttribute('fill', 'currentColor');
+        svg.appendChild(dot);
+      }
+      bar.classList.add('repeat-measure');
+      bar.setAttribute('aria-label', 'Repetición del compás anterior');
+      bar.replaceChildren(svg);
+      return true;
+    }
+    for (const bar of document.querySelectorAll('.chord-line > .bar')) {
+      renderRepeatMeasure(bar);
+    }
+
     function parseFourBeats(source) {
       const text = source.startsWith('|') && source.endsWith('|') ? source.slice(1,-1) : source;
       const beats = [];
@@ -297,6 +357,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
       return beats.length === 4 ? beats : null;
     }
     for (const bar of document.querySelectorAll('.bar[data-beats]')) {
+      if (bar.classList.contains('repeat-measure')) continue;
       const beats = parseFourBeats(bar.getAttribute('data-beats'));
       if (!beats) {
         console.warn('MIDI HUD: compás inválido, se requieren cuatro posiciones:', bar.getAttribute('data-beats'));
