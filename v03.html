@@ -40,8 +40,58 @@
     .expression{display:grid;grid-template-columns:15% 1px 20% 1fr 10%;align-items:center;gap:clamp(5px,1cqw,16px);min-width:0;border-radius:clamp(5px,.65cqw,10px);padding:clamp(5px,.7cqw,11px) clamp(7px,1cqw,16px);border:1px solid var(--edge);background:linear-gradient(100deg,var(--exp-a),var(--exp-b))}
     .expression .exicon{text-align:center;font-size:clamp(20px,3.5cqw,56px);color:var(--edge)}.expression .rule{height:80%;background:var(--edge)}.expression .exname{font-weight:900;font-size:clamp(15px,2cqw,32px);line-height:1}.expression .exsub{font-size:clamp(10px,1.4cqw,22px);color:var(--edge);margin-top:3px;white-space:nowrap}.expression .exmeter{border-radius:5px;height:clamp(11px,1.5cqw,24px);background:#fff2;overflow:hidden}.expression .exmeter:before{content:'';display:block;background:var(--edge);height:100%;width:var(--fill);border-radius:4px}.expression .value{font-size:clamp(16px,2.1cqw,34px);font-weight:900;text-align:right}
     .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-    @media (max-width:850px) and (orientation:landscape){.screen{min-width:680px;min-height:610px}.song-title{font-size:clamp(17px,2.6cqw,28px)}.topbar{gap:5px}.brand{font-size:clamp(16px,2.4cqw,25px)}}
-    @media (orientation:portrait){.screen{width:max(100%,680px);height:850px;min-height:850px}.lead-sheet{height:47%}body{overflow-x:auto}}
+    /* En teléfonos, la información puede recorrer verticalmente, pero nunca de lado a lado. */
+    html,body{max-width:100%;overflow-x:clip}
+    @media (max-width:850px) and (orientation:landscape){
+      .screen{width:100%;min-width:0;min-height:540px;height:auto;max-height:none}
+      .topbar{gap:5px}
+      .brand{font-size:clamp(13px,2.4cqw,23px)}
+      .bank{font-size:clamp(15px,2.6cqw,25px)}
+      .song-title{font-size:clamp(13px,2.5cqw,24px)}
+      .key{min-width:30px}.tempo{min-width:45px}.settings{min-width:27px}
+      .lead-sheet{flex:0 0 45%;min-height:240px}
+      .hud-panel{flex:1;min-height:300px}
+    }
+    @media (orientation:portrait){
+      .screen{width:100%;min-width:0;max-width:100%;height:auto;min-height:100dvh;max-height:none;overflow:visible;border-width:2px;border-radius:12px;padding:6px;gap:6px}
+      .lead-sheet{flex:0 0 auto;width:100%;height:clamp(295px,43svh,420px);min-height:295px;padding:8px 6px;border-radius:5px;grid-template-rows:1fr 3fr 1fr 1fr}
+      .sheet-section{grid-template-columns:23% 77%}
+      .section-label{flex-direction:column;align-items:start;font-size:clamp(10px,2.8vw,14px);gap:2px;white-space:normal;line-height:1.05}
+      .section-letter{min-width:20px;padding:0 4px;font-size:12px}
+      .bar{font-size:clamp(11px,3.2vw,16px);padding:4px 2px;border-left-width:2px}
+      .bar.dual{gap:2px}
+      .bar.repeat-start{border-left-width:5px}.bar.repeat-end{border-right-width:5px}
+      .hud-panel{flex:0 0 auto;min-height:0;gap:6px}
+      .topbar{display:grid;grid-template-columns:auto auto auto minmax(0,1fr) auto;grid-template-areas:"brand bank prev title next" "info info info info info";height:auto;min-height:0;padding:7px 4px;gap:5px 6px;align-items:center;white-space:normal}
+      .brand{grid-area:brand;font-size:clamp(12px,3.1vw,16px);letter-spacing:-.45px}
+      .barline{display:none}
+      .bank{grid-area:bank;font-size:clamp(16px,4.7vw,21px);padding:0}
+      .prev{grid-area:prev}.next{grid-area:next}
+      .chevron{font-size:24px;line-height:1}
+      .song-title{grid-area:title;font-size:clamp(13px,3.45vw,18px);font-weight:900;line-height:1.05;white-space:normal;overflow-wrap:anywhere;overflow:visible;text-overflow:clip;text-align:left;min-width:0;margin:0}
+      .info{grid-area:info;justify-self:end;align-self:center;height:29px;gap:4px}
+      .key,.tempo,.settings{min-width:0;padding:0 9px}
+      .key{font-size:17px}.tempo{font-size:12px}.settings{font-size:21px}
+      .switch-grid{flex:0 0 auto;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;grid-auto-rows:minmax(94px,auto);gap:6px;padding:0}
+      .switch{min-height:94px;grid-template-columns:12% 22% minmax(0,1fr) 8%;grid-template-rows:1fr 6px;padding:7px 5px;border-radius:7px}
+      .switch .number{font-size:14px}
+      .switch .icon-wrap{font-size:clamp(16px,5vw,25px)}
+      .switch .name{font-size:clamp(13px,3.85vw,19px);white-space:normal;overflow-wrap:anywhere;line-height:1.05}
+      .switch .sub{font-size:clamp(10px,2.75vw,14px);white-space:normal;overflow-wrap:anywhere}
+      .switch .arrow{font-size:20px}
+      .meter{height:6px}
+      .expression-row{height:auto;grid-template-columns:minmax(0,1fr);grid-auto-rows:minmax(65px,auto);gap:6px;padding:0}
+      .expression{min-height:65px;grid-template-columns:10% 1px 24% minmax(0,1fr) 12%;gap:5px;padding:6px 8px}
+      .expression .exicon{font-size:23px}.expression .exname{font-size:clamp(14px,4vw,19px)}
+      .expression .exsub{font-size:clamp(10px,2.7vw,13px);white-space:normal}
+      .expression .exmeter{height:12px}.expression .value{font-size:16px}
+    }
+    @media (max-width:350px) and (orientation:portrait){
+      .topbar{gap:4px 4px}
+      .brand{font-size:11px}.bank{font-size:16px}.song-title{font-size:12px}
+      .sheet-section{grid-template-columns:25% 75%}
+      .switch .icon-wrap{font-size:15px}.switch .name{font-size:12px}.switch .sub{font-size:10px}
+    }
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
   </style>
 </head>
@@ -59,7 +109,7 @@
       <div class="sheet-section"><div class="section-label"><span class="section-letter">D</span><span>PONTE</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar repeat-start">F</div><div class="bar">G</div><div class="bar">Am</div><div class="bar repeat-end">G</div></div></div></div>
     </section>
     <section class="hud-panel" aria-label="Información del banco y controles asignados">
-      <header class="topbar"><div class="brand">MIDI HUD <span>LIVE</span></div><span class="barline"></span><span class="chevron" aria-hidden="true">‹</span><strong class="bank" id="bank">C1</strong><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1><span class="chevron" aria-hidden="true">›</span><div class="info"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div><div class="settings" aria-label="Configuración">⚙</div></div></header>
+      <header class="topbar"><div class="brand">MIDI HUD <span>LIVE</span></div><span class="barline"></span><strong class="bank" id="bank">C1</strong><span class="chevron prev" aria-hidden="true">‹</span><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1><span class="chevron next" aria-hidden="true">›</span><div class="info"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div><div class="settings" aria-label="Configuración">⚙</div></div></header>
       <div class="switch-grid" aria-label="Nueve funciones visualizadas">
         <div class="switch" style="--light:#075eff;--dark:#003088;--meter:#02ddf4;--fill:49%"><span class="number">1</span><span class="icon-wrap">✦</span><div class="details"><div class="name">CLEAN</div><div class="sub">Twin Clean</div></div><span class="arrow">›</span><div class="meter"></div></div>
         <div class="switch" style="--light:#08b7ae;--dark:#005251;--meter:#09ffff;--fill:50%"><span class="number">2</span><span class="icon-wrap">≋</span><div class="details"><div class="name">AMBIENT</div><div class="sub">Delay · Reverb</div></div><span class="arrow">›</span><div class="meter"></div></div>
