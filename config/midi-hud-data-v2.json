@@ -254,7 +254,8 @@
         {
           "id": "clean",
           "label": "Clean",
-          "active": true
+          "active": true,
+          "displayIndex": 0
         }
       ]
     },
@@ -268,7 +269,8 @@
         {
           "id": "ambient",
           "label": "Ambient",
-          "active": true
+          "active": true,
+          "displayIndex": 1
         }
       ]
     },
@@ -282,7 +284,8 @@
         {
           "id": "drive",
           "label": "Drive",
-          "active": true
+          "active": true,
+          "displayIndex": 2
         }
       ]
     },
@@ -296,12 +299,14 @@
         {
           "id": "solo",
           "label": "Solo",
-          "active": true
+          "active": true,
+          "displayIndex": 3
         },
         {
           "id": "boost",
           "label": "Boost",
-          "active": true
+          "active": true,
+          "displayIndex": 5
         }
       ]
     },
