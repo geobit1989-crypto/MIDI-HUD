@@ -123,3 +123,42 @@ test("persistencia global del canal MIDI, fuera del repertorio",()=>{
  assert.throws(()=>saveSettings(store,{midiChannel:0}),/Canal MIDI/);
  assert.equal(fixture.midi,undefined);
 });
+
+
+test("clic visual de estado: cambia la consulta pero nunca el estado operativo",()=>{
+ const engine=createEngine(fixture);
+ engine.dispatch(midi(23)); // estado operativo Solo
+ const original=engine.getState();
+ const looked=engine.dispatch({type:"PREVIEW_STATE",stateId:"q-ambient"});
+ assert.equal(looked.view.state.id,"q-ambient");
+ assert.equal(looked.view.active.stateId,"q-solo");
+ assert.equal(looked.view.isPreview,true);
+ assert.equal(looked.view.previewModuleIndex,1);
+ assert.equal(engine.getState().rememberedStates["quao-grande"],original.rememberedStates["quao-grande"]);
+ assert.deepEqual(looked.intents,[]);
+});
+test("consultar cualquiera de los nueve módulos no envía MIDI y se revierte",()=>{
+ const engine=createEngine(fixture);
+ engine.dispatch({type:"PREVIEW_MODULE",index:8});
+ assert.equal(engine.getViewModel().previewModuleIndex,8);
+ assert.equal(engine.getViewModel().active.stateId,"q-clean");
+ assert.equal(engine.getViewModel().isPreview,true);
+ engine.dispatch({type:"RETURN_TO_ACTIVE"});
+ assert.equal(engine.getViewModel().previewModuleIndex,null);
+ assert.equal(engine.getViewModel().isPreview,false);
+ assert.equal(engine.getViewModel().state.id,"q-clean");
+ assert.throws(()=>engine.dispatch({type:"PREVIEW_MODULE",index:9}),/módulo/);
+});
+test("CC MIDI reconocido tiene prioridad sobre cualquier consulta visual",()=>{
+ const engine=createEngine(fixture);
+ engine.dispatch({type:"PREVIEW_STATE",stateId:"u-solo"});
+ assert.equal(engine.getViewModel().active.songId,"quao-grande");
+ const ignore=engine.dispatch(midi(99,127,1));
+ assert.equal(ignore.matched,false);
+ assert.equal(engine.getViewModel().isPreview,true);
+ const actual=engine.dispatch(midi(21));
+ assert.equal(actual.matched,true);
+ assert.equal(actual.view.state.id,"q-ambient");
+ assert.equal(actual.view.isPreview,false);
+ assert.equal(actual.view.previewModuleIndex,null);
+});
