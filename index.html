@@ -1,7 +1,54 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MIDI HUD · LIVE v0.3</title><meta http-equiv="refresh" content="0;url=./v03.html">
-<link rel="canonical" href="./v03.html">
-<style>body{font:16px system-ui;background:#03080d;color:#fff;padding:24px}a{color:#75d9ef}</style>
-</head><body><h1>MIDI HUD LIVE v0.3</h1><p>Abriendo la <a href="./v03.html">maqueta visual LIVE</a>.</p>
-<script>location.replace("./v03.html");</script></body></html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06101b">
+<title>MIDI HUD · BETA integrada</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;--text:#f2f8fd;--secondary:#afc5d4;--border:#39536a;--accent:#48d4ee}
+*{box-sizing:border-box}body{margin:0;min-height:100dvh;color:var(--text);background:radial-gradient(ellipse 70% 50% at 80% 2%,#123855 0%,transparent 70%),#07111b;padding:clamp(16px,3vw,36px)}
+main{max-width:1120px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:45px}
+.brand{font-weight:900;letter-spacing:-1px;font-size:clamp(20px,3vw,29px)}.brand span{color:var(--accent)}
+.flag{border:1px solid #5b8a9a;border-radius:999px;padding:5px 12px;background:#11394b;color:#c1f2f8;font-size:12px;font-weight:750}
+h1{font-size:clamp(31px,5.4vw,59px);line-height:1.08;max-width:770px;margin:0 0 15px}
+h1 em{color:var(--accent);font-style:normal}
+.intro{font-size:clamp(15px,1.7vw,19px);line-height:1.6;color:var(--secondary);max-width:770px;margin:0 0 32px}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.card{display:flex;flex-direction:column;min-height:290px;border:1px solid var(--border);background:linear-gradient(145deg,#15283a,#0e1a27);padding:24px;border-radius:19px;box-shadow:0 8px 22px #0002}
+.card .glyph{width:55px;height:55px;display:flex;align-items:center;justify-content:center;border-radius:13px;background:#183e53;font-size:28px;margin-bottom:20px;color:#bcf5ff}
+.card h2{font-size:24px;margin:0 0 9px}.card p{margin:0 0 25px;color:#bed2df;line-height:1.5;flex:1}
+a.action{display:flex;justify-content:space-between;gap:15px;align-items:center;border:1px solid #399db8;background:#075772;padding:12px 15px;border-radius:11px;font-weight:800;text-decoration:none;color:#fff}
+a.action:hover,a.action:focus-visible{background:#067993;outline:2px solid #8aebff;outline-offset:2px}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:25px}
+.info>section{border:1px solid #2d4558;padding:19px 21px;background:#0b1926;border-radius:15px}
+.info h3{margin:0 0 8px;font-size:17px}
+.info p{margin:0;color:#b3c8d8;line-height:1.6}
+footer{margin:25px 0 0;color:#94aebb;font-size:13px;line-height:1.6}
+footer a{color:#8be9ff}
+@media(max-width:760px){.cards{grid-template-columns:1fr}.card{min-height:190px}.info{grid-template-columns:1fr}.top{margin-bottom:25px}}
+</style>
+</head>
+<body>
+<main>
+<header class="top"><div class="brand">MIDI HUD <span>LIVE</span></div><span class="flag">BETA INTEGRADA · PRUEBAS</span></header>
+<h1>Tu sistema de control, <em>en una sola beta.</em></h1>
+<p class="intro">LIVE muestra la canción y el estado musical. El Editor construye las asociaciones entre comandos y acciones. LAB permite comprobarlas sin transmitir MIDI a ningún equipo.</p>
+<div class="cards">
+  <article class="card"><div class="glyph" aria-hidden="true">▦</div><h2>LIVE</h2>
+    <p>La pantalla de interpretación: lead sheet, canción, tono, BPM, banco, nueve módulos y estados visuales.</p>
+    <a class="action" href="./v03.html">Abrir LIVE <span aria-hidden="true">→</span></a></article>
+  <article class="card"><div class="glyph" aria-hidden="true">▤</div><h2>Editor</h2>
+    <p>Configura canciones, estados, indicadores, lead sheets y la matriz de CC + valor desde una interfaz visual.</p>
+    <a class="action" href="./editor/">Abrir Editor <span aria-hidden="true">→</span></a></article>
+  <article class="card"><div class="glyph" aria-hidden="true">⌁</div><h2>LAB</h2>
+    <p>Simula mensajes MIDI, comprueba el canal global, verifica acciones y ensaya la navegación sin la GT.</p>
+    <a class="action" href="./lab/midi-v1.html">Abrir LAB <span aria-hidden="true">→</span></a></article>
+</div>
+<div class="info">
+  <section><h3>Configuración compartida</h3><p>Editor y LIVE comparten la biblioteca cuando se abren desde este mismo sitio y navegador. El canal MIDI se configura globalmente desde el engranaje de LIVE. Los datos se guardan localmente; exporta un JSON como respaldo.</p></section>
+  <section><h3>Bluetooth MIDI pendiente de verificación</h3><p>La entrada MIDI real necesita un navegador y sistema compatibles. Safari en iPhone no ofrece Web MIDI estándar. La GT sigue trabajando independientemente y esta beta nunca le transmite comandos.</p></section>
+</div>
+<footer>Versión de desarrollo, sin verificación física con Chocolate Plus. <a href="./README.md">Notas técnicas</a> · <a href="./editor/legacy.html">Editor anterior de respaldo</a>.</footer>
+</main></body></html>
