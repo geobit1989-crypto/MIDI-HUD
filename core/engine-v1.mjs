@@ -40,7 +40,7 @@ export function normalizeLibrary(raw) {
     songs: (data.songs || []).map(s => ({
       id:s.id, title:s.title, tono:s.tono || null,
       tempoBpm:s.tempoBpm ?? null, leadSheet:s.leadSheet || null,
-      bank:s.bank || null, stateIds:s.presetIds || [],
+      bank:s.bank || null, displaySlots:s.displaySlots || [], stateIds:s.presetIds || [],
       initialStateId:s.initialStateId || (s.presetIds || [])[0]
     })),
     states, bindings: [],
@@ -81,6 +81,23 @@ export function validateLibrary(raw) {
     insist(s.tono == null || (typeof s.tono === "string" && s.tono.length <= 20), "tono invalido");
     insist(s.tempoBpm == null || (Number.isFinite(s.tempoBpm) && s.tempoBpm>=30 && s.tempoBpm<=300), "BPM invalido");
     insist(s.leadSheet == null || isObject(s.leadSheet), "lead sheet invalido");
+    if(s.leadSheet != null) {
+      insist(Array.isArray(s.leadSheet.sections) && s.leadSheet.sections.length>0
+        && s.leadSheet.sections.length<=4, "lead sheet: secciones invalidas");
+      for(const section of s.leadSheet.sections) {
+        insist(isObject(section) && typeof section.label==="string"
+          && typeof section.letter==="string" && Array.isArray(section.bars)
+          && section.bars.length<=32, "lead sheet: seccion invalida");
+        for(const bar of section.bars) {
+          insist(Array.isArray(bar) && bar.length===4 &&
+            bar.every(v=>typeof v==="string" && v.length<=30), "lead sheet: cuatro pulsos por compas");
+        }
+      }
+    }
+    insist(s.displaySlots === undefined || (Array.isArray(s.displaySlots) &&
+      s.displaySlots.length<=9 && s.displaySlots.every(slot=>isObject(slot) &&
+      typeof slot.name==="string" && typeof slot.sub==="string")),
+      "matriz visual invalida");
     insist(Array.isArray(s.stateIds) && s.stateIds.length > 0, "cancion sin estados");
     insist(new Set(s.stateIds).size === s.stateIds.length, "estados duplicados");
     insist(s.stateIds.includes(s.initialStateId), "estado inicial no pertenece a la cancion");
@@ -91,7 +108,12 @@ export function validateLibrary(raw) {
   for (const st of states.values()) {
     insist(songs.has(st.songId) && songs.get(st.songId).stateIds.includes(st.id), "estado huerfano");
     insist(typeof st.name === "string" && !!st.name.trim(), "estado sin nombre");
-    insist(st.indicators === undefined || Array.isArray(st.indicators), "indicadores invalidos");
+    insist(st.indicators === undefined || (Array.isArray(st.indicators) &&
+      st.indicators.every(x=>isObject(x) && typeof x.id==="string" &&
+      typeof x.label==="string" && typeof x.active==="boolean")),
+      "indicadores invalidos");
+    insist(st.displayIndex == null || integer(st.displayIndex,0,8), "posicion visual invalida");
+    insist(st.gtPatch == null || integer(st.gtPatch,0,127), "referencia de patch invalida");
   }
   insist(Array.isArray(db.bindings), "asignaciones invalidas");
   const seen = new Set();
@@ -174,7 +196,7 @@ export function createEngine(source, {midiChannel=1}={}) {
     const rep=repertoireFor(songId);
     return duplicate({
       song:{id:song.id,title:song.title,tono:song.tono,tempoBpm:song.tempoBpm,
-        leadSheet:song.leadSheet,bank:song.bank,
+        leadSheet:song.leadSheet,bank:song.bank,displaySlots:song.displaySlots||[],
         position:rep.songIds.indexOf(song.id)+1,total:rep.songIds.length},
       repertoire:{id:rep.id,name:rep.name},
       state:{id:st.id,name:st.name,gtPatch:st.gtPatch??null,
