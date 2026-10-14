@@ -40,82 +40,80 @@
     .expression{display:grid;grid-template-columns:15% 1px 20% 1fr 10%;align-items:center;gap:clamp(5px,1cqw,16px);min-width:0;border-radius:clamp(5px,.65cqw,10px);padding:clamp(5px,.7cqw,11px) clamp(7px,1cqw,16px);border:1px solid var(--edge);background:linear-gradient(100deg,var(--exp-a),var(--exp-b))}
     .expression .exicon{text-align:center;font-size:clamp(20px,3.5cqw,56px);color:var(--edge)}.expression .rule{height:80%;background:var(--edge)}.expression .exname{font-weight:900;font-size:clamp(15px,2cqw,32px);line-height:1}.expression .exsub{font-size:clamp(10px,1.4cqw,22px);color:var(--edge);margin-top:3px;white-space:nowrap}.expression .exmeter{border-radius:5px;height:clamp(11px,1.5cqw,24px);background:#fff2;overflow:hidden}.expression .exmeter:before{content:'';display:block;background:var(--edge);height:100%;width:var(--fill);border-radius:4px}.expression .value{font-size:clamp(16px,2.1cqw,34px);font-weight:900;text-align:right}
     .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-    /* Pantalla de interpretación: ningún desplazamiento. */
-    html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
-    .screen{height:100dvh;max-height:none;min-height:0;overflow:hidden}
-    @media (max-width:850px) and (orientation:landscape){
-      .screen{height:100dvh;min-height:0;max-height:none;max-width:100%;padding:5px;gap:4px;border-width:2px;border-radius:8px}
-      .lead-sheet{height:48%;flex:0 0 48%;min-height:0;padding:5px 8px}
-      .hud-panel{flex:1;min-height:0;gap:4px}
-      .topbar{height:17%;min-height:0;gap:5px}
-      .brand{font-size:clamp(12px,2vw,18px)}
-      .bank{font-size:clamp(15px,2.3vw,22px)}
-      .song-title{font-size:clamp(13px,2.4vw,22px)}
-      .key,.tempo,.settings{min-width:0;padding:0 5px;font-size:clamp(11px,1.8vw,17px)}
-      .switch-grid{min-height:0;gap:4px}
-      .switch{padding:3px 5px;grid-template-columns:10% 23% 1fr 6%;grid-template-rows:1fr 4px}
-      .switch .number{font-size:clamp(10px,1.5vw,15px)}
-      .switch .icon-wrap{font-size:clamp(13px,2vw,20px)}
-      .switch .name{font-size:clamp(11px,1.8vw,18px);white-space:normal}
-      .switch .sub{font-size:clamp(9px,1.3vw,13px);white-space:normal}
-      .switch .arrow{font-size:clamp(12px,1.9vw,19px)}
-      .meter{height:4px}
-      .expression-row{height:15%;min-height:0;gap:4px}
-      .expression{padding:2px 5px;gap:4px}
-      .expression .exicon{font-size:clamp(13px,2vw,20px)}
-      .expression .exname{font-size:clamp(10px,1.7vw,16px)}
-      .expression .exsub{font-size:clamp(8px,1.2vw,12px)}
-      .expression .exmeter{height:8px}
-      .expression .value{font-size:clamp(11px,1.6vw,16px)}
-      .section-label{font-size:clamp(10px,2vw,19px)}
-      .bar{font-size:clamp(12px,2.2vw,22px)}
-    }
-    @media (orientation:portrait){
-      .screen{width:100%;min-width:0;max-width:100%;height:100dvh;max-height:100dvh;min-height:0;overflow:hidden;border-width:2px;border-radius:9px;padding:4px;gap:4px}
-      .lead-sheet{width:100%;height:auto;flex:1 1 0;min-height:0;padding:5px 5px;border-radius:4px;grid-template-rows:1fr 3fr 1fr 1fr}
-      .sheet-section{grid-template-columns:23% 77%}
-      .section-label{flex-direction:column;align-items:start;font-size:clamp(9px,2.7vw,13px);gap:2px;white-space:normal;line-height:1.05}
-      .section-letter{min-width:18px;padding:0 3px;font-size:11px}
-      .bar{font-size:clamp(10px,2.95vw,15px);padding:2px 2px;border-left-width:2px;min-width:0}
-      .bar.dual{gap:1px}
-      .bar.repeat-start{border-left-width:5px}.bar.repeat-end{border-right-width:5px}
-      .hud-panel{flex:0 0 auto;min-height:0;gap:4px}
-      .topbar{display:grid;grid-template-columns:auto auto auto minmax(0,1fr) auto;grid-template-areas:"brand bank prev title next" "info info info info info";height:auto;min-height:0;padding:5px 3px;gap:3px 5px;align-items:center;white-space:normal}
-      .brand{grid-area:brand;font-size:clamp(11px,2.9vw,15px);letter-spacing:-.45px}
-      .barline{display:none}
-      .bank{grid-area:bank;font-size:clamp(15px,4.3vw,20px);padding:0}
-      .prev{grid-area:prev}.next{grid-area:next}
-      .chevron{font-size:21px;line-height:1}
-      .song-title{grid-area:title;font-size:clamp(12px,3.15vw,17px);font-weight:900;line-height:1.05;white-space:normal;overflow-wrap:anywhere;overflow:visible;text-overflow:clip;text-align:left;min-width:0;margin:0}
-      .info{grid-area:info;justify-self:end;align-self:center;height:24px;gap:3px}
-      .key,.tempo,.settings{min-width:0;padding:0 7px}
-      .key{font-size:14px}.tempo{font-size:11px}.settings{font-size:17px}
-      /* 3x3: los nueve controles conservan su color, número y función. */
-      .switch-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));height:clamp(156px,32dvh,300px);gap:4px;padding:0}
-      .switch{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;padding:5px 2px;border-radius:6px;text-align:center}
-      .switch .number{position:absolute;top:4px;left:5px;font-size:clamp(10px,2.8vw,13px);line-height:1}
-      .switch .details{width:100%;min-width:0}
-      .switch .name{font-size:clamp(12px,3.5vw,18px);white-space:normal;overflow-wrap:anywhere;line-height:1.03}
-      .switch .icon-wrap,.switch .sub,.switch .arrow,.switch .meter{display:none}
-      .expression-row{flex:0 0 auto;height:auto;min-height:0;grid-template-columns:1fr 1fr;gap:4px;padding:0}
-      .expression{height:clamp(40px,6.5dvh,54px);min-height:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;padding:4px 6px}
-      .expression .exicon,.expression .rule,.expression .exsub,.expression .exmeter{display:none}
-      .expression .exname{font-size:clamp(12px,3vw,16px);white-space:normal;overflow-wrap:anywhere}
-      .expression .value{font-size:clamp(12px,3vw,16px)}
-    }
-    @media (max-width:350px) and (orientation:portrait){
-      .brand{font-size:10px}.bank{font-size:15px}.song-title{font-size:11px}
-      .section-label{font-size:9px}.sheet-section{grid-template-columns:25% 75%}
-      .switch .name{font-size:11px}.switch .number{font-size:10px}
-    }
-    @media (max-height:640px) and (orientation:portrait){
-      .screen{padding:3px;gap:3px}
-      .topbar{padding:3px;gap:2px 4px}
-      .switch-grid{height:clamp(141px,30dvh,195px);gap:3px}
-      .switch{gap:1px;padding:3px 1px}
-      .expression{height:37px}
-      .hud-panel{gap:3px}
-    }
+html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+.screen{height:100dvh;max-height:none;min-height:0;overflow:hidden}
+@media (max-width:850px) and (orientation:landscape){
+.screen{height:100dvh;min-height:0;max-height:none;max-width:100%;padding:5px;gap:4px;border-width:2px;border-radius:8px}
+.lead-sheet{height:48%;flex:0 0 48%;min-height:0;padding:5px 8px}
+.hud-panel{flex:1;min-height:0;gap:4px}
+.topbar{height:17%;min-height:0;gap:5px}
+.brand{font-size:clamp(12px,2vw,18px)}
+.bank{font-size:clamp(15px,2.3vw,22px)}
+.song-title{font-size:clamp(13px,2.4vw,22px)}
+.key,.tempo,.settings{min-width:0;padding:0 5px;font-size:clamp(11px,1.8vw,17px)}
+.switch-grid{min-height:0;gap:4px}
+.switch{padding:3px 5px;grid-template-columns:10% 23% 1fr 6%;grid-template-rows:1fr 4px}
+.switch .number{font-size:clamp(10px,1.5vw,15px)}
+.switch .icon-wrap{font-size:clamp(13px,2vw,20px)}
+.switch .name{font-size:clamp(11px,1.8vw,18px);white-space:normal}
+.switch .sub{font-size:clamp(9px,1.3vw,13px);white-space:normal}
+.switch .arrow{font-size:clamp(12px,1.9vw,19px)}
+.meter{height:4px}
+.expression-row{height:15%;min-height:0;gap:4px}
+.expression{padding:2px 5px;gap:4px}
+.expression .exicon{font-size:clamp(13px,2vw,20px)}
+.expression .exname{font-size:clamp(10px,1.7vw,16px)}
+.expression .exsub{font-size:clamp(8px,1.2vw,12px)}
+.expression .exmeter{height:8px}
+.expression .value{font-size:clamp(11px,1.6vw,16px)}
+.section-label{font-size:clamp(10px,2vw,19px)}
+.bar{font-size:clamp(12px,2.2vw,22px)}
+}
+@media (orientation:portrait){
+.screen{width:100%;min-width:0;max-width:100%;height:100dvh;max-height:100dvh;min-height:0;overflow:hidden;border-width:2px;border-radius:9px;padding:4px;gap:4px}
+.lead-sheet{width:100%;height:auto;flex:1 1 0;min-height:0;padding:5px 5px;border-radius:4px;grid-template-rows:1fr 3fr 1fr 1fr}
+.sheet-section{grid-template-columns:23% 77%}
+.section-label{flex-direction:column;align-items:start;font-size:clamp(9px,2.7vw,13px);gap:2px;white-space:normal;line-height:1.05}
+.section-letter{min-width:18px;padding:0 3px;font-size:11px}
+.bar{font-size:clamp(10px,2.95vw,15px);padding:2px 2px;border-left-width:2px;min-width:0}
+.bar.dual{gap:1px}
+.bar.repeat-start{border-left-width:5px}.bar.repeat-end{border-right-width:5px}
+.hud-panel{flex:0 0 auto;min-height:0;gap:4px}
+.topbar{display:grid;grid-template-columns:auto auto auto minmax(0,1fr) auto;grid-template-areas:"brand bank prev title next" "info info info info info";height:auto;min-height:0;padding:5px 3px;gap:3px 5px;align-items:center;white-space:normal}
+.brand{grid-area:brand;font-size:clamp(11px,2.9vw,15px);letter-spacing:-.45px}
+.barline{display:none}
+.bank{grid-area:bank;font-size:clamp(15px,4.3vw,20px);padding:0}
+.prev{grid-area:prev}.next{grid-area:next}
+.chevron{font-size:21px;line-height:1}
+.song-title{grid-area:title;font-size:clamp(12px,3.15vw,17px);font-weight:900;line-height:1.05;white-space:normal;overflow-wrap:anywhere;overflow:visible;text-overflow:clip;text-align:left;min-width:0;margin:0}
+.info{grid-area:info;justify-self:end;align-self:center;height:24px;gap:3px}
+.key,.tempo,.settings{min-width:0;padding:0 7px}
+.key{font-size:14px}.tempo{font-size:11px}.settings{font-size:17px}
+.switch-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));height:clamp(156px,32dvh,300px);gap:4px;padding:0}
+.switch{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;padding:5px 2px;border-radius:6px;text-align:center}
+.switch .number{position:absolute;top:4px;left:5px;font-size:clamp(10px,2.8vw,13px);line-height:1}
+.switch .details{width:100%;min-width:0}
+.switch .name{font-size:clamp(12px,3.5vw,18px);white-space:normal;overflow-wrap:anywhere;line-height:1.03}
+.switch .icon-wrap,.switch .sub,.switch .arrow,.switch .meter{display:none}
+.expression-row{flex:0 0 auto;height:auto;min-height:0;grid-template-columns:1fr 1fr;gap:4px;padding:0}
+.expression{height:clamp(40px,6.5dvh,54px);min-height:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;padding:4px 6px}
+.expression .exicon,.expression .rule,.expression .exsub,.expression .exmeter{display:none}
+.expression .exname{font-size:clamp(12px,3vw,16px);white-space:normal;overflow-wrap:anywhere}
+.expression .value{font-size:clamp(12px,3vw,16px)}
+}
+@media (max-width:350px) and (orientation:portrait){
+.brand{font-size:10px}.bank{font-size:15px}.song-title{font-size:11px}
+.section-label{font-size:9px}.sheet-section{grid-template-columns:25% 75%}
+.switch .name{font-size:11px}.switch .number{font-size:10px}
+}
+@media (max-height:640px) and (orientation:portrait){
+.screen{padding:3px;gap:3px}
+.topbar{padding:3px;gap:2px 4px}
+.switch-grid{height:clamp(141px,30dvh,195px);gap:3px}
+.switch{gap:1px;padding:3px 1px}
+.expression{height:37px}
+.hud-panel{gap:3px}
+}
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
   </style>
 </head>
