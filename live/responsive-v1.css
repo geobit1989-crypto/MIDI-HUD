@@ -1,0 +1,116 @@
+/* MIDI HUD LIVE — Responsive beta 0.3.1.
+   Override for 3:2, portrait and short landscape viewports. */
+html,body{min-height:100%;overflow:auto;overscroll-behavior:auto}
+.screen{height:100dvh;max-height:none;min-height:0;overflow:hidden}
+.lead-sheet{height:auto;flex:0 0 clamp(190px,38dvh,410px);min-height:0}
+.hud-panel{flex:1 1 0;min-height:0}
+.switch-grid{flex:1 1 0;min-height:0;max-height:none}
+.topbar{flex:0 0 auto;height:auto}
+.expression-row{height:auto;flex:0 0 clamp(61px,9dvh,94px);min-height:0}
+.expression{height:100%;min-height:0}
+.switch{
+ grid-template-columns:9% 21% minmax(0,1fr) 5%;
+ align-content:stretch;
+ cursor:pointer;touch-action:manipulation;
+ transition:filter .12s ease,border-color .12s ease
+}
+.switch .number{font-size:clamp(12px,min(1.45cqw,2.8dvh),25px)}
+.switch .icon-wrap{font-size:clamp(16px,min(2.2cqw,3.6dvh),36px);white-space:nowrap}
+.switch:nth-child(6) .icon-wrap{font-size:clamp(13px,min(1.65cqw,3dvh),25px)}
+.switch:nth-child(9) .icon-wrap{font-size:clamp(12px,min(1.48cqw,2.5dvh),22px)!important}
+.switch .name{font-size:clamp(15px,min(2.05cqw,3.2dvh),33px);line-height:1.07;white-space:normal;overflow-wrap:anywhere}
+.switch .sub{font-size:clamp(10px,min(1.1cqw,1.95dvh),17px);white-space:normal;overflow-wrap:anywhere}
+.switch .arrow{font-size:clamp(15px,min(2.1cqw,3.5dvh),34px)}
+.switch:hover{filter:brightness(1.13)}
+.switch:active{filter:brightness(1.28)}
+.switch:focus-visible,.settings:focus-visible,.song-nav:focus-visible,.return-active:focus-visible{
+ outline:3px solid #adf5ff;outline-offset:-4px
+}
+.settings{cursor:pointer;touch-action:manipulation}
+.settings:hover{background:#183750}
+.song-navigation{
+ width:100%;display:grid;
+ grid-template-columns:minmax(30px,44px) minmax(0,1fr) minmax(30px,44px);
+ gap:8px;align-items:center;position:relative
+}
+.song-navigation .song-title{
+ min-width:0;font-size:clamp(16px,min(2.45cqw,3.5dvh),35px);
+ line-height:1.12;white-space:nowrap;text-overflow:ellipsis;overflow:hidden
+}
+.song-nav{
+ background:#11283a;color:#fff;border:1px solid #477085;border-radius:7px;
+ min-height:30px;height:100%;font:900 clamp(17px,2cqw,28px)/1 sans-serif;
+ cursor:pointer;touch-action:manipulation
+}
+.song-nav:hover{background:#1f526c}
+.return-active{
+ position:absolute;z-index:2;right:47px;bottom:-1px;background:#08758a;
+ color:#fff;border:1px solid #85edfb;border-radius:7px;
+ font:700 12px system-ui;padding:4px 8px;cursor:pointer
+}
+.return-active[hidden],.hud-toast[hidden],.hud-boot[hidden]{display:none!important}
+.screen[data-preview="true"] .topbar{box-shadow:inset 0 -2px #40d9e9}
+.hud-toast{
+ position:fixed;z-index:900;left:50%;bottom:clamp(12px,3vh,26px);
+ transform:translateX(-50%);max-width:min(90vw,650px);text-align:center;
+ background:#09283d;border:1px solid #5ae0ed;border-radius:9px;
+ padding:9px 13px;font:600 14px system-ui;
+ box-shadow:0 4px 18px #000b;pointer-events:none
+}
+.hud-boot{
+ position:fixed;z-index:900;bottom:10px;right:10px;
+ border:1px solid #d4a254;background:#3b260e;color:#ffe7bd;
+ font:600 12px system-ui;padding:6px 9px;border-radius:8px;
+ pointer-events:none
+}
+.hud-noscript{
+ position:fixed;top:15px;left:15px;right:15px;
+ background:#632627;color:#fff;padding:15px;z-index:1000
+}
+@media (max-height:740px) and (orientation:landscape){
+ .lead-sheet{flex-basis:34dvh;min-height:155px}
+ .expression-row{flex-basis:clamp(51px,10dvh,70px)}
+ .topbar{gap:1px;padding:2px 5px}
+ .hud-meta>.brand{font-size:clamp(13px,min(1.7cqw,3dvh),24px)}
+ .song-navigation .song-title{font-size:clamp(14px,min(2cqw,3dvh),26px)}
+ .switch{grid-template-columns:9% 20% minmax(0,1fr) 4%;padding:3px 6px}
+ .switch .name{font-size:clamp(12px,min(1.7cqw,2.8dvh),22px)}
+ .switch .sub{font-size:clamp(9px,min(1.1cqw,1.9dvh),14px)}
+ .switch .icon-wrap{font-size:clamp(13px,min(1.9cqw,3dvh),24px)}
+}
+@media (orientation:portrait){
+ .screen{min-height:0;height:100dvh}
+ .lead-sheet{flex:0 0 clamp(155px,28dvh,245px);height:auto}
+ .hud-panel{flex:1 1 0;min-height:0}
+ .switch-grid{
+  height:auto;min-height:0;max-height:none;
+  flex:1 1 0;grid-template-rows:repeat(3,minmax(0,1fr))
+ }
+ .switch{
+  display:flex;flex-direction:column;justify-content:center;
+  align-items:center;padding:3px 3px
+ }
+ .switch .number{font-size:clamp(10px,2.8vw,15px)}
+ .switch .name{font-size:clamp(12px,3.2vw,21px);line-height:1.1}
+ .switch .sub{font-size:clamp(9px,2vw,14px)}
+ .topbar{gap:3px;padding:3px 4px}
+ .song-navigation{grid-template-columns:30px minmax(0,1fr) 30px;gap:4px}
+ .song-navigation .song-title{
+  font-size:clamp(12px,3.4vw,21px);white-space:normal;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  text-overflow:ellipsis;text-align:center
+ }
+ .song-nav{min-height:29px;font-size:19px}
+ .return-active{right:36px;font-size:10px;bottom:-14px}
+ .expression-row{flex:0 0 clamp(46px,8dvh,70px);height:auto}
+}
+@media (max-width:850px) and (orientation:landscape){
+ .switch .icon-wrap,.switch .arrow,.switch .meter{display:none}
+ .switch{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px
+ }
+ .switch .details{width:100%;text-align:center}
+ .switch .name{font-size:clamp(11px,1.8vw,17px)}
+ .switch .sub{font-size:clamp(9px,1.2vw,12px)}
+}
