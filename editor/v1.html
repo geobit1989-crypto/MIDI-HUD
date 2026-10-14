@@ -28,6 +28,8 @@ button:disabled{opacity:.45}small,.muted{color:#bfd0da}#notice{min-height:24px;l
 </div>
 <label>Estado inicial de la canción<select id="initial"></select></label>
 <label>Lead sheet (JSON estructurado; opcional)<textarea id="lead" spellcheck="false" placeholder='{"sections":[{"letter":"A","label":"INTRO","bars":[["C","","",""],["G","","",""]]}]}'></textarea></label>
+<label>Nueve módulos visuales de la canción (JSON, sin alterar el diseño LIVE)
+<textarea id="slots" spellcheck="false" placeholder='[{"name":"CLEAN","sub":"Twin Clean"},{"name":"SOLO","sub":"Boost"}]'></textarea></label>
 <button id="saveSong">Guardar datos de canción</button>
 </section>
 <section class="card">
@@ -102,6 +104,7 @@ function render(){
  $("title").value=s.title;$("tono").value=s.tono||"";$("bpm").value=s.tempoBpm??"";
  $("bank").value=s.bank||"";
  $("lead").value=s.leadSheet?JSON.stringify(s.leadSheet,null,2):"";
+ $("slots").value=JSON.stringify(s.displaySlots||[],null,2);
  selectOptions($("initial"),s.stateIds.map(id=>[id,db.states.find(x=>x.id===id)?.name||id]),s.initialStateId);
  selectOptions($("states"),s.stateIds.map(id=>[id,db.states.find(x=>x.id===id)?.name||id]),st.id);
  $("stateName").value=st.name;$("displayIndex").value=st.displayIndex==null?"":st.displayIndex+1;
@@ -126,6 +129,7 @@ $("saveSong").onclick=()=>commit(()=>{
  s.bank=$("bank").value.trim()||null;
  s.initialStateId=$("initial").value;
  s.leadSheet=$("lead").value.trim()?JSON.parse($("lead").value):null;
+ s.displaySlots=$("slots").value.trim()?JSON.parse($("slots").value):[];
 });
 $("saveState").onclick=()=>commit(()=>{
  const st=state();st.name=$("stateName").value.trim()||"Estado";
