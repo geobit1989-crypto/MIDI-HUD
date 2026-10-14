@@ -23,6 +23,25 @@ Servir la carpeta completa desde un servidor HTTP bajo un mismo origen, para per
 
 ---
 
+## Editor visual v2 — fase de construcción
+
+**Entradas:** [editor/](editor/) abre [editor/v2.html](editor/v2.html); respaldo de la versión anterior en [editor/legacy.html](editor/legacy.html).
+
+La interfaz incluye cinco áreas:
+- **Canción:** título, tonalidad (editor), BPM, banco mostrado y estado inicial.
+- **Estados:** crear, duplicar, eliminar, reordenar, escoger módulo de la matriz y documentar patch GT, más indicadores ON/OFF.
+- **Módulos:** editar los nombres y las descripciones de las nueve casillas LIVE sin rediseñar su distribución.
+- **Lead sheet:** hasta cuatro secciones con compases de cuatro pulsos; edición de acordes y glifo de repetición en LIVE.
+- **MIDI:** matriz ilustrativa Chocolate (ocho bancos por cuatro botones), CC inicial y valor configurables, selección CC+valor fuera de la matriz, edición de listas de acciones, reordenación y advertencias de conflictos. El editor no configura el canal MIDI de recepción por canción.
+
+**Biblioteca y seguridad:** archivos v2 JSON con validación transaccional, copia previa en localStorage, posibilidad de deshacer el último cambio, importación/exportación, eliminación referencial de acciones huérfanas y separación de los datos de la versión anterior.
+
+**Importante:** guardar en el editor no programa el controlador ni la GT. Los números CC del ejemplo son demostrativos. Las acciones son instrucciones visuales interpretadas por el motor.
+
+**Pruebas:** `node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs`. La validación de scripts y los tests automatizados **no sustituyen** una revisión visual y funcional real en navegador/tablet. El proyecto es modular: requiere servir los archivos como un sitio estático bajo el mismo origen para usar imports ES module, JSON y almacenamiento local.
+
+---
+
 ## Documentación del prototipo anterior
 
 # MIDI HUD
