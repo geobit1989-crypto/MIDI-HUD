@@ -1,0 +1,329 @@
+{
+  "format": "midi-hud-repertoire",
+  "schemaVersion": "2.0.0",
+  "libraryId": "sig-demo-v1",
+  "revision": 1,
+  "notes": "DATOS DE PRUEBA; BPM, acordes, banco y asignaciones NO verificados con hardware.",
+  "repertoires": [
+    {
+      "id": "worship",
+      "name": "Worship - laboratorio",
+      "songIds": [
+        "quao-grande",
+        "uma-vez"
+      ]
+    }
+  ],
+  "songs": [
+    {
+      "id": "quao-grande",
+      "title": "Quão Grande É o Meu Deus",
+      "tono": "F",
+      "tempoBpm": 75,
+      "bank": "C1",
+      "stateIds": [
+        "q-clean",
+        "q-ambient",
+        "q-drive",
+        "q-solo"
+      ],
+      "initialStateId": "q-clean",
+      "leadSheet": {
+        "sections": [
+          {
+            "letter": "A",
+            "label": "INTRO",
+            "bars": [
+              [
+                "F",
+                "",
+                "",
+                ""
+              ],
+              [
+                "Dm",
+                "",
+                "",
+                ""
+              ],
+              [
+                "Bb",
+                "",
+                "",
+                ""
+              ],
+              [
+                "C",
+                "",
+                "",
+                ""
+              ]
+            ]
+          },
+          {
+            "letter": "B",
+            "label": "VERSO",
+            "bars": [
+              [
+                "F",
+                "",
+                "",
+                ""
+              ],
+              [
+                "Dm",
+                "",
+                "",
+                ""
+              ],
+              [
+                "Bb",
+                "",
+                "",
+                ""
+              ],
+              [
+                "C",
+                "",
+                "",
+                ""
+              ]
+            ]
+          },
+          {
+            "letter": "C",
+            "label": "CORO",
+            "bars": [
+              [
+                "F",
+                "",
+                "",
+                ""
+              ],
+              [
+                "C",
+                "",
+                "",
+                ""
+              ],
+              [
+                "Dm",
+                "",
+                "",
+                ""
+              ],
+              [
+                "Bb",
+                "",
+                "",
+                ""
+              ]
+            ]
+          },
+          {
+            "letter": "D",
+            "label": "PONTE",
+            "bars": [
+              [
+                "Bb",
+                "",
+                "",
+                ""
+              ],
+              [
+                "C",
+                "",
+                "",
+                ""
+              ],
+              [
+                "F",
+                "",
+                "",
+                ""
+              ],
+              [
+                "",
+                "",
+                "",
+                ""
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "uma-vez",
+      "title": "Uma Vez (ensayo)",
+      "tono": null,
+      "tempoBpm": null,
+      "bank": "C2",
+      "stateIds": [
+        "u-clean",
+        "u-solo"
+      ],
+      "initialStateId": "u-clean",
+      "leadSheet": null
+    }
+  ],
+  "states": [
+    {
+      "id": "q-clean",
+      "songId": "quao-grande",
+      "name": "Clean",
+      "displayIndex": 0,
+      "gtPatch": 0,
+      "indicators": [
+        {
+          "id": "clean",
+          "label": "Clean",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "q-ambient",
+      "songId": "quao-grande",
+      "name": "Ambient",
+      "displayIndex": 1,
+      "gtPatch": 1,
+      "indicators": [
+        {
+          "id": "ambient",
+          "label": "Ambient",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "q-drive",
+      "songId": "quao-grande",
+      "name": "Drive",
+      "displayIndex": 2,
+      "gtPatch": 2,
+      "indicators": [
+        {
+          "id": "drive",
+          "label": "Drive",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "q-solo",
+      "songId": "quao-grande",
+      "name": "Solo",
+      "displayIndex": 3,
+      "gtPatch": 3,
+      "indicators": [
+        {
+          "id": "solo",
+          "label": "Solo",
+          "active": true
+        },
+        {
+          "id": "boost",
+          "label": "Boost",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "u-clean",
+      "songId": "uma-vez",
+      "name": "Clean",
+      "displayIndex": 0,
+      "gtPatch": null,
+      "indicators": []
+    },
+    {
+      "id": "u-solo",
+      "songId": "uma-vez",
+      "name": "Solo",
+      "displayIndex": 3,
+      "gtPatch": null,
+      "indicators": []
+    }
+  ],
+  "bindings": [
+    {
+      "cc": 20,
+      "value": 127,
+      "actions": [
+        {
+          "type": "ACTIVATE_STATE",
+          "stateId": "q-clean"
+        }
+      ]
+    },
+    {
+      "cc": 21,
+      "value": 127,
+      "actions": [
+        {
+          "type": "ACTIVATE_STATE",
+          "stateId": "q-ambient"
+        }
+      ]
+    },
+    {
+      "cc": 22,
+      "value": 127,
+      "actions": [
+        {
+          "type": "ACTIVATE_STATE",
+          "stateId": "q-drive"
+        }
+      ]
+    },
+    {
+      "cc": 23,
+      "value": 127,
+      "actions": [
+        {
+          "type": "ACTIVATE_STATE",
+          "stateId": "q-solo"
+        },
+        {
+          "type": "SET_INDICATOR",
+          "indicatorId": "boost",
+          "active": true
+        }
+      ]
+    },
+    {
+      "cc": 24,
+      "value": 127,
+      "actions": [
+        {
+          "type": "ACTIVATE_STATE",
+          "stateId": "u-clean"
+        }
+      ]
+    },
+    {
+      "cc": 25,
+      "value": 127,
+      "actions": [
+        {
+          "type": "ACTIVATE_STATE",
+          "stateId": "u-solo"
+        }
+      ]
+    },
+    {
+      "cc": 25,
+      "value": 0,
+      "actions": [
+        {
+          "type": "ACTIVATE_STATE",
+          "stateId": "u-clean"
+        }
+      ]
+    }
+  ],
+  "extensions": {
+    "provisional": true
+  }
+}
