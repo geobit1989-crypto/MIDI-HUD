@@ -2,14 +2,13 @@
   "format": "midi-hud-repertoire",
   "schemaVersion": "1.0.0",
   "libraryId": "sig-main",
-  "revision": 1,
-  "updatedAt": "2026-10-13T13:57:00+01:00",
+  "revision": 2,
+  "updatedAt": "2026-10-14T16:20:00+01:00",
   "midi": {
     "channel": 1,
     "programNumbering": "zero-based",
     "cc": {
       "morph": 20,
-      "volume": 21,
       "wah": 22,
       "tap": 23,
       "tuner": 24
@@ -94,11 +93,6 @@
     }
   ],
   "controls": {
-    "volume": {
-      "cc": 21,
-      "scope": "both-audio-routes",
-      "initialDisplayPercent": 100
-    },
     "morph": {
       "cc": 20,
       "initialDisplayValue": 0,
