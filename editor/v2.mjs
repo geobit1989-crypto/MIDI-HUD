@@ -130,10 +130,16 @@ function transact(fn,success,{quiet=false,autoFlush=false}={}){
 }
 function replaceDb(next,msg){
  try{
+  if(!flushPendingEdits())return;
+  leadComposer.saveNow();
   const fixed=normalizeLibrary(next);validateLibrary(fixed);
   const previous=db?JSON.stringify(db):null;
   localStorage.setItem(KEY,JSON.stringify(fixed));
   if(previous)localStorage.setItem(BACKUP,previous);
+  // Una importación explícita sustituye también posibles borradores viejos
+  // de canciones que coincidan por ID. El respaldo conserva la biblioteca previa.
+  for(const song of fixed.songs)localStorage.removeItem("hudLeadSheetDraft:"+song.id);
+  leadComposer.reset();
   db=fixed;repId=db.repertoires[0].id;songId=getRep().songIds[0];
   stateId=getSong().stateIds[0];sectionIndex=0;
   render();notice(msg);
@@ -511,6 +517,8 @@ function register(){
    const current=JSON.stringify(db);
    localStorage.setItem(KEY,JSON.stringify(previous));
    localStorage.setItem(BACKUP,current);
+   localStorage.removeItem("hudLeadSheetDraft:"+songId);
+   leadComposer.reset();
    db=previous;reconcileSelection();render();notice("Se restauró la biblioteca anterior.");
   }catch(e){notice("No se pudo restaurar: "+e.message,true);}
  };
