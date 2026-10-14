@@ -180,6 +180,30 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
  .expression{height:49px;gap:2px;padding:3px 6px}
  .expression .exmeter{height:4px}
 }
+
+/* Encabezado 14/oct: centro geométrico fijo y dos controles a cada lado. */
+.hud-meta{display:grid;grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);gap:clamp(2px,.6cqw,10px);align-items:center;width:100%;min-width:0}
+.hud-left,.hud-right{display:flex;align-items:center;min-width:0;gap:clamp(2px,.45cqw,7px)}
+.hud-left{justify-content:flex-start}
+.hud-right{justify-content:flex-end}
+.hud-meta>.brand{justify-self:center;text-align:center;white-space:nowrap;line-height:1.05;min-width:0}
+.hud-left .key,.hud-left .tempo,.hud-right .settings{min-width:0;flex:0 1 auto}
+.hud-right .bank{flex:0 0 auto}
+@media (orientation:portrait){
+ .hud-meta{grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);gap:2px}
+ .hud-left,.hud-right{gap:2px}
+ .hud-left .key,.hud-left .tempo,.hud-right .settings{padding:0 4px;min-height:22px}
+ .hud-left .key{font-size:clamp(11px,3vw,13px)}
+ .hud-left .tempo{font-size:clamp(9px,2.7vw,12px);white-space:nowrap}
+ .hud-right .bank{font-size:clamp(14px,3.9vw,20px)}
+ .hud-right .settings{font-size:clamp(14px,4vw,17px)}
+ .hud-meta>.brand{font-size:clamp(10px,2.85vw,15px);letter-spacing:-.35px}
+}
+@media (max-width:850px) and (orientation:landscape){
+ .hud-meta>.brand{font-size:clamp(11px,1.7vw,16px)}
+ .hud-left .key,.hud-left .tempo,.hud-right .settings{min-height:16px}
+ .hud-left,.hud-right{gap:3px}
+}
 </style>
 </head>
 <body>
@@ -196,7 +220,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
       <div class="sheet-section"><div class="section-label"><span class="section-letter">D</span><span>PONTE</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar repeat-start">F</div><div class="bar">G</div><div class="bar">Am</div><div class="bar repeat-end">G</div></div></div></div>
     </section>
     <section class="hud-panel" aria-label="Información del banco y controles asignados">
-      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-identity"><div class="brand">MIDI HUD <span>LIVE</span></div><strong class="bank" id="bank">C1</strong></div><div class="info"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div><div class="settings" aria-label="Configuración">⚙</div></div></div><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1></header>
+      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-left"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div></div><div class="brand">MIDI HUD <span>LIVE</span></div><div class="hud-right"><strong class="bank" id="bank">C1</strong><div class="settings" aria-label="Configuración">⚙</div></div></div><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1></header>
       <div class="switch-grid" aria-label="Nueve funciones visualizadas">
         <div class="switch" style="--light:#075eff;--dark:#003088;--meter:#02ddf4;--fill:49%"><span class="number">1</span><span class="icon-wrap">✦</span><div class="details"><div class="name">CLEAN</div><div class="sub">Twin Clean</div></div><span class="arrow">›</span><div class="meter"></div></div>
         <div class="switch" style="--light:#08b7ae;--dark:#005251;--meter:#09ffff;--fill:50%"><span class="number">2</span><span class="icon-wrap">≋</span><div class="details"><div class="name">AMBIENT</div><div class="sub">Delay · Reverb</div></div><span class="arrow">›</span><div class="meter"></div></div>
