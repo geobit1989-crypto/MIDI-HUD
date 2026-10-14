@@ -183,10 +183,9 @@ function renderModules(){
   const save=()=>{
    transact(data=>setSlot(data,s.id,i,nameInput.value,subInput.value),"Módulo "+(i+1)+" actualizado.");
   };
-  nameInput.addEventListener("change",save);
-  subInput.addEventListener("change",save);
   nameLabel.append(nameInput);subLabel.append(subInput);
   card.append(nameLabel,subLabel);
+  card.append(button("Guardar módulo",save,"small primary"));
   grid.append(card);
  }
 }
@@ -230,13 +229,15 @@ function renderSheet(){
     input.value=value;input.maxLength=30;
     input.placeholder=String(beatIndex+1);
     input.setAttribute("aria-label","Compás "+(barIndex+1)+", pulso "+(beatIndex+1));
-    input.addEventListener("change",()=>{
-     transact(data=>setBeat(data,s.id,sectionIndex,barIndex,beatIndex,input.value),
-      "Acorde guardado.");
-    });
     beats.append(input);
    });
    card.append(beats);
+   card.append(button("Guardar compás",()=>{
+    const entries=[...beats.querySelectorAll("input")].map(x=>x.value);
+    transact(data=>{
+     for(let index=0;index<4;index++)setBeat(data,s.id,sectionIndex,barIndex,index,entries[index]);
+    },"Compás guardado.");
+   },"small primary"));
   }
   grid.append(card);
  }
