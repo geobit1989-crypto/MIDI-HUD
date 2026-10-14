@@ -135,3 +135,27 @@ test("eliminar un comando no afecta al resto",()=>{
  assert.ok(!db.bindings.some(b=>b.cc===25&&b.value===0));
  assert.ok(db.bindings.some(b=>b.cc===25&&b.value===127));
 });
+
+
+test("los indicadores vinculados a módulos aparecen en la vista y responden al CC",()=>{
+ const db=edit(fixture,d=>setBindingActions(d,100,0,[
+   {type:"ACTIVATE_STATE",stateId:"q-solo"},
+   {type:"SET_INDICATOR",indicatorId:"boost",active:false}
+ ]));
+ const motor=createEngine(db);
+ const initial=motor.dispatch({type:"MIDI_CC",channel:1,cc:23,value:127});
+ assert.equal(initial.view.state.indicators.find(x=>x.id==="boost").displayIndex,5);
+ assert.equal(initial.view.state.indicators.find(x=>x.id==="boost").active,true);
+ const changed=motor.dispatch({type:"MIDI_CC",channel:1,cc:100,value:0});
+ assert.equal(changed.view.state.indicators.find(x=>x.id==="boost").active,false);
+});
+test("al borrar un estado se limpian también acciones dirigidas a sus indicadores huérfanos",()=>{
+ const db=edit(fixture,d=>{
+  d.states.find(x=>x.id==="u-solo").indicators.push({
+   id:"onlySolo",label:"Solo único",active:true,displayIndex:1
+  });
+  setBindingActions(d,109,127,[{type:"SET_INDICATOR",indicatorId:"onlySolo",active:false}]);
+  deleteState(d,"u-solo");
+ });
+ assert.ok(!db.bindings.some(x=>x.cc===109));
+});
