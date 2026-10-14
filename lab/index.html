@@ -25,6 +25,20 @@
     output{font-variant-numeric:tabular-nums}a{color:#8bdfff}
     #log{white-space:pre-wrap;overflow-wrap:anywhere;min-height:46px;font:12px/1.5 ui-monospace,monospace;background:#07121e;padding:12px;border-radius:8px}
     #notice,#configNotice{min-height:1.4em}
+    /* Ensayo del indicador de conexión. Excluido de LIVE y del motor MIDI. */
+    .connection-test{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:14px;align-items:stretch}
+    .connection-preview{background:#010305;color:#fff;border:1px solid #53616d;border-radius:10px;padding:14px;min-width:0}
+    .connection-preview-header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:38px}
+    .connection-song{font-size:clamp(14px,2.6vw,20px);font-weight:800;min-width:0}
+    .connection-bank{display:flex;align-items:center;gap:8px;font-weight:800;white-space:nowrap}
+    .connection-icon-slot{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px}
+    .connection-icon{width:24px;height:24px;display:block}
+    .connection-icon[hidden]{display:none}
+    .connection-controls{display:flex;flex-direction:column;justify-content:center;gap:10px}
+    .connection-controls button{width:100%}
+    #connectionStatus{margin:0;color:#b4c5d2;font-size:13px}
+    #connectionStatus.is-lost{color:#ff9999}
+    @media(max-width:650px){.connection-test{grid-template-columns:1fr}}
     @media(max-width:550px){body{padding:10px}.two{grid-template-columns:1fr}.presets{grid-template-columns:repeat(2,minmax(0,1fr))}}
   </style>
 </head>
@@ -62,6 +76,31 @@
       <button id="nextPreset" type="button">Preset ▶</button>
     </div>
   </section>
+  <section class="card" aria-label="Prueba aislada de pérdida de conexión">
+    <h2>Indicador de conexión — LAB</h2>
+    <p class="muted">Prueba visual aislada. El estado «conectado» es simulado: no comprueba dispositivos reales, no envía MIDI ni modifica LIVE.</p>
+    <div class="connection-test">
+      <div class="connection-preview" aria-label="Vista de prueba del encabezado">
+        <div class="connection-preview-header">
+          <span class="connection-song">Canción de ejemplo</span>
+          <span class="connection-bank">Banco C1
+            <span class="connection-icon-slot" aria-label="Espacio reservado para el indicador">
+              <svg id="connectionIcon" class="connection-icon" viewBox="0 0 24 24" fill="none" role="img" aria-label="Conexión con el controlador interrumpida" hidden>
+                <path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 2.93l-1.72 1.71" stroke="#FFFFFF" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21.07l1.71-1.71" stroke="#FFFFFF" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="4" y1="4" x2="20" y2="20" stroke="#E53935" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </span>
+          </span>
+        </div>
+        <small class="muted">Espacio reservado junto al banco; el símbolo aparece solo cuando se simula un fallo.</small>
+      </div>
+      <aside class="connection-controls" aria-label="Controles laterales de simulación">
+        <button id="connectionToggle" type="button" aria-pressed="false">Simular pérdida de conexión</button>
+        <p id="connectionStatus" role="status" aria-live="polite">Conexión simulada: normal.</p>
+      </aside>
+    </div>
+  </section>
   <div class="two">
     <section class="card" aria-label="Control Morph">
       <h2>Morph</h2><p id="morphAssignment" class="muted"></p>
@@ -85,6 +124,22 @@
   <script type="module">
     import {createEngine,normalizeLibrary,validateLibrary,ENGINE_VERSION} from "../core/engine.mjs";
     const $ = id => document.getElementById(id);
+    // Estado de ensayo exclusivamente local en LAB; no existe comunicación física.
+    let simulatedConnectionLost = false;
+    function renderConnectionSimulation(){
+      $("connectionIcon").hidden = !simulatedConnectionLost;
+      $("connectionToggle").textContent = simulatedConnectionLost
+        ? "Simular reconexión" : "Simular pérdida de conexión";
+      $("connectionToggle").setAttribute("aria-pressed",String(simulatedConnectionLost));
+      $("connectionStatus").textContent = simulatedConnectionLost
+        ? "Conexión simulada: perdida." : "Conexión simulada: normal.";
+      $("connectionStatus").classList.toggle("is-lost",simulatedConnectionLost);
+    }
+    $("connectionToggle").addEventListener("click",()=>{
+      simulatedConnectionLost = !simulatedConnectionLost;
+      renderConnectionSimulation();
+    });
+    renderConnectionSimulation();
     const STORAGE = "hudLabLibrary";
     const SOURCE = "../config/midi-hud-data-v1.json";
     let engine, library, activeRepertoire="", activeSong="", history=[];
