@@ -1,3 +1,15 @@
+## Editor beta — Lead sheet textual y guardado automático (14/10/2026)
+
+Restaurado el lector de lead sheets v0.4 del proyecto: edición mediante texto con secciones, compases entre |, acordes mayores/menores con # o b, / como compás anterior, y |: ... :| como repetición. El editor muestra simultáneamente el texto, números de línea, diagnósticos y partitura generada. Un compás permite uno o dos acordes; la posición exacta del pulso no se infiere.
+
+Las canciones, estados y nueve módulos visuales se guardan automáticamente sin botones por campo. Las partituras válidas se guardan tras una pausa; si el texto queda incompleto o contiene errores, se almacena un borrador local y LIVE conserva la última partitura válida. Importar o deshacer refresca la fuente textual del editor sin mostrar contenido obsoleto.
+
+En LIVE se incorpora un acceso directo al Editor junto a Configuración. El menú actualizado separa recepción MIDI global, navegación de canciones y enlaces a Editor, LAB e Inicio. No se transmite MIDI a la GT.
+
+Verificación: tests del motor, parser, editor y LIVE mediante GitHub Actions; prueba funcional aislada en Chromium local. La integración de hardware BLE sigue pendiente.
+
+---
+
 # Motor MIDI HUD v1.0 — beta de desarrollo
 
 Esta rama implementa el motor de **visualización** MIDI basado en los acuerdos del 14/10/2026. Se mantiene el prototipo visual LIVE v0.3 y el código v0.2 como respaldo. **No envía mensajes a la GT-1000CORE.**
