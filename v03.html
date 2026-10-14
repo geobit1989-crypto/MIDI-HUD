@@ -494,8 +494,33 @@ function sheet(source){
    for(let j=0;j<4;j++){
     const bar=document.createElement("div");bar.className="bar";
     const beats=bars[row*4+j]||["","","",""];
-    for(const text of beats.slice(0,4)){
-     const beat=document.createElement("span");beat.className="beat";beat.textContent=String(text||"");bar.append(beat);
+    if(beats[0]==="/"&&beats.slice(1).every(x=>x==="")){
+      const ns="http://www.w3.org/2000/svg";
+      const svg=document.createElementNS(ns,"svg");
+      svg.setAttribute("viewBox","0 0 100 84");
+      svg.setAttribute("class","repeat-glyph");
+      svg.setAttribute("aria-hidden","true");
+      const slash=document.createElementNS(ns,"path");
+      slash.setAttribute("d","M19 71 L81 13");
+      slash.setAttribute("stroke","currentColor");
+      slash.setAttribute("stroke-width","14");
+      slash.setAttribute("stroke-linecap","round");
+      slash.setAttribute("fill","none");
+      svg.append(slash);
+      for(const [cx,cy] of [[31,16],[69,68]]){
+        const dot=document.createElementNS(ns,"circle");
+        dot.setAttribute("cx",String(cx));dot.setAttribute("cy",String(cy));
+        dot.setAttribute("r","8");dot.setAttribute("fill","currentColor");
+        svg.append(dot);
+      }
+      bar.classList.add("slash","repeat-measure");
+      bar.setAttribute("aria-label","Repetición del compás anterior");
+      bar.append(svg);
+    }else{
+      for(const text of beats.slice(0,4)){
+        const beat=document.createElement("span");beat.className="beat";
+        beat.textContent=String(text||"");bar.append(beat);
+      }
     }
     line.append(bar);
    }
