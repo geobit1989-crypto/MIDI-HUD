@@ -1,4 +1,5 @@
 import {normalizeLibrary,validateLibrary,SCHEMA_VERSION} from "../core/engine-v1.mjs";
+import {createLeadSheetEditor} from "./lead-sheet-ui.mjs";
 import {
  editLibrary,newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,setSlot,addSection,removeSection,addBar,removeBar,
@@ -10,6 +11,57 @@ const $=id=>document.getElementById(id),clone=x=>JSON.parse(JSON.stringify(x));
 const KEY="hudLibraryV1",BACKUP="hudLibraryV1Backup",SOURCE="../config/midi-hud-data-v2.json";
 let db=null,repId=null,songId=null,stateId=null,sectionIndex=0,tab="song";
 let selectedCC=20,selectedValue=127;
+const pendingEdits=new Map();
+let saveTimer=null;
+function queueAuto(change){
+ const key=change.type+":"+change.id+(change.index==null?"":":"+change.index);
+ pendingEdits.set(key,change);
+ clearTimeout(saveTimer);
+ $("saveStatus").textContent="Guardando…";
+ $("saveStatus").style.color="#ffe8b6";
+ saveTimer=setTimeout(()=>flushPendingEdits(),580);
+}
+function flushPendingEdits(){
+ clearTimeout(saveTimer);saveTimer=null;
+ if(!pendingEdits.size)return true;
+ const edits=[...pendingEdits.values()];
+ const ok=transact(data=>{
+  for(const edit of edits){
+   if(edit.type==="song"){
+    const song=data.songs.find(s=>s.id===edit.id);
+    if(!song)continue;
+    Object.assign(song,edit.values);
+   }else if(edit.type==="state"){
+    const state=data.states.find(s=>s.id===edit.id);
+    if(!state)continue;
+    Object.assign(state,edit.values);
+   }else if(edit.type==="module"){
+    setSlot(data,edit.id,edit.index,edit.name,edit.sub);
+   }
+  }
+ },"Cambios guardados automáticamente.",{quiet:true,autoFlush:true});
+ if(ok)pendingEdits.clear();
+ return !!ok;
+}
+function queueSongAuto(){
+ const song=getSong();if(!song)return;
+ const bpm=$("songBpm").value.trim();
+ queueAuto({type:"song",id:song.id,values:{
+  title:$("songTitle").value.trim(),
+  tono:$("songTone").value.trim()||null,
+  tempoBpm:bpm===""?null:Number(bpm),
+  bank:$("songBank").value.trim()||null,
+  initialStateId:$("songInitial").value
+ }});
+}
+function queueStateAuto(){
+ const state=getState();if(!state)return;
+ queueAuto({type:"state",id:state.id,values:{
+  name:$("stateName").value.trim(),
+  displayIndex:$("stateSlot").value===""?null:Number($("stateSlot").value),
+  gtPatch:$("statePatch").value===""?null:Number($("statePatch").value)
+ }});
+}
 
 function getRep(){return db?.repertoires.find(r=>r.id===repId)||null;}
 function getSong(){return db?.songs.find(s=>s.id===songId)||null;}
@@ -28,16 +80,21 @@ function promptName(label,current){
  return value===null?null:value.trim();
 }
 function selectRep(id){
+ if(!flushPendingEdits())return;
+ if(typeof leadComposer!=="undefined")leadComposer.saveNow();
  if(!db?.repertoires.some(r=>r.id===id))return;
  repId=id;const rep=getRep();
  if(!rep.songIds.includes(songId))songId=rep.songIds[0];
  stateId=getSong().stateIds[0];sectionIndex=0;render();
 }
 function selectSong(id){
+ if(!flushPendingEdits())return;
+ leadComposer.saveNow();
  if(!getRep().songIds.includes(id))return;
  songId=id;stateId=getSong().stateIds[0];sectionIndex=0;render();
 }
 function selectState(id){
+ if(!flushPendingEdits())return;
  if(!getSong().stateIds.includes(id))return;
  stateId=id;render();
 }
@@ -47,7 +104,8 @@ function reconcileSelection(){
  if(!getSong().stateIds.includes(stateId))stateId=getSong().stateIds[0];
  if(sectionIndex<0)sectionIndex=0;
 }
-function transact(fn,success){
+function transact(fn,success,{quiet=false,autoFlush=false}={}){
+ if(!autoFlush&&!flushPendingEdits())return false;
  if(!db)return;
  const previous=clone(db),oldSelection=[repId,songId,stateId,sectionIndex];
  try{
@@ -59,20 +117,29 @@ function transact(fn,success){
   const serialized=JSON.stringify(updated);
   localStorage.setItem(KEY,serialized);
   localStorage.setItem(BACKUP,JSON.stringify(previous));
-  db=updated;reconcileSelection();render();notice(success||"Cambio guardado.");
-  return result;
+  db=updated;reconcileSelection();
+  if(!quiet)render();else renderSidebar();
+  notice(success||"Cambio guardado.");
+  return true;
  }catch(err){
-  [repId,songId,stateId,sectionIndex]=oldSelection;render();
+  [repId,songId,stateId,sectionIndex]=oldSelection;
+  if(!quiet)render();
   notice("No se pudo guardar: "+err.message,true);
-  return null;
+  return false;
  }
 }
 function replaceDb(next,msg){
  try{
+  if(!flushPendingEdits())return;
+  leadComposer.saveNow();
   const fixed=normalizeLibrary(next);validateLibrary(fixed);
   const previous=db?JSON.stringify(db):null;
   localStorage.setItem(KEY,JSON.stringify(fixed));
   if(previous)localStorage.setItem(BACKUP,previous);
+  // Una importación explícita sustituye también posibles borradores viejos
+  // de canciones que coincidan por ID. El respaldo conserva la biblioteca previa.
+  for(const song of fixed.songs)localStorage.removeItem("hudLeadSheetDraft:"+song.id);
+  leadComposer.reset();
   db=fixed;repId=db.repertoires[0].id;songId=getRep().songIds[0];
   stateId=getSong().stateIds[0];sectionIndex=0;
   render();notice(msg);
@@ -183,68 +250,26 @@ function renderModules(){
   const nameInput=el("input");nameInput.value=slot.name;nameInput.maxLength=45;
   const subLabel=el("label","Descripción");
   const subInput=el("input");subInput.value=slot.sub;subInput.maxLength=75;
-  const save=()=>{
-   transact(data=>setSlot(data,s.id,i,nameInput.value,subInput.value),"Módulo "+(i+1)+" actualizado.");
-  };
   nameLabel.append(nameInput);subLabel.append(subInput);
   card.append(nameLabel,subLabel);
-  card.append(button("Guardar módulo",save,"small primary"));
+  nameInput.addEventListener("input",()=>queueAuto({
+   type:"module",id:s.id,index:i,name:nameInput.value,sub:subInput.value
+  }));
+  subInput.addEventListener("input",()=>queueAuto({
+   type:"module",id:s.id,index:i,name:nameInput.value,sub:subInput.value
+  }));
   grid.append(card);
  }
 }
-function renderSheet(){
- const s=getSong(),sheet=s.leadSheet;
- $("sheetEmpty").hidden=!!sheet;
- $("sheetBody").hidden=!sheet;
- if(!sheet)return;
- sectionIndex=Math.min(Math.max(sectionIndex,0),sheet.sections.length-1);
- const section=sheet.sections[sectionIndex];
- options("sectionSelect",sheet.sections.map((sec,i)=>[i,(sec.letter||String(i+1))+" — "+sec.label]),sectionIndex);
- $("sectionLetter").value=section.letter;
- $("sectionLabel").value=section.label;
- $("sectionAdd").disabled=sheet.sections.length>=4;
- $("sectionRemove").disabled=sheet.sections.length<=1;
- $("barAdd").disabled=section.bars.length>=32;
- const grid=$("barGrid");grid.replaceChildren();
- for(let barIndex=0;barIndex<section.bars.length;barIndex++){
-  const values=section.bars[barIndex];
-  const repeat=values[0]==="/"&&values.slice(1).every(x=>x==="");
-  const card=el("article",undefined,"measure");
-  const heading=el("header");
-  heading.append(el("span","COMPÁS "+(barIndex+1)));
-  const actions=el("div",undefined,"ctrlrow");
-  const toggle=button(repeat?"Editar acordes":"Repetición",()=>{
-   if(!repeat&&values.some(x=>x!=="")&&!confirmation("¿Convertir este compás en una repetición? Se perderán los acordes escritos."))return;
-   transact(data=>setRepeatBar(data,s.id,sectionIndex,barIndex,!repeat),"Compás actualizado.");
-  },"small");
-  actions.append(toggle);
-  const del=button("×",()=>{
-   if(!confirmation("¿Eliminar este compás?"))return;
-   transact(data=>removeBar(data,s.id,sectionIndex,barIndex),"Compás eliminado.");
-  },"small danger","Eliminar compás");
-  del.disabled=section.bars.length<=1;
-  actions.append(del);heading.append(actions);card.append(heading);
-  if(repeat)card.append(el("div","%  Repetir compás anterior","repeat-note"));
-  else{
-   const beats=el("div",undefined,"beats");
-   values.forEach((value,beatIndex)=>{
-    const input=el("input");input.className="beat-input";
-    input.value=value;input.maxLength=30;
-    input.placeholder=String(beatIndex+1);
-    input.setAttribute("aria-label","Compás "+(barIndex+1)+", pulso "+(beatIndex+1));
-    beats.append(input);
-   });
-   card.append(beats);
-   card.append(button("Guardar compás",()=>{
-    const entries=[...beats.querySelectorAll("input")].map(x=>x.value);
-    transact(data=>{
-     for(let index=0;index<4;index++)setBeat(data,s.id,sectionIndex,barIndex,index,entries[index]);
-    },"Compás guardado.");
-   },"small primary"));
-  }
-  grid.append(card);
- }
-}
+const leadComposer=createLeadSheetEditor({
+ getSong:()=>getSong(),
+ commit:(id,leadSheet)=>transact(data=>{
+  const song=data.songs.find(s=>s.id===id);
+  if(!song)throw Error("La canción ya no existe.");
+  song.leadSheet=leadSheet;
+ },"Lead sheet guardado automáticamente.",{quiet:true,autoFlush:true})
+});
+function renderSheet(){leadComposer.load(getSong());}
 function currentCC(){
  const cc=Number($("midiCC").value),value=Number($("midiValue").value);
  if(!Number.isInteger(cc)||cc<0||cc>127||!Number.isInteger(value)||value<0||value>127)
@@ -370,7 +395,11 @@ function render(){
  for(const panel of document.querySelectorAll("[data-panel]"))panel.hidden=panel.dataset.panel!==tab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
 }
-function setTab(id){tab=id;render();}
+function setTab(id){
+ if(!flushPendingEdits())return;
+ leadComposer.saveNow();
+ tab=id;render();
+}
 function register(){
  document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
  $("repSelect").onchange=e=>selectRep(e.target.value);
@@ -405,15 +434,11 @@ function register(){
  };
  $("songUp").onclick=()=>transact(data=>moveSong(data,repId,songId,-1),"Orden actualizado.");
  $("songDown").onclick=()=>transact(data=>moveSong(data,repId,songId,1),"Orden actualizado.");
- $("songSave").onclick=()=>transact(data=>{
-  const s=data.songs.find(x=>x.id===songId);
-  s.title=$("songTitle").value.trim();
-  s.tono=$("songTone").value.trim()||null;
-  const bpm=$("songBpm").value.trim();
-  s.tempoBpm=bpm===""?null:Number(bpm);
-  s.bank=$("songBank").value.trim()||null;
-  s.initialStateId=$("songInitial").value;
- },"Datos musicales guardados.");
+ for(const id of ["songTitle","songTone","songBpm","songBank"])
+   $(id).addEventListener("input",queueSongAuto);
+ $("songInitial").addEventListener("change",queueSongAuto);
+ for(const id of ["songTitle","songTone","songBpm","songBank"])
+   $(id).addEventListener("blur",()=>flushPendingEdits());
  $("stateAdd").onclick=()=>transact(data=>{stateId=newState(data,songId);},"Estado creado.");
  $("stateCopy").onclick=()=>transact(data=>{stateId=duplicateState(data,stateId);},"Estado duplicado.");
  $("stateRemove").onclick=()=>{
@@ -422,12 +447,11 @@ function register(){
  };
  $("stateUp").onclick=()=>transact(data=>moveState(data,stateId,-1),"Orden de estados actualizado.");
  $("stateDown").onclick=()=>transact(data=>moveState(data,stateId,1),"Orden de estados actualizado.");
- $("stateSave").onclick=()=>transact(data=>{
-  const st=data.states.find(x=>x.id===stateId);
-  st.name=$("stateName").value.trim();
-  st.displayIndex=$("stateSlot").value===""?null:Number($("stateSlot").value);
-  st.gtPatch=$("statePatch").value===""?null:Number($("statePatch").value);
- },"Estado actualizado.");
+ for(const id of ["stateName","statePatch"])
+   $(id).addEventListener("input",queueStateAuto);
+ $("stateSlot").addEventListener("change",queueStateAuto);
+ for(const id of ["stateName","statePatch"])
+   $(id).addEventListener("blur",()=>flushPendingEdits());
  $("indicatorAdd").onclick=()=>{
   const id=$("indicatorId").value.trim(),label=$("indicatorLabel").value.trim();
   if(!id||!label){notice("Escribe identificador y descripción del indicador.",true);return;}
@@ -441,22 +465,6 @@ function register(){
   $("indicatorId").value="";$("indicatorLabel").value="";
   $("indicatorActive").checked=false;$("indicatorSlot").value="";
  };
- $("sheetCreate").onclick=()=>transact(data=>{
-  data.songs.find(s=>s.id===songId).leadSheet={sections:[{letter:"A",label:"INTRO",bars:[["","","",""]]}]};
-  sectionIndex=0;
- },"Lead sheet creado.");
- $("sectionSelect").onchange=e=>{sectionIndex=Number(e.target.value);renderSheet();};
- $("sectionAdd").onclick=()=>transact(data=>{sectionIndex=addSection(data,songId);},"Sección creada.");
- $("sectionRemove").onclick=()=>{
-  if(!confirmation("¿Eliminar esta sección y sus compases?"))return;
-  transact(data=>{removeSection(data,songId,sectionIndex);sectionIndex=Math.max(0,sectionIndex-1);},"Sección eliminada.");
- };
- $("sectionSave").onclick=()=>transact(data=>{
-  const section=data.songs.find(s=>s.id===songId).leadSheet.sections[sectionIndex];
-  section.letter=$("sectionLetter").value.trim()||String(sectionIndex+1);
-  section.label=$("sectionLabel").value.trim()||"SECCIÓN";
- },"Sección guardada.");
- $("barAdd").onclick=()=>transact(data=>addBar(data,songId,sectionIndex),"Compás añadido.");
  $("matrixStart").onchange=()=>{renderMIDI();};
  $("matrixValue").onchange=()=>{renderMIDI();};
  $("midiCC").onchange=()=>{
@@ -501,6 +509,7 @@ function register(){
   notice("Biblioteca exportada. Guarda el archivo como respaldo.");
  };
  $("undo").onclick=()=>{
+  if(!flushPendingEdits())return;
   const raw=localStorage.getItem(BACKUP);if(!raw)return;
   if(!confirmation("¿Recuperar la versión anterior de la biblioteca?"))return;
   try{
@@ -508,12 +517,18 @@ function register(){
    const current=JSON.stringify(db);
    localStorage.setItem(KEY,JSON.stringify(previous));
    localStorage.setItem(BACKUP,current);
+   localStorage.removeItem("hudLeadSheetDraft:"+songId);
+   leadComposer.reset();
    db=previous;reconcileSelection();render();notice("Se restauró la biblioteca anterior.");
   }catch(e){notice("No se pudo restaurar: "+e.message,true);}
  };
 }
 async function initialize(){
  register();
+ window.addEventListener("beforeunload",()=>{
+  flushPendingEdits();
+  leadComposer.saveNow();
+ });
  let loaded=null,invalid=false;
  const saved=localStorage.getItem(KEY);
  if(saved)try{loaded=normalizeLibrary(JSON.parse(saved));validateLibrary(loaded);}
