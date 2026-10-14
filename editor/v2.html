@@ -110,6 +110,36 @@ th:first-child{width:115px}
 @media(max-width:700px){body{padding:8px}.workspace{grid-template-columns:1fr}.side{position:static;min-height:0;padding:12px}.song-list{max-height:220px}.main{min-height:450px}.grid,.grid.triple{grid-template-columns:1fr}.module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.top{padding:7px}.top-actions{gap:4px}.top-actions button{padding:7px}}
 @media(max-width:410px){.module-grid{grid-template-columns:1fr}.matrix{grid-template-columns:32px repeat(4,minmax(0,1fr));gap:3px}.matrix .cell{font-size:12px;padding:5px 2px}.beats{gap:3px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+.sheet-workspace{display:grid;grid-template-columns:minmax(290px,.94fr) minmax(0,1.06fr);align-items:start;gap:14px}
+.sheet-card{border:1px solid var(--line);background:#142638;border-radius:12px;padding:14px;min-width:0}
+.sheet-card h3{margin:0 0 9px}
+.sheet-source{display:grid;grid-template-columns:43px minmax(0,1fr);min-width:0}
+.sheet-gutter{position:relative;overflow:hidden;min-height:340px;background:#0a1828;color:#a5c3d7;border:1px solid #536e84;border-right:0;border-radius:8px 0 0 8px;user-select:none}
+.sheet-gutter-lines{position:absolute;inset:0 0 auto;padding:11px 0;will-change:transform}
+.sheet-line{font:14px/24px ui-monospace,monospace;height:24px;padding-right:8px;text-align:right}
+.sheet-line.invalid{background:#6a2933;color:white;font-weight:800;border-right:3px solid #ff7e86;padding-right:5px}
+.sheet-line.current:not(.invalid){background:#28485b;color:white}
+textarea.sheet-text{border:1px solid #536e84!important;border-radius:0 8px 8px 0!important;background:#081623!important;color:#f3fbff!important;padding:11px!important;resize:vertical;height:340px;min-height:340px;font:14px/24px ui-monospace,monospace;white-space:pre;tab-size:2;overflow:auto}
+.sheet-text[aria-invalid=true]{border-color:#ff727c!important}
+.sheet-helper{color:#b9d2df;font-size:12px;margin:9px 0;line-height:1.6}
+.sheet-editor-status{font-size:13px;line-height:1.5;color:#a6e6ef;font-weight:650;min-height:26px;margin:9px 0}
+.sheet-errors{display:flex;flex-direction:column;gap:5px;margin:8px 0}
+.sheet-error{background:#42222a;color:#ffe3e2;border:1px solid #ad6368;padding:8px;border-radius:7px;text-align:left;font-size:12px;font-weight:600}
+.sheet-error:hover{background:#5c2c36}
+.sheet-preview{background:#060d15;color:#f7faff;border:1px solid #3d5265;min-height:220px;border-radius:8px;padding:13px}
+.sheet-preview-section{padding-bottom:16px;margin:9px 0 12px;border-bottom:1px solid #3c4853}
+.sheet-preview-heading{display:flex;gap:8px;align-items:center;font-weight:850;margin-bottom:8px}
+.sheet-preview-letter{background:#fff;color:#07111b;border-radius:4px;min-width:30px;text-align:center;padding:2px 5px}
+.sheet-preview-bars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-left:1px solid #627487}
+.sheet-preview-measure{position:relative;border:1px solid #53687b;border-left:0;padding:9px 3px;min-height:44px;min-width:0;display:flex;align-items:center;justify-content:space-around;gap:3px;font-size:clamp(13px,1.25vw,21px);font-weight:820}
+.sheet-preview-measure:nth-child(n+5){border-top:0}
+.sheet-preview-measure.repeat{font-size:22px}
+.sheet-preview-measure.start{border-left:5px double #e9f5ff}
+.sheet-preview-measure.end{border-right:5px double #e9f5ff}
+.sheet-preview-measure span{min-width:0;overflow-wrap:anywhere;text-align:center}
+.sheet-draft-warning{font-size:12px;color:#fbd1a4;margin-top:9px}
+@media(max-width:1080px){.sheet-workspace{grid-template-columns:1fr}.sheet-preview-measure{font-size:16px}}
 </style>
 </head>
 <body>
@@ -177,7 +207,7 @@ th:first-child{width:115px}
       <h3>Cómo se presenta en LIVE</h3>
       <p class="help">En pantalla aparecerá el valor de la tonalidad, por ejemplo <b>C</b>, sin las palabras «Tono» ni «Tonalidad». El banco indica una asignación programada, no una lectura del Chocolate físico.</p>
     </div>
-    <button id="songSave" class="primary">Guardar datos de canción</button>
+    <p class="help">Guardado automático: escribe normalmente, sin pulsar botones de guardar.</p>
   </section>
   <section data-panel="states" hidden>
     <div class="panel-title"><h2>Estados musicales</h2><p>Define Clean, Ambient, Drive, Solo u otros estados. Un estado pertenece a una canción, no es un patch de la GT.</p></div>
@@ -198,7 +228,7 @@ th:first-child{width:115px}
         <label class="field">Referencia de patch GT (informativa)<input id="statePatch" type="number" min="0" max="127" placeholder="Sin asignar"></label>
       </div>
       <p class="help">La referencia de patch no transmite Program Change a la GT. El módulo visual destacado cambiará cuando el motor reciba el mensaje correspondiente.</p>
-      <button id="stateSave" class="primary">Guardar estado</button>
+      <p class="help">Nombre, módulo y patch se guardan automáticamente.</p>
     </div>
     <div class="section-card">
       <h3>Indicadores asociados al estado</h3>
@@ -221,26 +251,27 @@ th:first-child{width:115px}
     <p class="help">Puedes definir los módulos de los interruptores de la GT como referencias estáticas. Si el motor no recibe sus comandos, permanecerán con la información programada.</p>
   </section>
   <section data-panel="sheet" hidden>
-    <div class="panel-title"><h2>Lead sheet</h2><p>Editor de secciones y compases. Cada compás contiene cuatro posiciones de pulso. Para repetir el compás anterior, utiliza el botón «Repetición».</p></div>
-    <div id="sheetEmpty" class="empty" hidden>
-      No hay lead sheet para esta canción.
-      <div><button id="sheetCreate" class="primary">Crear lead sheet</button></div>
+    <div class="panel-title">
+      <h2>Lead sheet · editor de texto</h2>
+      <p>Escribe los acordes y el sistema construye la partitura. Vista previa y guardado automático cuando el texto es válido.</p>
     </div>
-    <div id="sheetBody">
-      <div class="formrow">
-        <label class="field">Sección que estás editando<select id="sectionSelect"></select></label>
-        <button id="sectionAdd" class="nonflex">+ Sección</button>
-        <button id="sectionRemove" class="nonflex danger">Eliminar sección</button>
-      </div>
-      <div class="section-card">
-        <div class="grid">
-          <label class="field">Letra identificadora<input id="sectionLetter" maxlength="4" placeholder="A"></label>
-          <label class="field">Nombre de la sección<input id="sectionLabel" maxlength="80" placeholder="INTRO, VERSO, CORO…"></label>
+    <div class="sheet-workspace">
+      <section class="sheet-card" aria-label="Editor de acordes en texto">
+        <h3>Escribe los acordes</h3>
+        <div class="sheet-source">
+          <div class="sheet-gutter" aria-hidden="true"><div id="leadGutter" class="sheet-gutter-lines"></div></div>
+          <textarea class="sheet-text" id="leadText" wrap="off" spellcheck="false" aria-describedby="leadHelp" placeholder="A - Intro&#10;| C | F |&#10;&#10;B - Verso&#10;| C | / | F Am | G |"></textarea>
         </div>
-        <button id="sectionSave" class="primary">Guardar sección</button>
-      </div>
-      <div class="sidebar-row"><h3>Compases</h3><button id="barAdd" class="small primary">+ Compás</button></div>
-      <div id="barGrid" class="chord-list"></div>
+        <p class="sheet-helper" id="leadHelp"><strong>Ejemplo:</strong> <code>A - Intro</code> abre la sección; <code>| C | F Am | / |</code> crea tres compases; <code>|: C | G :|</code> indica repetición. Acordes mayores y menores, con # o b; máximo dos acordes por compás.</p>
+        <p id="leadStatus" class="sheet-editor-status" role="status"></p>
+        <div id="leadErrors" class="sheet-errors" aria-live="polite"></div>
+        <p id="leadDraftWarning" class="sheet-draft-warning" hidden>Este texto contiene errores. Se conserva como borrador local y LIVE mantiene el último lead sheet válido.</p>
+      </section>
+      <section class="sheet-card" aria-label="Vista previa del lead sheet">
+        <h3>Vista previa musical</h3>
+        <div id="leadPreview" class="sheet-preview" aria-live="polite"></div>
+        <p class="sheet-helper">Cada barra vertical delimita un compás. Con dos acordes, el reparto es visual; no indica pulsos exactos.</p>
+      </section>
     </div>
   </section>
   <section data-panel="midi" hidden>
