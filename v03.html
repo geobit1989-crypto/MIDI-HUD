@@ -116,20 +116,20 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 }
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
   
-/* MIDI HUD: ajustes confirmados. Encabezado permanece entre partitura y matriz. */
+/* MIDI HUD: colores invertidos y ajustes puntuales sin rehacer la interfaz. */
 .lead-sheet{background:#05070b;color:#f8fafc;border:1px solid #46515c}
 .sheet-section{border-bottom-color:#46515c}
 .chord-line{border-bottom-color:#38434f}
 .section-letter{background:#fff;color:#05070b}
 .bar,.bar:last-child,.bar.repeat-start,.bar.repeat-end{border-color:#edf1fa}
 .topbar{display:flex;flex-direction:column;align-items:stretch;justify-content:center;height:auto;flex:0 0 auto;min-height:0;gap:clamp(2px,.4cqw,6px);padding:clamp(3px,.55cqw,8px) clamp(4px,.7cqw,11px);white-space:normal}
-.hud-meta,.hud-identity{display:flex;align-items:center;min-width:0}
-.hud-meta{width:100%;justify-content:space-between;gap:clamp(4px,.7cqw,11px)}
-.hud-identity{gap:clamp(7px,1.3cqw,18px)}
-.brand{line-height:1.03}
-.bank{padding:0;line-height:1}
-.info{height:auto;min-height:0;flex:0 0 auto;align-self:center;gap:clamp(2px,.4cqw,6px)}
-.key,.tempo,.settings{min-width:0;min-height:clamp(20px,3cqw,32px)}
+.hud-meta{display:grid;grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);gap:clamp(2px,.6cqw,10px);align-items:center;width:100%;min-width:0}
+.hud-left,.hud-right{display:flex;align-items:center;min-width:0;gap:clamp(2px,.45cqw,7px)}
+.hud-left{justify-content:flex-start}
+.hud-right{justify-content:flex-end}
+.hud-meta>.brand{justify-self:center;text-align:center;white-space:nowrap;line-height:1.05;min-width:0}
+.bank{padding:0;line-height:1;flex:0 0 auto}
+.hud-left .key,.hud-left .tempo,.hud-right .settings{min-width:0;min-height:clamp(20px,3cqw,32px);flex:0 1 auto}
 .song-title{width:100%;max-width:100%;flex:none;min-width:0;margin:0;text-align:center;font-size:clamp(17px,2.8cqw,39px);line-height:1.06;white-space:normal;overflow-wrap:break-word;overflow:visible;text-overflow:clip;text-wrap:balance}
 .expression-row{min-height:0;grid-template-columns:repeat(2,minmax(0,1fr))}
 .expression{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:clamp(2px,.32cqw,5px);padding:clamp(3px,.5cqw,8px) clamp(6px,.8cqw,12px)}
@@ -140,12 +140,15 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 .expression .exmeter{display:block;width:100%;flex:0 0 auto;height:clamp(5px,.75cqw,9px);border-radius:99px}
 @media (orientation:portrait){
  .topbar{display:flex;flex-direction:column;padding:4px 3px;gap:4px}
- .hud-meta{gap:4px}.hud-identity{gap:7px}
+ .hud-meta{grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);gap:2px}
+ .hud-left,.hud-right{gap:2px}
  .brand{font-size:clamp(11px,3vw,15px);letter-spacing:-.3px;white-space:nowrap}
- .bank{font-size:clamp(15px,4.1vw,20px)}
- .info{display:flex;gap:3px;justify-self:auto}
- .key,.tempo,.settings{min-height:22px;padding:0 5px}
- .key{font-size:13px}.tempo{font-size:clamp(10px,2.8vw,12px)}.settings{font-size:16px}
+ .hud-meta>.brand{font-size:clamp(10px,2.85vw,15px);letter-spacing:-.35px}
+ .hud-left .key,.hud-left .tempo,.hud-right .settings{padding:0 4px;min-height:22px}
+ .hud-left .key{font-size:clamp(11px,3vw,13px)}
+ .hud-left .tempo{font-size:clamp(9px,2.7vw,12px);white-space:nowrap}
+ .hud-right .bank{font-size:clamp(14px,3.9vw,20px)}
+ .hud-right .settings{font-size:clamp(14px,4vw,17px)}
  .song-title{font-size:clamp(16px,4.3vw,21px);line-height:1.08;text-align:center}
  .switch-grid{height:clamp(156px,31dvh,288px)}
  .switch{gap:2px}
@@ -159,9 +162,11 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 @media (max-width:850px) and (orientation:landscape){
  .lead-sheet{height:43%;flex:0 0 43%}
  .topbar{height:auto;padding:2px 5px;gap:1px}
- .brand{font-size:clamp(11px,1.7vw,16px)}.bank{font-size:clamp(13px,1.9vw,18px)}
+ .hud-meta>.brand{font-size:clamp(11px,1.7vw,16px)}
+ .hud-left .key,.hud-left .tempo,.hud-right .settings{min-height:16px;padding:0 4px;font-size:clamp(10px,1.45vw,14px)}
+ .hud-left,.hud-right{gap:3px}
+ .bank{font-size:clamp(13px,1.9vw,18px)}
  .song-title{font-size:clamp(13px,2.1vw,19px)}
- .key,.tempo,.settings{min-height:16px;padding:0 4px;font-size:clamp(10px,1.45vw,14px)}
  .switch{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:1px;padding:2px 4px}
  .switch .number{position:absolute;top:2px;left:3px;font-size:clamp(9px,1.2vw,12px)}
  .switch .details{width:100%;text-align:center}
@@ -181,29 +186,10 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
  .expression .exmeter{height:4px}
 }
 
-/* Encabezado 14/oct: centro geométrico fijo y dos controles a cada lado. */
-.hud-meta{display:grid;grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);gap:clamp(2px,.6cqw,10px);align-items:center;width:100%;min-width:0}
-.hud-left,.hud-right{display:flex;align-items:center;min-width:0;gap:clamp(2px,.45cqw,7px)}
-.hud-left{justify-content:flex-start}
-.hud-right{justify-content:flex-end}
-.hud-meta>.brand{justify-self:center;text-align:center;white-space:nowrap;line-height:1.05;min-width:0}
-.hud-left .key,.hud-left .tempo,.hud-right .settings{min-width:0;flex:0 1 auto}
-.hud-right .bank{flex:0 0 auto}
-@media (orientation:portrait){
- .hud-meta{grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);gap:2px}
- .hud-left,.hud-right{gap:2px}
- .hud-left .key,.hud-left .tempo,.hud-right .settings{padding:0 4px;min-height:22px}
- .hud-left .key{font-size:clamp(11px,3vw,13px)}
- .hud-left .tempo{font-size:clamp(9px,2.7vw,12px);white-space:nowrap}
- .hud-right .bank{font-size:clamp(14px,3.9vw,20px)}
- .hud-right .settings{font-size:clamp(14px,4vw,17px)}
- .hud-meta>.brand{font-size:clamp(10px,2.85vw,15px);letter-spacing:-.35px}
-}
-@media (max-width:850px) and (orientation:landscape){
- .hud-meta>.brand{font-size:clamp(11px,1.7vw,16px)}
- .hud-left .key,.hud-left .tempo,.hud-right .settings{min-height:16px}
- .hud-left,.hud-right{gap:3px}
-}
+/* El centrado no debe heredar las áreas de la cuadrícula anterior. */
+.hud-meta>.brand{grid-area:auto;grid-column:2;grid-row:1}
+.hud-meta>.hud-left{grid-area:auto;grid-column:1;grid-row:1}
+.hud-meta>.hud-right{grid-area:auto;grid-column:3;grid-row:1}
 </style>
 </head>
 <body>
