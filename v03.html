@@ -528,7 +528,10 @@ function sheet(source){
    const line=document.createElement("div");line.className="chord-line";
    for(let j=0;j<4;j++){
     const bar=document.createElement("div");bar.className="bar";
-    const beats=bars[row*4+j]||["","","",""];
+    const index=row*4+j;
+    if(section.repeatStartBars?.includes(index))bar.classList.add("repeat-start");
+    if(section.repeatEndBars?.includes(index))bar.classList.add("repeat-end");
+    const beats=bars[index]||["","","",""];
     if(beats[0]==="/"&&beats.slice(1).every(x=>x==="")){
       const ns="http://www.w3.org/2000/svg";
       const svg=document.createElementNS(ns,"svg");
