@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIDI HUD — Editor v1 (beta)</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#08121b;color:#f2f7fa}
+*{box-sizing:border-box}body{margin:auto;padding:16px;max-width:940px}
+h1{margin:0 0 4px}h2{font-size:20px}a{color:#8ce7ff}
+.card{border:1px solid #35516a;border-radius:12px;background:#152635;padding:16px;margin:14px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+label{display:block;font-size:14px;margin:8px 0}
+input,select,textarea,button{font:inherit;border-radius:8px;border:1px solid #65859a;color:#fff;background:#263d51;padding:10px}
+input,select,textarea{width:100%;display:block;margin:6px 0;min-height:42px}
+textarea{font:13px/1.5 ui-monospace,monospace;min-height:120px}
+button{min-height:40px;cursor:pointer;margin:5px 5px 0 0}
+button:disabled{opacity:.45}small,.muted{color:#bfd0da}#notice{min-height:24px;line-height:1.5}
+</style></head><body>
+<h1>Editor MIDI HUD v1</h1>
+<p class="muted">Construye asociaciones CC + valor → acciones visuales. No transmite MIDI ni altera la GT.</p>
+<p><a href="../lab/midi-v1.html">Probar en LAB v1</a> · <a href="../v03.html">Ver LIVE v0.3 + motor</a> · <a href="./">Editor antiguo (respaldo)</a></p>
+<section class="card">
+<h2>Canción y contenido</h2>
+<label>Seleccionar canción<select id="songs"></select></label>
+<div class="grid">
+<label>Título<input id="title"></label>
+<label>Tonalidad<input id="tono" placeholder="Ej. C, F#m, Bb"></label>
+<label>Tempo (BPM)<input id="bpm" type="number" min="30" max="300"></label>
+<label>Banco mostrado<input id="bank" placeholder="Ej. C1"></label>
+</div>
+<label>Estado inicial de la canción<select id="initial"></select></label>
+<label>Lead sheet (JSON estructurado; opcional)<textarea id="lead" spellcheck="false" placeholder='{"sections":[{"letter":"A","label":"INTRO","bars":[["C","","",""],["G","","",""]]}]}'></textarea></label>
+<button id="saveSong">Guardar datos de canción</button>
+</section>
+<section class="card">
+<h2>Estados musicales</h2>
+<label>Estado seleccionado<select id="states"></select></label>
+<div class="grid">
+<label>Nombre del estado<input id="stateName"></label>
+<label>Posición en matriz visual (1–9)<input id="displayIndex" type="number" min="1" max="9"></label>
+<label>Referencia patch GT (solo informativa)<input id="gtPatch" type="number" min="0" max="127"></label>
+</div>
+<button id="saveState">Guardar estado</button>
+<button id="addState">Añadir estado</button>
+<button id="removeState">Eliminar estado</button>
+</section>
+<section class="card">
+<h2>Rompecabezas MIDI: asignaciones</h2>
+<p class="muted">Cada par CC + valor es una coordenada. El mismo mensaje puede tener varias acciones, pero asignar varios estados musicales suele resultar contradictorio.</p>
+<div class="grid">
+<label>CC<input id="cc" type="number" min="0" max="127" value="26"></label>
+<label>Valor<input id="value" type="number" min="0" max="127" value="127"></label>
+<label>Estado que activará<select id="target"></select></label>
+</div>
+<button id="addBinding">Asignar CC + valor al estado</button>
+<label>Seleccionar asignación existente<select id="bindings"></select></label>
+<label>Acciones de esa asignación (JSON)
+<textarea id="actions" spellcheck="false"></textarea></label>
+<button id="saveActions">Guardar acciones de esta asignación</button>
+<button id="removeBinding">Eliminar asignación</button>
+<p id="warning" class="muted"></p>
+</section>
+<section class="card">
+<h2>Biblioteca</h2>
+<button id="import">Importar JSON</button><input id="file" type="file" accept=".json,application/json" hidden>
+<button id="export">Exportar JSON</button>
+<button id="reset">Restaurar datos de ejemplo</button>
+<p id="notice" role="status"></p>
+<small>Guarda en <code>hudLibraryV1</code> del navegador. La versión anterior del editor y LAB usan otras claves y no se modifican.</small>
+</section>
+<script type="module">
+import {normalizeLibrary,validateLibrary,SCHEMA_VERSION} from "../core/engine-v1.mjs";
+const $=id=>document.getElementById(id),KEY="hudLibraryV1";
+const clone=x=>JSON.parse(JSON.stringify(x));
+const uid=()=>("hud-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8));
+let db,selectedSongId="",selectedStateId="",selectedBindingKey="";
+function notice(msg){$("notice").textContent=msg;}
+function song(){return db.songs.find(s=>s.id===selectedSongId);}
+function state(){return db.states.find(s=>s.id===selectedStateId);}
+function keys(b){return b.cc+":"+b.value;}
+function binding(){return db.bindings.find(b=>keys(b)===selectedBindingKey);}
+function commit(change){
+ const backup=clone(db);
+ try{
+  change();
+  const fixed=normalizeLibrary(db);validateLibrary(fixed);
+  db=fixed;db.revision=(db.revision||0)+1;db.updatedAt=new Date().toISOString();
+  const previous=localStorage.getItem(KEY);
+  if(previous)localStorage.setItem("hudLibraryV1Backup",previous);
+  localStorage.setItem(KEY,JSON.stringify(db));
+  render();notice("Configuración guardada localmente. LIVE y LAB cargarán esta biblioteca desde el mismo origen.");
+ }catch(e){db=backup;render();notice("No se guardó: "+e.message);}
+}
+function selectOptions(el,items,selected){
+ el.replaceChildren(...items.map(([value,label])=>new Option(label,value)));
+ if(items.some(([value])=>value===selected))el.value=selected;
+}
+function render(){
+ if(!db)return;
+ const s=song()||db.songs[0];selectedSongId=s.id;
+ const st=state()?.songId===s.id?state():db.states.find(x=>x.id===s.stateIds[0]);
+ selectedStateId=st.id;
+ selectOptions($("songs"),db.songs.map(x=>[x.id,x.title]),s.id);
+ $("title").value=s.title;$("tono").value=s.tono||"";$("bpm").value=s.tempoBpm??"";
+ $("bank").value=s.bank||"";
+ $("lead").value=s.leadSheet?JSON.stringify(s.leadSheet,null,2):"";
+ selectOptions($("initial"),s.stateIds.map(id=>[id,db.states.find(x=>x.id===id)?.name||id]),s.initialStateId);
+ selectOptions($("states"),s.stateIds.map(id=>[id,db.states.find(x=>x.id===id)?.name||id]),st.id);
+ $("stateName").value=st.name;$("displayIndex").value=st.displayIndex==null?"":st.displayIndex+1;
+ $("gtPatch").value=st.gtPatch??"";
+ $("removeState").disabled=s.stateIds.length<=1;
+ selectOptions($("target"),db.states.map(x=>[x.id,x.name+" · "+db.songs.find(s=>s.id===x.songId)?.title]),st.id);
+ const list=db.bindings.map(b=>[keys(b),"CC "+b.cc+" / "+b.value+" · "+b.actions.length+" acción(es)"]);
+ if(!list.some(([key])=>key===selectedBindingKey))selectedBindingKey=list[0]?.[0]||"";
+ selectOptions($("bindings"),list,selectedBindingKey);
+ $("actions").value=binding()?JSON.stringify(binding().actions,null,2):"";
+ $("saveActions").disabled=$("removeBinding").disabled=!binding();
+ $("warning").textContent=db.bindings.filter(b=>b.actions.filter(a=>a.type==="ACTIVATE_STATE").length>1)
+  .map(b=>"Posible conflicto: CC "+b.cc+" valor "+b.value+" activa varios estados.").join(" ")||"Sin conflictos de varios estados detectados.";
+}
+$("songs").onchange=e=>{selectedSongId=e.target.value;selectedStateId="";render();};
+$("states").onchange=e=>{selectedStateId=e.target.value;render();};
+$("bindings").onchange=e=>{selectedBindingKey=e.target.value;render();};
+$("saveSong").onclick=()=>commit(()=>{
+ const s=song();s.title=$("title").value.trim()||"Sin título";
+ s.tono=$("tono").value.trim()||null;
+ s.tempoBpm=$("bpm").value===""?null:Number($("bpm").value);
+ s.bank=$("bank").value.trim()||null;
+ s.initialStateId=$("initial").value;
+ s.leadSheet=$("lead").value.trim()?JSON.parse($("lead").value):null;
+});
+$("saveState").onclick=()=>commit(()=>{
+ const st=state();st.name=$("stateName").value.trim()||"Estado";
+ st.displayIndex=$("displayIndex").value===""?null:Number($("displayIndex").value)-1;
+ if(st.displayIndex!==null && (!Number.isInteger(st.displayIndex)||st.displayIndex<0||st.displayIndex>8))
+  throw Error("Posición de matriz fuera de 1–9");
+ st.gtPatch=$("gtPatch").value===""?null:Number($("gtPatch").value);
+});
+$("addState").onclick=()=>commit(()=>{
+ const s=song(),id=uid();
+ db.states.push({id,songId:s.id,name:"Nuevo estado",displayIndex:null,gtPatch:null,indicators:[]});
+ s.stateIds.push(id);selectedStateId=id;
+});
+$("removeState").onclick=()=>{
+ const s=song();if(s.stateIds.length<=1)return;
+ if(!confirm("¿Eliminar estado y sus asociaciones MIDI?"))return;
+ commit(()=>{
+  const id=selectedStateId;s.stateIds=s.stateIds.filter(x=>x!==id);
+  if(s.initialStateId===id)s.initialStateId=s.stateIds[0];
+  db.states=db.states.filter(x=>x.id!==id);
+  for(const b of db.bindings)b.actions=b.actions.filter(a=>a.stateId!==id);
+  db.bindings=db.bindings.filter(b=>b.actions.length);
+  selectedStateId=s.stateIds[0];
+ });
+};
+$("addBinding").onclick=()=>{
+ const cc=Number($("cc").value),value=Number($("value").value),target=$("target").value;
+ if(!Number.isInteger(cc)||cc<0||cc>127||!Number.isInteger(value)||value<0||value>127){notice("CC y valor deben ser enteros 0–127");return;}
+ const existing=db.bindings.find(b=>b.cc===cc&&b.value===value);
+ if(existing && existing.actions.some(a=>a.type==="ACTIVATE_STATE" && a.stateId!==target)){
+  if(!confirm("Este mensaje ya activa otro estado. ¿Añadir una segunda activación? El resultado final seguirá el orden de acciones."))return;
+ }
+ commit(()=>{
+  let b=db.bindings.find(x=>x.cc===cc&&x.value===value);
+  if(!b){b={cc,value,actions:[]};db.bindings.push(b);}
+  if(!b.actions.some(a=>a.type==="ACTIVATE_STATE"&&a.stateId===target))
+   b.actions.push({type:"ACTIVATE_STATE",stateId:target});
+  selectedBindingKey=keys(b);
+ });
+};
+$("saveActions").onclick=()=>commit(()=>{
+ const a=JSON.parse($("actions").value);
+ if(!Array.isArray(a))throw Error("Las acciones deben ser una lista JSON");
+ binding().actions=a;
+});
+$("removeBinding").onclick=()=>{if(!binding())return;commit(()=>{
+ db.bindings=db.bindings.filter(b=>keys(b)!==selectedBindingKey);selectedBindingKey="";
+});};
+$("import").onclick=()=>$("file").click();
+$("file").onchange=async e=>{
+ const f=e.target.files?.[0];e.target.value="";if(!f)return;
+ try{
+  if(f.size>500000)throw Error("Archivo demasiado grande");
+  const candidate=normalizeLibrary(JSON.parse(await f.text()));validateLibrary(candidate);
+  const previous=localStorage.getItem(KEY);
+  if(previous)localStorage.setItem("hudLibraryV1Backup",previous);
+  db=candidate;localStorage.setItem(KEY,JSON.stringify(db));
+  selectedSongId="";selectedStateId="";selectedBindingKey="";render();notice("Biblioteca importada");
+ }catch(err){notice("Importación rechazada: "+err.message);}
+};
+$("export").onclick=()=>{
+ if(!db)return;
+ const u=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}));
+ const a=document.createElement("a");a.href=u;a.download="midi-hud-editor-v1.json";a.click();
+ setTimeout(()=>URL.revokeObjectURL(u),5000);
+};
+$("reset").onclick=async()=>{
+ if(!confirm("¿Sustituir la biblioteca del editor con datos de ejemplo?"))return;
+ try{
+  const r=await fetch("../config/midi-hud-data-v2.json",{cache:"no-store"});
+  const candidate=normalizeLibrary(await r.json());validateLibrary(candidate);
+  const old=localStorage.getItem(KEY);
+  if(old)localStorage.setItem("hudLibraryV1Backup",old);
+  db=candidate;localStorage.setItem(KEY,JSON.stringify(db));
+  selectedSongId="";selectedStateId="";selectedBindingKey="";render();notice("Ejemplo restaurado");
+ }catch(e){notice("Error: "+e.message);}
+};
+(async()=>{
+ try{
+  let candidate;const saved=localStorage.getItem(KEY);
+  if(saved){try{candidate=normalizeLibrary(JSON.parse(saved));validateLibrary(candidate);}catch{}}
+  if(!candidate){
+   const r=await fetch("../config/midi-hud-data-v2.json");if(!r.ok)throw Error("Ejemplo no accesible");
+   candidate=normalizeLibrary(await r.json());validateLibrary(candidate);
+  }
+  db=candidate;selectedSongId=db.songs[0].id;render();
+  notice("Editor "+SCHEMA_VERSION+" listo. El canal global se configura en LIVE o LAB.");
+ }catch(e){notice("No se inició: "+e.message);}
+})();
+</script></body></html>
