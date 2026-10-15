@@ -92,7 +92,7 @@ test("LIVE aplica el icono y el gradiente configurados, sin salida MIDI",()=>{
 });
 test("entrada predeterminada apunta a v3 y v2 sigue disponible",()=>{
  assert.match(entry,/v3\.html/);
- assert.match(doc,/src="\.\/v3\.mjs"/);
+ assert.match(doc,/src="\.\/v3\.mjs(?:\?v=[^"]+)?"\/?>/);
 });
 
 test("en pantallas de iPhone la biblioteca se despliega únicamente si se necesita",()=>{
