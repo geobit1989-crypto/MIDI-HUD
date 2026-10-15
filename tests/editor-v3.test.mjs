@@ -103,3 +103,11 @@ test("en pantallas de iPhone la biblioteca se despliega únicamente si se necesi
  assert.match(source,/function toggleLibrary\(force\)/);
  assert.match(source,/\$\("libraryToggle"\)\.onclick=\(\)=>toggleLibrary\(\)/);
 });
+
+test("arranque inicial declara la fuente JSON de repertorios antes de usarla",()=>{
+ assert.match(source,/const STORAGE="hudLibraryV1",BACKUP="hudLibraryV1Backup",SOURCE="\.\.\/config\/midi-hud-data-v2\.json";/);
+ assert.match(source,/fetch\(SOURCE,\{cache:"no-store"\}\)/);
+ assert.match(source,/const saved=localStorage\.getItem\(STORAGE\)/);
+ assert.match(source,/if\(saved\)/);
+ assert.match(source,/if\(!library\)/);
+});
