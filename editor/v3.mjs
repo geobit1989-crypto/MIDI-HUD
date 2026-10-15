@@ -88,18 +88,25 @@ function updateTab(tab){
  if(!allowLeaving())return;
  activeTab=tab;render();
 }
+function toggleLibrary(force){
+ const sidebar=$("editorSidebar"),toggle=$("libraryToggle");
+ const open=force===undefined?!sidebar.classList.contains("is-open"):!!force;
+ sidebar.classList.toggle("is-open",open);
+ toggle.setAttribute("aria-expanded",String(open));
+ toggle.textContent=open?"Cerrar biblioteca":"Biblioteca";
+}
 function useSong(id){
  if(!currentRep().songIds.includes(id)||!allowLeaving())return;
  activeSong=id;activeState=currentSong().stateIds[0];
  activeModule=currentState().displayIndex??0;
- leadSource=formatLeadSheetText(currentSong().leadSheet);render();
+ leadSource=formatLeadSheetText(currentSong().leadSheet);toggleLibrary(false);render();
 }
 function useRepertoire(id){
  if(!working.repertoires.some(x=>x.id===id)||!allowLeaving())return;
  activeRep=id;activeSong=currentRep().songIds[0];
  activeState=currentSong().stateIds[0];
  activeModule=currentState().displayIndex??0;
- leadSource=formatLeadSheetText(currentSong().leadSheet);render();
+ leadSource=formatLeadSheetText(currentSong().leadSheet);toggleLibrary(false);render();
 }
 function persistLibrary(next,message){
  validateLibrary(next);
@@ -489,6 +496,7 @@ function render(){
  syncStatus();
 }
 function register(){
+ $("libraryToggle").onclick=()=>toggleLibrary();
  for(const node of document.querySelectorAll("[data-tab]"))
   node.onclick=()=>updateTab(node.dataset.tab);
  $("repSelect").onchange=e=>useRepertoire(e.target.value);
