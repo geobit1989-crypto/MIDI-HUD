@@ -17,7 +17,7 @@ import {
  */
 const $=id=>document.getElementById(id);
 const copy=x=>JSON.parse(JSON.stringify(x));
-const STORAGE="hudLibraryV1",BACKUP="hudLibraryV1Backup";
+const STORAGE="hudLibraryV1",BACKUP="hudLibraryV1Backup",SOURCE="../config/midi-hud-data-v2.json";
 const SECTIONS=["song","states","sheet","midi"];
 const LABELS={song:"Canción",states:"Estados",sheet:"Lead sheet",midi:"MIDI"};
 let committed=null,working=null,activeRep=null,activeSong=null,activeState=null;
