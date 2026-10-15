@@ -103,3 +103,16 @@ test("el algoritmo elige letra mayor en un lead sheet sencillo que en uno denso"
   }
  }
 });
+
+test("los nombres de secciones tienen límite lateral y no invaden compases",()=>{
+ assert.match(css,/\.lead-sheet \.sheet-section\{\s*grid-template-columns:minmax\(0,17\.6%\) minmax\(0,82\.4%\)/);
+ assert.match(css,/\.lead-sheet \.section-label\{\s*width:100%;\s*max-width:100%;\s*min-width:0/);
+ assert.match(css,/\.lead-sheet \.section-label > span:last-child\{\s*flex:1 1 0;\s*max-width:100%/);
+ assert.match(css,/\.lead-sheet \.chord-lines\{\s*min-width:0;\s*overflow:hidden/);
+ assert.match(css,/flex-direction:column/);
+});
+test("el ajuste tipográfico mide palabras completas para conservar nombres legibles",()=>{
+ const source=readFileSync(new URL("../live/sheet-fit-v1.mjs",import.meta.url),"utf8");
+ assert.match(source,/const words=\(label\.textContent\|\|""\)\.split\(\/\\s\+\/\)/);
+ assert.match(source,/ctx\.measureText\(word\)\.width>available-2/);
+});
