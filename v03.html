@@ -566,7 +566,11 @@ function sheet(source){
   const rows=Math.max(1,Math.ceil(bars.length/columns));lines.style.setProperty("--rows",String(rows));
   for(let row=0;row<rows;row++){
    const line=document.createElement("div");line.className="chord-line";
-   for(let j=0;j<columns;j++){
+   // Un renglón con uno o dos compases usa el ancho disponible:
+   // no reservar casillas vacías que obliguen a reducir los acordes.
+   const rowBars=Math.max(1,Math.min(columns,bars.length-row*columns));
+   line.style.gridTemplateColumns="repeat("+rowBars+",minmax(0,1fr))";
+   for(let j=0;j<rowBars;j++){
     const bar=document.createElement("div");bar.className="bar";
     const index=row*columns+j;
     if(section.repeatStartBars?.includes(index))bar.classList.add("repeat-start");
