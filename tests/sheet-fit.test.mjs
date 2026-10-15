@@ -12,7 +12,8 @@ test("secciones pequeñas usan más anchura; canciones largas permanecen en cuat
  assert.equal(chooseSheetColumns([{bars:[["C","","",""],["F","","",""]]}]),2);
  assert.equal(chooseSheetColumns([{bars:[["C"],["F"],["G"]]}]),3);
  assert.equal(chooseSheetColumns(sample.songs[0].leadSheet.sections),4);
- assert.deepEqual(sheetRowCounts(sample.songs[0].leadSheet.sections,4),[1,3,1,1]);
+ const denseSections=[{bars:Array(2).fill(["C"])},{bars:Array(12).fill(["G"])},{bars:Array(4).fill(["Am"])},{bars:Array(4).fill(["F"])}];
+ assert.deepEqual(sheetRowCounts(denseSections,4),[1,3,1,1]);
  assert.deepEqual(sheetRowCounts([{bars:[["C"]]},{bars:[["C"],["G"]]}],2),[1,1]);
 });
 
