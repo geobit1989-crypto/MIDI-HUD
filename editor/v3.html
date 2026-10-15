@@ -165,6 +165,15 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 @media(max-width:1150px){.state-module-layout{grid-template-columns:1fr}}
 @media(max-width:800px){.appearance-layout{grid-template-columns:1fr}.module-selector{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
+
+/* En móvil el contenido de edición tiene prioridad; biblioteca desplegable. */
+#libraryToggle{display:none}
+@media(max-width:700px){
+ #libraryToggle{display:inline-flex;align-items:center;justify-content:center;background:#173a4d;border-color:#538ba5}
+ .workspace>.side{display:none}
+ .workspace>.side.is-open{display:block}
+ .workspace>.main{min-height:unset}
+}
 </style>
 </head>
 <body>
@@ -175,6 +184,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <small>Configura repertorios, estados y comandos visuales. Sin MIDI de salida.</small>
   </div>
   <div class="top-actions">
+    <button type="button" id="libraryToggle" aria-expanded="false" aria-controls="editorSidebar">Biblioteca</button>
     <span class="status-chip" id="saveStatus">Sin cambios</span>
     <button type="button" id="undo" title="Recuperar el último guardado anterior">Deshacer cambio</button>
     <button type="button" id="importBtn">Importar</button>
@@ -184,7 +194,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
   </div>
 </header>
 <div class="workspace">
-<aside class="side" aria-label="Biblioteca de repertorios y canciones">
+<aside class="side" id="editorSidebar" aria-label="Biblioteca de repertorios y canciones">
   <div class="sidebar-row"><span class="heading">Repertorio</span></div>
   <label class="field" for="repSelect">Repertorio activo
     <select id="repSelect"></select>
