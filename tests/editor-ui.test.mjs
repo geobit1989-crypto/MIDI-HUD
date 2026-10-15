@@ -36,7 +36,7 @@ test("se preserva la versión anterior del editor para recuperación",()=>{
  const backup=readFileSync(new URL("../editor/legacy.html",import.meta.url),"utf8");
  const index=readFileSync(new URL("../editor/index.html",import.meta.url),"utf8");
  assert.match(backup,/Configura|Configuración/);
- assert.match(index,/v2\.html/);
+ assert.match(index,/v3\.html/);
 });
 
 test("texto y preview reemplazan los botones de guardar manualmente",()=>{
