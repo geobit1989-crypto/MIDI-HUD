@@ -286,6 +286,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 </style>
 <link rel="stylesheet" href="./live/responsive-v1.css?v=20261015-iphone2">
 <link rel="stylesheet" href="./live/config-menu-v2.css?v=20261015-iphone2">
+<link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261015-fit1">
 </head>
 <body>
   <!-- MIDI HUD sólo visualiza información. No crea, envía ni recibe comandos MIDI. -->
@@ -412,9 +413,11 @@ import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs";
 import {resolveModuleVisual} from "./core/module-visuals.mjs";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {openBrowserMidi} from "./core/midi-browser.mjs";
+import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs";
 const SETTINGS=readSettings(localStorage),EDITOR_KEY="hudLibraryV1";
 const $=s=>document.querySelector(s);
 let engine,library,midiPort;
+const adaptiveSheet=installAdaptiveLeadSheet(document.querySelector(".lead-sheet"));
 const gear=$(".topbar .settings");
 gear.tabIndex=0;gear.setAttribute("role","button");
 gear.setAttribute("title","Configuración MIDI HUD");
@@ -543,11 +546,15 @@ function sheet(source){
   root.replaceChildren();
   const msg=document.createElement("p");msg.textContent="Lead sheet pendiente de configurar en el editor";
   msg.style.cssText="font-size:clamp(14px,2cqw,24px);align-self:center;text-align:center";
+  root.style.removeProperty("--sheet-cols");
+  root.style.removeProperty("grid-template-rows");
   root.append(msg);return;
  }
  root.replaceChildren();
  const sections=source.sections.slice(0,4);
- root.style.gridTemplateRows=sections.map(section=>Math.max(1,Math.ceil((section.bars||[]).length/4))+"fr").join(" ");
+ const columns=chooseSheetColumns(sections);
+ root.style.setProperty("--sheet-cols",String(columns));
+ root.style.gridTemplateRows=sheetRowCounts(sections,columns).map(n=>n+"fr").join(" ");
  for(const section of sections){
   const block=document.createElement("div");block.className="sheet-section";
   const heading=document.createElement("div");heading.className="section-label";
@@ -556,12 +563,12 @@ function sheet(source){
   heading.append(letter,label);block.append(heading);
   const lines=document.createElement("div");lines.className="chord-lines";
   const bars=Array.isArray(section.bars)?section.bars:[];
-  const rows=Math.max(1,Math.ceil(bars.length/4));lines.style.setProperty("--rows",String(rows));
+  const rows=Math.max(1,Math.ceil(bars.length/columns));lines.style.setProperty("--rows",String(rows));
   for(let row=0;row<rows;row++){
    const line=document.createElement("div");line.className="chord-line";
-   for(let j=0;j<4;j++){
+   for(let j=0;j<columns;j++){
     const bar=document.createElement("div");bar.className="bar";
-    const index=row*4+j;
+    const index=row*columns+j;
     if(section.repeatStartBars?.includes(index))bar.classList.add("repeat-start");
     if(section.repeatEndBars?.includes(index))bar.classList.add("repeat-end");
     const beats=bars[index]||["","","",""];
@@ -588,9 +595,11 @@ function sheet(source){
       bar.setAttribute("aria-label","Repetición del compás anterior");
       bar.append(svg);
     }else{
-      for(const text of beats.slice(0,4)){
+      for(const occupied of occupiedBeatSpans(beats)){
         const beat=document.createElement("span");beat.className="beat";
-        beat.textContent=String(text||"");bar.append(beat);
+        beat.textContent=occupied.text;
+        beat.style.gridColumn=occupied.start+" / span "+occupied.span;
+        bar.append(beat);
       }
     }
     line.append(bar);
@@ -599,6 +608,7 @@ function sheet(source){
   }
   block.append(lines);root.append(block);
  }
+ adaptiveSheet.schedule();
 }
 function render(){
  if(!engine)return;
