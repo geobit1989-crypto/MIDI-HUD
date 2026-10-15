@@ -94,3 +94,12 @@ test("entrada predeterminada apunta a v3 y v2 sigue disponible",()=>{
  assert.match(entry,/v3\.html/);
  assert.match(doc,/src="\.\/v3\.mjs"/);
 });
+
+test("en pantallas de iPhone la biblioteca se despliega únicamente si se necesita",()=>{
+ assert.match(doc,/id="libraryToggle"/);
+ assert.match(doc,/id="editorSidebar"/);
+ assert.match(doc,/\.workspace>\.side\{display:none\}/);
+ assert.match(doc,/\.workspace>\.side\.is-open\{display:block\}/);
+ assert.match(source,/function toggleLibrary\(force\)/);
+ assert.match(source,/\$\("libraryToggle"\)\.onclick=\(\)=>toggleLibrary\(\)/);
+});
