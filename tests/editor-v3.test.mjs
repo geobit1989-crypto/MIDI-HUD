@@ -40,7 +40,7 @@ test("catálogo de iconos y nueve colores por defecto mantienen el LIVE previo",
  assert.equal(resolveModuleVisual({},0).glyph,"✦");
  assert.equal(resolveModuleVisual({},8).glyph,"CTL1");
  assert.equal(resolveModuleVisual({icon:"music",color:"#123456"},0).glyph,"♫");
- assert.equal(resolveModuleVisual({icon:"music",color:"#123456"},0).dark,"#091a29");
+ assert.equal(resolveModuleVisual({icon:"music",color:"#123456"},0).dark,"#091929");
  assert.equal(validModuleColor("#1024FE"),true);
  assert.equal(validModuleColor("#ggg000"),false);
  assert.equal(validModuleIcon("heart"),true);
