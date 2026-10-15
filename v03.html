@@ -286,7 +286,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 </style>
 <link rel="stylesheet" href="./live/responsive-v1.css?v=20261015-iphone2">
 <link rel="stylesheet" href="./live/config-menu-v2.css?v=20261015-iphone2">
-<link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261015-fit1">
+<link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261015-fit2">
 </head>
 <body>
   <!-- MIDI HUD sólo visualiza información. No crea, envía ni recibe comandos MIDI. -->
@@ -413,7 +413,7 @@ import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs";
 import {resolveModuleVisual} from "./core/module-visuals.mjs";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {openBrowserMidi} from "./core/midi-browser.mjs";
-import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs";
+import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit2";
 const SETTINGS=readSettings(localStorage),EDITOR_KEY="hudLibraryV1";
 const $=s=>document.querySelector(s);
 let engine,library,midiPort;
