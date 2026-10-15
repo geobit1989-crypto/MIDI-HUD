@@ -50,6 +50,7 @@ test("LIVE usa ajuste real de fuentes según anchura y filas y lo recalcula en r
  assert.match(html,/adaptiveSheet\.schedule\(\)/);
  assert.match(html,/sheetRowCounts\(sections,columns\)/);
  assert.match(html,/occupiedBeatSpans\(beats\)/);
+ assert.match(html,/const rowBars=Math\.max\(1,Math\.min\(columns,bars\.length-row\*columns\)\)/);
  assert.match(css,/--sheet-chord-size/);
 });
 test("el algoritmo elige letra mayor en un lead sheet sencillo que en uno denso",()=>{
