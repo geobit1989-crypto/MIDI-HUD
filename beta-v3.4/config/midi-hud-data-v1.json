@@ -1,0 +1,108 @@
+{
+  "format": "midi-hud-repertoire",
+  "schemaVersion": "1.0.0",
+  "libraryId": "sig-main",
+  "revision": 2,
+  "updatedAt": "2026-10-14T16:20:00+01:00",
+  "midi": {
+    "channel": 1,
+    "programNumbering": "zero-based",
+    "cc": {
+      "morph": 20,
+      "wah": 22,
+      "tap": 23,
+      "tuner": 24
+    },
+    "provisional": true
+  },
+  "repertoires": [
+    {
+      "id": "worship-main",
+      "name": "Worship",
+      "songIds": [
+        "song-demo"
+      ]
+    }
+  ],
+  "songs": [
+    {
+      "id": "song-demo",
+      "title": "Worship - demo",
+      "tempoBpm": null,
+      "notes": "Datos de ensayo; no corresponde a una canción real",
+      "presetIds": [
+        "preset-clean",
+        "preset-drive",
+        "preset-solo"
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "id": "preset-clean",
+      "name": "Crystal Clean",
+      "songId": "song-demo",
+      "programChange": 0,
+      "morph": {
+        "onLoad": 0,
+        "min": 0,
+        "max": 127,
+        "assignment": "ambient",
+        "parameters": {
+          "reverbLongPercent": [
+            10,
+            75
+          ],
+          "delayPercent": [
+            8,
+            60
+          ]
+        }
+      }
+    },
+    {
+      "id": "preset-drive",
+      "name": "Worship Overdrive",
+      "songId": "song-demo",
+      "programChange": 1,
+      "morph": {
+        "onLoad": 0,
+        "min": 0,
+        "max": 127,
+        "assignment": "none",
+        "parameters": {}
+      }
+    },
+    {
+      "id": "preset-solo",
+      "name": "Worship Solo",
+      "songId": "song-demo",
+      "programChange": 2,
+      "morph": {
+        "onLoad": 0,
+        "min": 0,
+        "max": 127,
+        "assignment": "soloBoost",
+        "parameters": {
+          "boostDb": [
+            0,
+            3
+          ]
+        }
+      }
+    }
+  ],
+  "controls": {
+    "morph": {
+      "cc": 20,
+      "initialDisplayValue": 0,
+      "resetOnPresetLoad": true
+    }
+  },
+  "sync": {
+    "mode": "manual-file",
+    "conflictPolicy": "ask-user",
+    "lastSyncedRevision": null
+  },
+  "extensions": {}
+}

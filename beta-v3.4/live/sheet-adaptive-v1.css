@@ -1,0 +1,141 @@
+/* MIDI HUD LIVE adaptive sheet v1.
+   5 viewport percentage points are returned to controls.
+   The sheet fits its own glyphs instead of using vw-based fixed typography. */
+
+.lead-sheet{
+ --sheet-chord-size:18px;
+ --sheet-label-size:14px;
+ --sheet-letter-size:12px;
+ --sheet-repeat-size:18px;
+ --sheet-bar-inset:3px;
+ container-type:normal;
+}
+.lead-sheet .chord-line{
+ display:grid;
+ grid-template-columns:repeat(var(--sheet-cols,4),minmax(0,1fr));
+ min-height:0;
+}
+.lead-sheet .bar{
+ font-size:var(--sheet-chord-size);
+ line-height:1.08;
+ min-width:0;
+}
+.lead-sheet .bar:not(.slash){
+ display:grid;
+ grid-template-columns:repeat(4,minmax(0,1fr));
+ align-content:start;
+}
+.lead-sheet .bar .beat{
+ font:inherit;
+ line-height:1.08;
+ padding:var(--sheet-bar-inset) 1px;
+ align-self:start;
+ justify-self:stretch;
+ white-space:nowrap;
+ min-width:0;
+}
+.lead-sheet .section-label{
+ font-size:var(--sheet-label-size);
+ line-height:1.13;
+ overflow-wrap:anywhere;
+ white-space:normal;
+ min-width:0;
+}
+.lead-sheet .section-letter{
+ font-size:var(--sheet-letter-size);
+ line-height:1.14;
+}
+.lead-sheet .section-label > span:last-child{
+ min-width:0;
+ max-width:100%;
+ white-space:normal;
+ overflow-wrap:normal;
+ word-break:normal;
+ hyphens:none;
+}
+/* Repetir compás: a la ALTURA de los acordes, jamás centrado verticalmente. */
+.lead-sheet .bar.repeat-measure{
+ position:relative;
+ display:block;
+ text-align:left;
+}
+.lead-sheet .bar.repeat-measure .repeat-glyph{
+ position:absolute;
+ top:var(--sheet-bar-inset);
+ bottom:auto;
+ left:50%;
+ transform:translateX(-50%);
+ width:1em;
+ height:.84em;
+ font-size:var(--sheet-repeat-size);
+ margin:0;
+ pointer-events:none;
+}
+/* +5 puntos porcentuales de alto para controles respecto al layout anterior. */
+@media (orientation:landscape){
+ .lead-sheet{
+  flex:0 0 max(155px,calc(clamp(190px,38dvh,410px) - 5dvh));
+ }
+}
+@media (orientation:landscape) and (max-height:740px){
+ .lead-sheet{flex-basis:max(135px,29dvh);min-height:0}
+}
+@media (orientation:portrait) and (min-width:601px){
+ .lead-sheet{flex:0 0 max(130px,calc(clamp(155px,28dvh,245px) - 5dvh))}
+ .hud-panel{flex:1 1 0;min-height:0}
+}
+@media (orientation:portrait) and (max-width:600px){
+ .lead-sheet{flex:1 1 0;min-height:0}
+ .hud-panel{flex:0 0 auto;min-height:0}
+ .switch-grid{
+  flex:0 0 auto;
+  height:calc(clamp(162px,30dvh,258px) + 5dvh);
+  max-height:none;
+ }
+}
+@media (orientation:portrait) and (max-width:600px) and (max-height:650px){
+ .switch-grid{height:calc(clamp(141px,27dvh,185px) + 5dvh)}
+}
+
+
+/* La columna de títulos es una frontera estricta: ningún título invade acordes. */
+.lead-sheet .sheet-section{
+ grid-template-columns:minmax(0,17.6%) minmax(0,82.4%);
+ min-width:0;
+ overflow:hidden;
+}
+.lead-sheet .section-label{
+ width:100%;
+ max-width:100%;
+ min-width:0;
+ box-sizing:border-box;
+ overflow:hidden;
+ gap:clamp(2px,.7cqw,12px);
+ padding-right:clamp(3px,.65cqw,10px);
+}
+.lead-sheet .section-label > span:last-child{
+ flex:1 1 0;
+ max-width:100%;
+ min-width:0;
+ overflow:hidden;
+ overflow-wrap:normal;
+ word-break:normal;
+ hyphens:none;
+}
+.lead-sheet .chord-lines{
+ min-width:0;
+ overflow:hidden;
+}
+@media (max-width:600px) and (orientation:portrait){
+ .lead-sheet .section-label{
+  flex-direction:column;
+  align-items:flex-start;
+  gap:1px;
+  padding-right:2px;
+ }
+ .lead-sheet .section-label > span:last-child{
+  flex:0 1 auto;
+  width:100%;
+ }
+ .lead-sheet .section-letter{flex:0 0 auto}
+}

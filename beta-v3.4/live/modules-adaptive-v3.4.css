@@ -1,0 +1,27 @@
+/* Filas iguales, anchos iguales por fila; dimensiones independientes del estado. */
+.switch-grid{display:flex;flex-direction:column;gap:4px}
+.switch-grid .adaptive-module-row{display:flex;flex:1 1 0;gap:4px;width:100%;min-width:0;min-height:0;align-items:stretch}
+.switch-grid .adaptive-module-row>.switch,
+.switch-grid .adaptive-module-row>.expression{width:0;flex:1 1 0;min-width:0;min-height:0;height:auto;max-height:100%;box-sizing:border-box;overflow:hidden;container-type:size}
+.switch-grid .adaptive-module-row>.switch .details{min-width:0;max-width:100%;overflow:hidden}
+.switch-grid .adaptive-module-row>.switch .name,
+.switch-grid .adaptive-module-row>.switch .sub{overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;white-space:nowrap}
+.switch-grid .adaptive-module-row>.switch .name{font-size:clamp(9px,min(11cqw,25cqh),32px)}
+.switch-grid .adaptive-module-row>.switch .sub{font-size:clamp(7px,min(7cqw,17cqh),18px)}
+.switch-grid .adaptive-module-row>.expression{display:flex;flex-direction:column;justify-content:center;gap:5px;padding:5px 8px}
+.switch-grid .adaptive-expression .exhead{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;width:100%}
+.switch-grid .adaptive-expression .exlabel{display:flex;align-items:center;gap:5px;min-width:0}
+.switch-grid .adaptive-expression .exicon{display:inline-block;flex:0 0 auto;font-size:clamp(10px,min(10cqw,24cqh),25px)}
+.switch-grid .adaptive-expression .exname,
+.switch-grid .adaptive-expression .value{font-size:clamp(9px,min(10cqw,25cqh),28px);line-height:1.05}
+.switch-grid .adaptive-expression .exsub{display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(7px,min(7cqw,17cqh),17px)}
+.switch-grid .adaptive-expression .exmeter{display:block;width:100%;height:clamp(3px,6cqh,8px)}
+.switch-grid .gt{display:inline-block;border:1px solid currentColor;border-radius:4px;font-size:.81em;line-height:1;padding:0 .35em;margin-left:3px}
+.switch-grid .modules-empty{display:grid;place-items:center;flex:1;min-height:0;font-size:clamp(12px,2vw,18px);color:#bcd3e2;text-align:center;padding:10px}
+.expression-row[hidden]{display:none!important}
+@media (orientation:portrait) and (max-width:600px){
+ .switch-grid{flex:0 0 auto;height:calc(clamp(162px,30dvh,258px) + 5dvh)}
+}
+@media (orientation:portrait) and (max-width:600px) and (max-height:650px){
+ .switch-grid{height:calc(clamp(141px,27dvh,185px) + 5dvh)}
+}

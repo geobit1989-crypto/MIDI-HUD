@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08111b">
+<title>MIDI HUD · Editor v3.4</title>
+<style>
+:root{color-scheme:dark;--bg:#08111b;--card:#111f2d;--card-alt:#17293a;--line:#31485e;--muted:#b4c6d7;--txt:#f2f7fc;--accent:#5bd6f0;--accent-bg:#113c51;--bad:#ffaaa5;--good:#9fe6cc;--radius:13px}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+body{padding:clamp(10px,1.5vw,22px)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);border-radius:9px;padding:10px 13px;min-height:41px;background:#243b50}
+button:hover{border-color:#85c9dc;background:#2b4a61}
+button:disabled{opacity:.38;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #76ddef;outline-offset:2px}
+button.primary{background:#08718b;border-color:#31aec9;font-weight:700}
+button.primary:hover{background:#0a88a4}
+button.danger{color:#ffd4d2;border-color:#855358}
+button.ghost{background:transparent}
+button.small{font-size:13px;min-height:34px;padding:6px 9px}
+button.icon{padding:7px;min-width:38px;min-height:38px}
+button.active,.tabs button[aria-selected=true]{background:var(--accent-bg);border-color:var(--accent);color:white}
+a{color:#8ee8fc;text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,p{margin-top:0}
+h1{font-size:clamp(21px,2vw,29px);letter-spacing:-.5px;margin-bottom:0}
+h2{font-size:21px;margin-bottom:4px}
+h3{font-size:16px;margin-bottom:6px}
+small,.muted{color:var(--muted)}
+.heading{font-size:13px;font-weight:800;color:#acd4e8;text-transform:uppercase;letter-spacing:1px}
+.container{max-width:1450px;margin:auto}
+.top{display:flex;gap:20px;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap}
+.brandline{display:flex;align-items:baseline;gap:9px}
+.brandline b{color:#4ce2fa;font-size:21px;letter-spacing:-1px}
+.brandline span{color:#aac8d6}
+.top-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.status-chip{font-size:13px;color:var(--good);background:#10382d;border:1px solid #2c6b54;border-radius:25px;padding:6px 11px}
+.workspace{display:grid;grid-template-columns:minmax(240px,280px) minmax(0,1fr);gap:16px;align-items:start}
+.side,.main{border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
+.side{padding:16px;position:sticky;top:14px;min-height:520px}
+.main{padding:clamp(12px,2vw,25px);min-height:630px}
+.sidebar-row{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px}
+.ctrlrow{display:flex;flex-wrap:wrap;gap:6px}
+.field{display:block;font-weight:620;font-size:13px;color:#c6dceb}
+.field input,.field select,.field textarea{margin-top:6px}
+input:not([type=file]):not([type=checkbox]),select,textarea{background:#091929;border:1px solid #516b83;border-radius:8px;min-height:42px;padding:9px 11px;width:100%;color:#fff}
+textarea{resize:vertical;min-height:100px;font:13px/1.5 ui-monospace,"Cascadia Code",monospace}
+input[type=checkbox]{accent-color:#49d0ec;width:18px;height:18px}
+.help{font-size:13px;color:#bdd0dd;line-height:1.5}
+.group{display:flex;flex-direction:column;gap:7px}
+.song-list{display:flex;flex-direction:column;gap:5px;margin:13px 0 12px;max-height:min(60vh,700px);overflow-y:auto}
+.song-row{display:flex;gap:8px;align-items:center;border:1px solid transparent;border-radius:9px;padding:4px}
+.song-row.current{background:#0e3b50;border-color:#377e98}
+.song-row button{flex:1;background:transparent;border:0;text-align:left;min-width:0;overflow-wrap:anywhere;font-weight:600}
+.song-row button:hover{background:#193a4c}
+.song-row small{font-variant-numeric:tabular-nums}
+.song-num{width:18px;color:#99bbcc;font-weight:700;text-align:center;font-size:12px}
+hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+.main-head{display:flex;gap:8px;justify-content:space-between;align-items:start;flex-wrap:wrap}
+.main-head p{margin:5px 0 0;color:var(--muted)}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:11px;border-bottom:1px solid var(--line);margin:18px 0 20px}
+.tabs button{white-space:nowrap;background:transparent}
+[data-panel][hidden]{display:none!important}
+.panel-title{margin-bottom:18px}
+.panel-title p{color:var(--muted);margin:4px 0 0;max-width:780px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.grid.triple{grid-template-columns:repeat(3,minmax(0,1fr))}
+.formrow{display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:12px 0}
+.formrow>*{flex:1;min-width:110px}
+.formrow>.nonflex{flex:0 0 auto;min-width:0}
+.section-card{border:1px solid var(--line);background:var(--card-alt);padding:15px;border-radius:11px;margin:13px 0}
+.section-card>*:last-child{margin-bottom:0}
+.state-picker{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.state-picker button{font-size:14px}
+.module-grid,.matrix{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.module{background:linear-gradient(130deg,#142b44,#0a1c2c);border:1px solid #44647d;border-radius:11px;padding:12px;min-width:0}
+.module.selected{outline:2px solid var(--accent);background:linear-gradient(125deg,#11405c,#102338)}
+.module-index{font-size:12px;color:#94b3c7;margin-bottom:7px}
+.module label{display:block;font-size:12px;margin:9px 0;color:#c0d9e9}
+.module input{min-width:0}
+.sheet-sections{display:flex;flex-direction:column;gap:16px}
+.chord-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.measure{border:1px solid #3b5b71;padding:9px;border-radius:10px;background:#071725}
+.measure>header{display:flex;justify-content:space-between;align-items:center;gap:4px;color:#b4d4e3;font-size:12px;font-weight:700;margin-bottom:8px}
+.beats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.beat-input{min-width:0!important;text-align:center;padding:7px 2px!important;font-size:13px}
+.repeat-note{background:#1a3449;color:#bfe2f5;border-radius:5px;padding:8px;text-align:center;font-size:14px}
+.matrix{grid-template-columns:50px repeat(4,minmax(0,1fr));gap:6px}
+.matrix .cell{min-height:57px;padding:7px 5px;font-size:13px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center}
+.matrix .cell strong{font-size:15px}
+.matrix .cell span{font-size:11px;color:#bad1e0}
+.matrix .axis{display:flex;align-items:center;justify-content:center;color:#b7d0e1;font-weight:700;font-size:14px}
+.matrix .assigned{background:#173e49;border-color:#477f8d}
+.matrix .picked{outline:2px solid var(--accent);outline-offset:0}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;text-align:left;font-size:14px}
+th,td{padding:9px 8px;border-bottom:1px solid #2d465a;vertical-align:middle}
+th{color:#b9d3e4;font-size:13px}
+th:first-child{width:115px}
+.action-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line)}
+.action-row .name{min-width:160px;flex:1;font-weight:650}
+.action-actions{display:flex;gap:5px}
+.notice{border:1px solid #37667b;background:#0f3446;padding:11px 13px;border-radius:8px;min-height:45px;margin:14px 0;font-size:14px}
+.warning{border:1px solid #896b39;background:#312719;color:#ffe1a6;padding:9px 12px;border-radius:8px;margin:6px 0}
+.empty{border:1px dashed #52718b;padding:20px;text-align:center;border-radius:10px;color:#b9d2df}
+.foot{margin-top:16px;color:#a8bece;font-size:12px;text-align:right}
+@media(max-width:950px){.workspace{grid-template-columns:230px minmax(0,1fr)}.grid.triple{grid-template-columns:repeat(2,minmax(0,1fr))}.chord-list{grid-template-columns:1fr}}
+@media(max-width:700px){body{padding:8px}.workspace{grid-template-columns:1fr}.side{position:static;min-height:0;padding:12px}.song-list{max-height:220px}.main{min-height:450px}.grid,.grid.triple{grid-template-columns:1fr}.module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.top{padding:7px}.top-actions{gap:4px}.top-actions button{padding:7px}}
+@media(max-width:410px){.module-grid{grid-template-columns:1fr}.matrix{grid-template-columns:32px repeat(4,minmax(0,1fr));gap:3px}.matrix .cell{font-size:12px;padding:5px 2px}.beats{gap:3px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+.sheet-workspace{display:grid;grid-template-columns:minmax(290px,.94fr) minmax(0,1.06fr);align-items:start;gap:14px}
+.sheet-card{border:1px solid var(--line);background:#142638;border-radius:12px;padding:14px;min-width:0}
+.sheet-card h3{margin:0 0 9px}
+.sheet-source{display:grid;grid-template-columns:43px minmax(0,1fr);min-width:0}
+.sheet-gutter{position:relative;overflow:hidden;min-height:340px;background:#0a1828;color:#a5c3d7;border:1px solid #536e84;border-right:0;border-radius:8px 0 0 8px;user-select:none}
+.sheet-gutter-lines{position:absolute;inset:0 0 auto;padding:11px 0;will-change:transform}
+.sheet-line{font:14px/24px ui-monospace,monospace;height:24px;padding-right:8px;text-align:right}
+.sheet-line.invalid{background:#6a2933;color:white;font-weight:800;border-right:3px solid #ff7e86;padding-right:5px}
+.sheet-line.current:not(.invalid){background:#28485b;color:white}
+textarea.sheet-text{border:1px solid #536e84!important;border-radius:0 8px 8px 0!important;background:#081623!important;color:#f3fbff!important;padding:11px!important;resize:vertical;height:340px;min-height:340px;font:14px/24px ui-monospace,monospace;white-space:pre;tab-size:2;overflow:auto}
+.sheet-text[aria-invalid=true]{border-color:#ff727c!important}
+.sheet-helper{color:#b9d2df;font-size:12px;margin:9px 0;line-height:1.6}
+.sheet-editor-status{font-size:13px;line-height:1.5;color:#a6e6ef;font-weight:650;min-height:26px;margin:9px 0}
+.sheet-errors{display:flex;flex-direction:column;gap:5px;margin:8px 0}
+.sheet-error{background:#42222a;color:#ffe3e2;border:1px solid #ad6368;padding:8px;border-radius:7px;text-align:left;font-size:12px;font-weight:600}
+.sheet-error:hover{background:#5c2c36}
+.sheet-preview{background:#060d15;color:#f7faff;border:1px solid #3d5265;min-height:220px;border-radius:8px;padding:13px}
+.sheet-preview-section{padding-bottom:16px;margin:9px 0 12px;border-bottom:1px solid #3c4853}
+.sheet-preview-heading{display:flex;gap:8px;align-items:center;font-weight:850;margin-bottom:8px}
+.sheet-preview-letter{background:#fff;color:#07111b;border-radius:4px;min-width:30px;text-align:center;padding:2px 5px}
+.sheet-preview-bars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-left:1px solid #627487}
+.sheet-preview-measure{position:relative;border:1px solid #53687b;border-left:0;padding:9px 3px;min-height:44px;min-width:0;display:flex;align-items:center;justify-content:space-around;gap:3px;font-size:clamp(13px,1.25vw,21px);font-weight:820}
+.sheet-preview-measure:nth-child(n+5){border-top:0}
+.sheet-preview-measure.repeat{font-size:22px}
+.sheet-preview-measure.start{border-left:5px double #e9f5ff}
+.sheet-preview-measure.end{border-right:5px double #e9f5ff}
+.sheet-preview-measure span{min-width:0;overflow-wrap:anywhere;text-align:center}
+.sheet-draft-warning{font-size:12px;color:#fbd1a4;margin-top:9px}
+@media(max-width:1080px){.sheet-workspace{grid-template-columns:1fr}.sheet-preview-measure{font-size:16px}}
+
+/* Editor v3: Estado y módulo se configuran juntos */
+.section-footer{margin-top:22px;padding:15px 0 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.section-footer .primary{min-width:135px}
+.section-save-note{font-size:13px;color:#bfd2df}
+.section-save-note.pending{color:#ffd48b;font-weight:700}
+.state-module-layout{display:grid;grid-template-columns:minmax(300px,1.1fr) minmax(300px,1fr);gap:14px}
+.module-selector{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
+button.module-select-tile{position:relative;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:97px;border:1px solid #59748b;border-radius:10px;padding:7px 5px;color:white;text-shadow:0 1px 2px #000a}
+.module-select-tile.is-selected{outline:3px solid #c7f9ff;outline-offset:0}
+.module-select-tile .tile-num{position:absolute;top:5px;left:7px;font-size:11px;font-weight:800;color:white}
+.module-select-tile .tile-symbol{font-size:23px;line-height:1.1;height:25px}
+.module-select-tile .tile-name{font-size:13px;line-height:1.12;font-weight:900;overflow-wrap:anywhere}
+.module-select-tile .tile-hint{font-size:10px;line-height:1.1;color:#ebf7fa}
+.appearance-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(200px,.65fr);align-items:start;gap:16px}
+.module-preview-wrap{border:1px solid #4f7188;padding:13px;border-radius:12px;background:#0a1c2a}
+.module-preview-title{font-size:12px;color:#a3c5d9;font-weight:800;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.module-preview{display:flex;gap:14px;align-items:center;border-radius:11px;border:1px solid #6c8495;padding:20px 13px;background:linear-gradient(175deg,var(--module-light,#075eff),var(--module-dark,#003088));min-height:110px;text-shadow:0 1px 2px #000a}
+.preview-icon{font-size:32px;line-height:1}
+.module-preview strong{display:block;font-size:19px;line-height:1.12}
+.module-preview small{display:block;color:#f2faff;font-size:12px}
+input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
+@media(max-width:1150px){.state-module-layout{grid-template-columns:1fr}}
+@media(max-width:800px){.appearance-layout{grid-template-columns:1fr}.module-selector{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+
+/* Biblioteca: cajón lateral independiente, siempre accesible y ocultable. */
+.workspace{display:block}
+#libraryToggle{display:inline-flex;align-items:center;justify-content:center;background:#173a4d;border-color:#538ba5}
+#libraryBackdrop{position:fixed;inset:0;background:#0009;z-index:40;border:0;border-radius:0;padding:0;min-height:0;width:100%;cursor:default}
+#libraryBackdrop[hidden]{display:none!important}
+.workspace>.side{position:fixed;z-index:41;top:0;bottom:0;left:0;width:min(370px,calc(100vw - 24px));max-width:none;min-height:0;height:100dvh;padding:calc(17px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain;border-radius:0 14px 14px 0;box-shadow:10px 0 30px #0009;transform:translateX(-104%);visibility:hidden;pointer-events:none;transition:transform .22s ease,visibility .22s}
+.workspace>.side.is-open{transform:translateX(0);visibility:visible;pointer-events:auto}
+.workspace>.main{min-height:unset}
+.recovery-card{border:1px solid #50768a;border-radius:9px;padding:11px;margin-top:13px;background:#102b3a}
+.recovery-card h3{margin-bottom:6px}
+.recovery-result{padding:10px 0;border-top:1px solid #34546a;font-size:13px}
+.recovery-result p{margin:3px 0 8px;color:#c3dbe7}
+.recovery-result button{min-height:35px}
+.recovery-result strong{font-weight:750}
+.drawer-close{background:#26475b;font-weight:700;min-height:35px}
+@media(prefers-reduced-motion:reduce){.workspace>.side{transition:none}}
+@media(max-width:700px){.workspace>.side{width:min(350px,calc(100vw - 20px))}}
+</style>
+</head>
+<body>
+<div class="container">
+<header class="top">
+  <div>
+    <div class="brandline"><b>MIDI HUD</b><h1>Editor</h1><span>v3.4 · beta</span></div>
+    <small>Configura repertorios, estados y comandos visuales. Sin MIDI de salida.</small>
+  </div>
+  <div class="top-actions">
+    <button type="button" id="libraryToggle" aria-expanded="false" aria-controls="editorSidebar">Biblioteca</button>
+    <span class="status-chip" id="saveStatus">Sin cambios</span>
+    <button type="button" id="undo" title="Recuperar el último guardado anterior">Deshacer cambio</button>
+    <button type="button" id="importBtn">Importar</button>
+    <button type="button" id="exportBtn" class="primary">Exportar JSON</button>
+    <a href="../lab/midi-v1.html">LAB</a>
+    <a href="../v03.html">LIVE</a>
+  </div>
+</header>
+<button type="button" id="libraryBackdrop" hidden aria-label="Cerrar biblioteca"></button>
+<div class="workspace">
+<aside class="side" id="editorSidebar" aria-label="Biblioteca de repertorios y canciones" aria-hidden="true" inert>
+  <div class="sidebar-row"><span class="heading">Biblioteca</span><button type="button" class="drawer-close small" id="libraryClose" aria-label="Cerrar biblioteca">Cerrar ×</button></div>
+  <div class="sidebar-row"><span class="heading">Repertorio</span></div>
+  <label class="field" for="repSelect">Repertorio activo
+    <select id="repSelect"></select>
+  </label>
+  <div class="ctrlrow">
+    <button id="repAdd" class="small" title="Nuevo repertorio">+ Repertorio</button>
+    <button id="repRename" class="small" title="Renombrar repertorio">Renombrar</button>
+    <button id="repRemove" class="small danger" title="Eliminar repertorio">Eliminar</button>
+  </div>
+  <hr>
+  <div class="sidebar-row"><span class="heading">Canciones</span><small id="songCounter"></small></div>
+  <div id="songList" class="song-list" role="list"></div>
+  <div class="ctrlrow">
+    <button id="songAdd" class="small primary">+ Canción</button>
+    <button id="songAddSig" class="small" title="Crear canción con Clean, Ambient, Drive y Solo">+ Plantilla SIG</button>
+    <button id="songCopy" class="small">Duplicar</button>
+    <button id="songRemove" class="small danger">Eliminar</button>
+    <button id="songUp" class="small" title="Subir canción">↑</button>
+    <button id="songDown" class="small" title="Bajar canción">↓</button>
+  </div>
+  <hr>
+  <div class="help">Los cambios quedan en este navegador y en esta dirección web. Exporta JSON para conservar una copia.</div>
+  <section class="recovery-card" aria-label="Recuperación de repertorios anteriores">
+    <h3>Recuperar repertorios</h3>
+    <p class="help">Busca guardados anteriores de este mismo navegador y sitio. No modifica los datos hasta que decidas recuperar uno.</p>
+    <button type="button" id="scanOld" class="small">Buscar guardados anteriores</button>
+    <div id="recoveryResults" role="status" aria-live="polite" class="help"></div>
+  </section>
+</aside>
+<main class="main">
+  <div class="main-head">
+    <div><span class="heading" id="repHeading">Repertorio</span><h2 id="songHeading">Selecciona una canción</h2>
+      <p id="songSummary"></p></div>
+  </div>
+  <nav class="tabs" aria-label="Secciones del editor">
+    <button type="button" data-tab="song" aria-selected="true" class="active">Canción</button>
+    <button type="button" data-tab="states" aria-selected="false">Estados</button>
+    <button type="button" data-tab="sheet" aria-selected="false">Lead sheet</button>
+    <button type="button" data-tab="midi" aria-selected="false">MIDI</button>
+  </nav>
+  <section data-panel="song">
+    <div class="panel-title"><h2>Datos de la canción</h2><p>Información común para todos sus estados musicales.</p></div>
+    <div class="grid">
+      <label class="field">Título de la canción<input id="songTitle" maxlength="120"></label>
+      <label class="field">Tonalidad<input id="songTone" maxlength="20" placeholder="C, F#m, Bb…"></label>
+      <label class="field">Tempo · BPM<input id="songBpm" type="number" min="30" max="300" step="1"></label>
+      <label class="field">Banco mostrado en LIVE<input id="songBank" maxlength="24" placeholder="C1"></label>
+      <label class="field">Estado inicial<select id="songInitial"></select></label>
+    </div>
+    <div class="section-card">
+      <h3>Cómo se presenta en LIVE</h3>
+      <p class="help">En pantalla aparecerá el valor de la tonalidad, por ejemplo <b>C</b>, sin las palabras «Tono» ni «Tonalidad». El banco indica una asignación programada, no una lectura del Chocolate físico.</p>
+    </div>
+    <div class="section-footer"><span class="section-save-note" id="songDirty">Sin cambios pendientes</span><button id="songSave" class="primary">Guardar</button></div>
+  </section>
+  <section data-panel="states" hidden>
+    <div class="panel-title">
+      <h2>Estados</h2>
+      <p>Una sola configuración por canción. Selecciona un módulo, asígnale un estado y define su texto, color e icono; después pulsa Guardar.</p>
+    </div>
+    <div class="state-module-layout">
+      <section class="section-card">
+        <h3>Módulos visuales · distribución adaptable</h3>
+        <label class="field">Distribución de filas<select id="moduleLayout"><option value="auto">Automática</option><option value="manual">Filas elegidas</option></select></label>
+        <div class="ctrlrow"><button id="moduleAdd" class="small primary">+ Módulo</button><button id="moduleRemove" class="small danger">Quitar</button><button id="moduleUp" class="small">↑ Mover</button><button id="moduleDown" class="small">↓ Mover</button></div><div id="moduleGrid" class="module-grid module-selector" aria-label="Módulos visuales"></div>
+        <p class="help">Añade, quita, oculta o mueve módulos. El tamaño se adapta al espacio de LIVE. Marca «Empezar una fila nueva» para elegir el reparto.</p>
+      </section>
+      <section class="section-card">
+        <h3>Estados musicales de esta canción</h3>
+        <div id="stateList" class="state-picker"></div>
+        <div class="ctrlrow">
+          <button id="stateAdd" class="small primary">+ Estado</button>
+          <button id="stateCopy" class="small">Duplicar</button>
+          <button id="stateRemove" class="small danger">Eliminar</button>
+          <button id="stateUp" class="small">↑ Orden</button>
+          <button id="stateDown" class="small">↓ Orden</button>
+        </div>
+        <div class="grid">
+          <label class="field">Nombre del estado<input id="stateName" maxlength="80" placeholder="Clean, Ambient, Solo…"></label>
+          <label class="field">Módulo vinculado al estado
+            <select id="stateSlot"></select>
+          </label>
+          <label class="field">Referencia patch GT (solo informativa)
+            <input id="statePatch" type="number" min="0" max="127" placeholder="Sin asignar">
+          </label>
+        </div>
+        <p class="help">El patch de la GT es una referencia informativa. No se envía MIDI desde el Editor.</p>
+      </section>
+    </div>
+    <section class="section-card">
+      <h3>Apariencia del módulo <span id="selectedModuleLabel"></span></h3>
+      <div class="appearance-layout">
+        <div class="appearance-fields">
+          <div class="grid">
+            <label class="field">Título visible<input id="moduleName" maxlength="45"></label>
+            <label class="field">Descripción<input id="moduleSub" maxlength="75"></label>
+            <label class="field">Dispositivo (etiqueta)<input id="moduleDeviceTag" maxlength="16" placeholder="GT, MIDI, EXP…"></label>
+            <label class="field">Tipo de módulo<select id="moduleKind"><option value="control">Control</option><option value="expression">Expresión</option></select></label>
+            <label class="field"><input id="moduleHidden" type="checkbox"> Ocultar módulo</label>
+            <label class="field"><input id="moduleRowBreak" type="checkbox"> Empezar una fila nueva</label>
+            <label class="field">Color del módulo
+              <select id="moduleColorPreset"></select>
+            </label>
+            <label class="field">Color personalizado
+              <input id="moduleColor" type="color" value="#075eff">
+            </label>
+            <label class="field">Icono
+              <select id="moduleIcon"></select>
+            </label>
+            <label class="field">Estado asociado a esta casilla
+              <select id="moduleLinkedState"></select>
+            </label>
+          </div>
+        </div>
+        <div class="module-preview-wrap">
+          <div class="module-preview-title">Vista previa de LIVE</div>
+          <div id="modulePreview" class="module-preview">
+            <span id="modulePreviewIcon" class="preview-icon">✦</span>
+            <div><strong id="modulePreviewName">CLEAN</strong><small id="modulePreviewSub">Twin Clean</small></div>
+          </div>
+          <p class="help">El aspecto cambiará en LIVE después de Guardar y actualizar la pantalla.</p>
+        </div>
+      </div>
+    </section>
+    <section class="section-card">
+      <h3>Indicadores del estado seleccionado</h3>
+      <div id="indicatorList"></div>
+      <div class="formrow">
+        <label class="field">Identificador<input id="indicatorId" maxlength="50" placeholder="boost"></label>
+        <label class="field">Descripción<input id="indicatorLabel" maxlength="70" placeholder="Boost +3 dB"></label>
+        <label class="field">Módulo<select id="indicatorSlot"></select></label>
+        <label class="field nonflex" style="display:flex;align-items:center;gap:7px;padding:8px">
+          <input id="indicatorActive" type="checkbox"> Activo al entrar
+        </label>
+        <button id="indicatorAdd" class="nonflex" type="button">+ Indicador</button>
+      </div>
+      <p class="help">Los indicadores representan la configuración prevista, no telemetría del hardware.</p>
+    </section>
+    <div class="section-footer"><span id="statesDirty" class="section-save-note">Sin cambios pendientes</span><button id="statesSave" class="primary">Guardar</button></div>
+  </section>
+  <section data-panel="sheet" hidden>
+    <div class="panel-title">
+      <h2>Lead sheet · editor de texto</h2>
+      <p>Escribe los acordes y el sistema construye la partitura. La vista previa se actualiza al escribir. Publica los cambios pulsando Guardar.</p>
+    </div>
+    <div class="sheet-workspace">
+      <section class="sheet-card" aria-label="Editor de acordes en texto">
+        <h3>Escribe los acordes</h3>
+        <div class="formrow sheet-notation-row">
+          <label class="field">Cifrado de la canción
+            <select id="sheetNotation"><option value="americano">Americano (C, D, E)</option><option value="latino">Latino (Do, Re, Mi)</option></select>
+          </label>
+          <button id="sheetConvert" class="nonflex" type="button">Convertir toda la canción</button>
+        </div>
+        <p id="sheetNotationDetected" class="help" role="status">Cifrado: sin analizar</p>
+        <div class="sheet-source">
+          <div class="sheet-gutter" aria-hidden="true"><div id="leadGutter" class="sheet-gutter-lines"></div></div>
+          <textarea class="sheet-text" id="leadText" wrap="off" spellcheck="false" aria-describedby="leadHelp" placeholder="A - Intro&#10;| C | F |&#10;&#10;B - Verso&#10;| C | / | F Am | G |"></textarea>
+        </div>
+        <p class="sheet-helper" id="leadHelp"><strong>Ejemplo:</strong> <code>A - Intro</code> abre la sección; <code>| C | F Am | / |</code> crea tres compases; <code>|: C | G :|</code> indica repetición. Acordes mayores, menores, sus2, sus4, 7, m7, maj7 y bajos alternativos (C/E). También acepta Do, Re, Mi, Fa, Sol, La y Si; máximo dos acordes por compás.</p>
+        <p id="leadStatus" class="sheet-editor-status" role="status"></p>
+        <div id="leadErrors" class="sheet-errors" aria-live="polite"></div>
+        <p id="leadDraftWarning" class="sheet-draft-warning" hidden>Este texto contiene errores. Se conserva como borrador local y LIVE mantiene el último lead sheet válido.</p>
+      </section>
+      <section class="sheet-card" aria-label="Vista previa del lead sheet">
+        <h3>Vista previa musical</h3>
+        <div id="leadPreview" class="sheet-preview" aria-live="polite"></div>
+        <p class="sheet-helper">Cada barra vertical delimita un compás. Con dos acordes, el reparto es visual; no indica pulsos exactos.</p>
+      </section>
+    </div>
+    <div class="section-footer"><span id="sheetDirty" class="section-save-note">Sin cambios pendientes</span><button id="sheetSave" class="primary">Guardar</button></div>
+  </section>
+  <section data-panel="midi" hidden>
+    <div class="panel-title"><h2>Rompecabezas MIDI</h2><p>Asocia pares <b>CC + valor</b> con acciones visuales. El motor no limita las funciones a los 32 botones del Chocolate.</p></div>
+    <div class="section-card">
+      <div class="sidebar-row"><h3>Matriz del Chocolate · 8 × 4</h3><small>Plantilla opcional</small></div>
+      <div class="grid">
+        <label class="field">CC inicial de la plantilla<input id="matrixStart" type="number" min="0" max="96" value="20"></label>
+        <label class="field">Valor de activación<input id="matrixValue" type="number" min="0" max="127" value="127"></label>
+      </div>
+      <p class="help">Los números son una convención de programación propuesta. Seleccionar una casilla no cambia el Chocolate; solo elige qué mensaje estás editando.</p>
+      <div id="midiMatrix" class="matrix" aria-label="Matriz de bancos y botones Chocolate"></div>
+    </div>
+    <div class="section-card">
+      <h3>Editar mensaje MIDI</h3>
+      <div class="grid triple">
+        <label class="field">Número CC<input id="midiCC" type="number" min="0" max="127" value="20"></label>
+        <label class="field">Valor CC<input id="midiValue" type="number" min="0" max="127" value="127"></label>
+        <label class="field">Acción a añadir
+          <select id="actionType">
+            <option value="ACTIVATE_STATE">Activar estado</option>
+            <option value="SELECT_SONG">Seleccionar canción</option>
+            <option value="SET_INDICATOR">Encender/apagar indicador</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid">
+        <label class="field" id="actionTargetWrap">Destino<select id="actionTarget"></select></label>
+        <label class="field" id="actionActiveWrap" hidden>Valor del indicador<select id="actionActive"><option value="true">Encender</option><option value="false">Apagar</option></select></label>
+      </div>
+      <button id="actionAdd" class="primary">+ Añadir acción al mensaje</button>
+      <div id="midiActionList" class="group" style="margin:15px 0"></div>
+      <p class="help">Varias acciones de un mensaje se conservan en el orden configurado. El editor advierte si hay dos selecciones de estado, pero no decide por el motor.</p>
+    </div>
+    <div class="section-card">
+      <div class="sidebar-row"><h3>Comandos configurados</h3><small id="bindingCount"></small></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>CC / valor</th><th>Acciones</th><th></th></tr></thead>
+        <tbody id="bindingsTable"></tbody>
+      </table></div>
+    </div>
+    <div class="section-card">
+      <h3>Validación del editor</h3>
+      <div id="midiWarnings"></div>
+    </div>
+    <p class="help">El canal MIDI de recepción se define globalmente en Configuración de LIVE o LAB, no aquí.</p>
+    <div class="section-footer"><span id="midiDirty" class="section-save-note">Sin cambios pendientes</span><button id="midiSave" class="primary">Guardar</button></div>
+  </section>
+  <div class="notice" role="status" aria-live="polite" id="editorNotice">Cargando biblioteca…</div>
+  <div class="foot">Motor v1 · Configuración local · Importación/exportación JSON · Sin transmisión MIDI</div>
+</main>
+</div>
+<input id="importFile" type="file" accept=".json,application/json" hidden>
+<script type="module" src="./v3.mjs?v=20261015-complete"></script>
+</div>
+</body>
+</html>
