@@ -269,14 +269,7 @@ function renderModules(){
  entries("moduleLinkedState",[["","Sin estado asociado"]].concat(
   currentSong().stateIds.map(id=>[id,working.states.find(x=>x.id===id)?.name||id])
  ),linkedState()?.id||"");
- const tile=$("modulePreview");
- tile.style.setProperty("--module-light",visual.light);
- tile.style.setProperty("--module-dark",visual.dark);
- $("modulePreviewIcon").textContent=visual.glyph;
- $("modulePreviewName").textContent=slot.name;
- $("modulePreviewSub").textContent=slot.sub;
- $("modulePreviewDevice").textContent=slot.deviceTag;
- $("modulePreviewDevice").hidden=!slot.deviceTag;
+
 }
 function renderStates(){
  const states=currentSong().stateIds;
@@ -328,13 +321,6 @@ function setSlotProperty(key,value){
  currentSong().displaySlots[activeModule]={...currentSlot(),...base,[key]:value};
  dirty();
  const visual=resolveModuleVisual(currentSlot(),activeModule);
- $("modulePreview").style.setProperty("--module-light",visual.light);
- $("modulePreview").style.setProperty("--module-dark",visual.dark);
- $("modulePreviewIcon").textContent=visual.glyph;
- $("modulePreviewName").textContent=normalSlot(activeModule).name;
- $("modulePreviewSub").textContent=normalSlot(activeModule).sub;
- $("modulePreviewDevice").textContent=normalSlot(activeModule).deviceTag;
- $("modulePreviewDevice").hidden=!normalSlot(activeModule).deviceTag;
  // Refrescar solo la matriz (sin borrar campos en curso).
  const tiles=$("moduleGrid").children;
  const tile=tiles[activeModule];

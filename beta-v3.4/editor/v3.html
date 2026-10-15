@@ -154,18 +154,12 @@ button.module-select-tile{position:relative;text-align:center;display:flex;flex-
 .module-select-tile .tile-symbol{font-size:23px;line-height:1.1;height:25px}
 .module-select-tile .tile-name{font-size:13px;line-height:1.12;font-weight:900;overflow-wrap:anywhere}
 .module-select-tile .tile-sub{font-size:10px;line-height:1.2;color:#ebf7fa;overflow-wrap:anywhere}
-.module-select-tile .tile-device,#modulePreviewDevice{display:inline-block;border:1px solid currentColor;border-radius:4px;padding:1px 5px;font-size:10px;line-height:1.15;color:#ebf7fa;max-width:100%;overflow-wrap:anywhere}
-.module-select-tile .tile-device[hidden],#modulePreviewDevice[hidden]{display:none}
-.appearance-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(200px,.65fr);align-items:start;gap:16px}
-.module-preview-wrap{border:1px solid #4f7188;padding:13px;border-radius:12px;background:#0a1c2a}
-.module-preview-title{font-size:12px;color:#a3c5d9;font-weight:800;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
-.module-preview{display:flex;gap:14px;align-items:center;border-radius:11px;border:1px solid #6c8495;padding:20px 13px;background:linear-gradient(175deg,var(--module-light,#075eff),var(--module-dark,#003088));min-height:110px;text-shadow:0 1px 2px #000a}
-.preview-icon{font-size:32px;line-height:1}
-.module-preview strong{display:block;font-size:19px;line-height:1.12}
-.module-preview small{display:block;color:#f2faff;font-size:12px}
+.module-select-tile .tile-device{display:inline-block;border:1px solid currentColor;border-radius:4px;padding:1px 5px;font-size:10px;line-height:1.15;color:#ebf7fa;max-width:100%;overflow-wrap:anywhere}
+.module-select-tile .tile-device[hidden]{display:none}
+.appearance-layout{display:block}
 input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 @media(max-width:1150px){.state-module-layout{grid-template-columns:1fr}}
-@media(max-width:800px){.appearance-layout{grid-template-columns:1fr}.module-selector{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:800px){.module-selector{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 
 /* Biblioteca: cajón lateral independiente, siempre accesible y ocultable. */
@@ -322,14 +316,6 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
             </label>
           </div>
         </div>
-        <div class="module-preview-wrap">
-          <div class="module-preview-title">Vista previa de LIVE</div>
-          <div id="modulePreview" class="module-preview">
-            <span id="modulePreviewIcon" class="preview-icon">✦</span>
-            <div><strong id="modulePreviewName">CLEAN</strong><small id="modulePreviewSub">Twin Clean</small><span id="modulePreviewDevice" hidden></span></div>
-          </div>
-          <p class="help">El aspecto cambiará en LIVE después de Guardar y actualizar la pantalla.</p>
-        </div>
       </div>
     </section>
     <section class="section-card">
@@ -431,7 +417,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261015-preview1"></script>
+<script type="module" src="./v3.mjs?v=20261015-preview2"></script>
 </div>
 </body>
 </html>
