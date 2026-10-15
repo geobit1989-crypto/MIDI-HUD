@@ -409,6 +409,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <!-- Integracion funcional v1: el diseno de LIVE v0.3 permanece sin alteraciones estructurales. -->
 <script type="module">
 import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs";
+import {resolveModuleVisual} from "./core/module-visuals.mjs";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {openBrowserMidi} from "./core/midi-browser.mjs";
 const SETTINGS=readSettings(localStorage),EDITOR_KEY="hudLibraryV1";
@@ -613,7 +614,14 @@ function render(){
  const slots=[...document.querySelectorAll(".switch-grid .switch")];
  for(let i=0;i<slots.length;i++){
   const cfg=vm.song.displaySlots?.[i]||{name:"—",sub:"Sin asignar"};
-  const name=slots[i].querySelector(".name"),sub=slots[i].querySelector(".sub");
+  const visual=resolveModuleVisual(cfg,i);
+  const tile=slots[i];
+  tile.style.setProperty("--light",visual.light);
+  tile.style.setProperty("--dark",visual.dark);
+  tile.style.setProperty("--meter",visual.meter);
+  const symbol=tile.querySelector(".icon-wrap");
+  if(symbol){symbol.textContent=visual.glyph;symbol.setAttribute("aria-hidden","true");}
+  const name=tile.querySelector(".name"),sub=tile.querySelector(".sub");
   if(name)name.textContent=cfg.name;
   if(sub){
    if(cfg.sub==="GT"){
