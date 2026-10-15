@@ -1,0 +1,102 @@
+name: MIDI HUD engine tests
+on:
+  push:
+    branches: ["main", "feature/**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Validate and package beta
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: |
+          node --check core/engine-v1.mjs
+          node --check core/module-visuals.mjs
+          node --check core/settings-v1.mjs
+          node --check core/midi-browser.mjs
+          node --check editor/editor-model.mjs
+          node --check editor/lead-sheet-text.mjs
+          node --check editor/lead-sheet-ui.mjs
+          node --check editor/v2.mjs
+          node --check editor/v3.mjs
+          node --check live/live-controls-v1.js
+          node --check live/sheet-fit-v1.mjs
+      - name: Execute automatic tests
+        run: node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs tests/live-ui.test.mjs tests/lead-sheet-text.test.mjs tests/gear-longpress.test.mjs tests/editor-v3.test.mjs tests/sheet-fit.test.mjs
+      - name: Assemble standalone static website
+        run: |
+          mkdir -p build/MIDI-HUD-BETA/{core,editor,lab,config,live}
+          cp index.html v03.html README.md build/MIDI-HUD-BETA/
+          cp core/engine.mjs core/engine-v1.mjs core/settings-v1.mjs core/midi-browser.mjs core/module-visuals.mjs build/MIDI-HUD-BETA/core/
+          cp live/responsive-v1.css live/live-controls-v1.js live/config-menu-v2.css live/sheet-adaptive-v1.css live/sheet-fit-v1.mjs build/MIDI-HUD-BETA/live/
+          cp editor/index.html editor/v1.html editor/v2.html editor/v2.mjs editor/v3.html editor/v3.mjs editor/editor-model.mjs editor/lead-sheet-text.mjs editor/lead-sheet-ui.mjs editor/legacy.html build/MIDI-HUD-BETA/editor/
+          cp lab/index.html lab/midi-v1.html lab/legacy.html build/MIDI-HUD-BETA/lab/
+          cp config/midi-hud-data-v1.json config/midi-hud-data-v2.json build/MIDI-HUD-BETA/config/
+          touch build/MIDI-HUD-BETA/.nojekyll
+          cat > build/MIDI-HUD-BETA/LEEME.txt <<'INSTRUCTIONS'
+          MIDI HUD — BETA INTEGRADA (14 de octubre de 2026)
+          ==================================================
+          PARA PROBAR EN LA WEB:
+          Usar el enlace GitHub Pages publicado para la beta, si está activado.
+
+          PARA PROBAR EL ZIP EN UN ORDENADOR:
+          1. Descomprimir esta carpeta completamente.
+          2. Abrir una terminal dentro de la carpeta MIDI-HUD-BETA.
+          3. Con Python instalado, ejecutar: py -m http.server 8000
+             En macOS/Linux se puede usar: python3 -m http.server 8000
+          4. En el navegador abrir: http://localhost:8000/
+          También puede utilizar VS Code Live Server u otro servidor estático.
+
+          Se requiere HTTP (no abrir HTML individual con file://):
+          el editor, LIVE y LAB comparten JavaScript modular, JSON y almacenamiento local.
+
+          LIVE:  http://localhost:8000/v03.html
+          EDITOR: http://localhost:8000/editor/
+          LAB:  http://localhost:8000/lab/
+
+          Primero editar en EDITOR y pulsar Guardar por sección; después recargar LIVE.
+          La sección ESTADOS incluye los nueve módulos, colores e iconos.
+          LAB utiliza datos de prueba independientes, o permite copiar desde EDITOR.
+          El canal MIDI de recepción se configura globalmente en LIVE/LAB.
+
+          ADVERTENCIA: Versión beta de visualización, SIN salida MIDI.
+          No dirige la GT ni comprueba su estado físico. La recepción Bluetooth
+          del Chocolate Plus no está probada en iPhone/Safari. Los mensajes
+          CC de ejemplo no son asignaciones confirmadas del hardware.
+
+          Hacer exportación JSON de los cambios importantes.
+          INSTRUCTIONS
+          (cd build && zip -qr MIDI-HUD-BETA-20261014.zip MIDI-HUD-BETA)
+          unzip -t build/MIDI-HUD-BETA-20261014.zip | tail -1
+      - name: Publish ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: midi-hud-beta-completa
+          path: build/MIDI-HUD-BETA-20261014.zip
+          retention-days: 30
+      - name: Prepare Pages static artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/MIDI-HUD-BETA
+  deploy:
+    name: Publish beta website
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/motor-midi-v1-20261014'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
