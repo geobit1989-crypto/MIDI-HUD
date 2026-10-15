@@ -64,7 +64,7 @@ export function installAdaptiveLeadSheet(root){
      const ctx=canvas.getContext("2d");
      if(ctx){
        ctx.font=getComputedStyle(label).font;
-       const words=(label.textContent||"").split(/\\s+/).filter(Boolean);
+       const words=(label.textContent||"").split(/\s+/).filter(Boolean);
        const available=label.getBoundingClientRect().width;
        if(words.some(word=>ctx.measureText(word).width>available-2))return false;
      }
