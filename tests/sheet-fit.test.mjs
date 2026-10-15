@@ -45,7 +45,7 @@ test("el símbolo de repetición se alinea arriba con los acordes, nunca a media
  assert.doesNotMatch(block,/top:50%/);
 });
 test("LIVE usa ajuste real de fuentes según anchura y filas y lo recalcula en redimensionados",()=>{
- assert.match(html,/from "\.\/live\/sheet-fit-v1\.mjs"/);
+ assert.match(html,/from "\.\/live\/sheet-fit-v1\.mjs(?:\?v=[^"]+)?"/);
  assert.match(html,/adaptiveSheet=installAdaptiveLeadSheet/);
  assert.match(html,/adaptiveSheet\.schedule\(\)/);
  assert.match(html,/sheetRowCounts\(sections,columns\)/);
