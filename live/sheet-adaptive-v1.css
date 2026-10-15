@@ -45,6 +45,14 @@
  font-size:var(--sheet-letter-size);
  line-height:1.14;
 }
+.lead-sheet .section-label > span:last-child{
+ min-width:0;
+ max-width:100%;
+ white-space:normal;
+ overflow-wrap:normal;
+ word-break:normal;
+ hyphens:none;
+}
 /* Repetir compás: a la ALTURA de los acordes, jamás centrado verticalmente. */
 .lead-sheet .bar.repeat-measure{
  position:relative;
