@@ -65,7 +65,13 @@ export function installAdaptiveLeadSheet(root){
      if(ctx){
        ctx.font=getComputedStyle(label).font;
        const words=(label.textContent||"").split(/\s+/).filter(Boolean);
-       const available=label.getBoundingClientRect().width;
+       // Los elementos flexibles suelen medir su propio texto y no todo
+       // el espacio asignado: se compara contra el ancho del encabezado.
+       const style=getComputedStyle(heading);
+       const letter=heading.querySelector(".section-letter");
+       const gap=parseFloat(style.gap||"0")||0;
+       const available=heading.getBoundingClientRect().width-
+         (style.flexDirection==="row"&&letter?(letter.getBoundingClientRect().width+gap):0);
        if(words.some(word=>ctx.measureText(word).width>available-2))return false;
      }
    }
