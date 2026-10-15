@@ -153,7 +153,9 @@ button.module-select-tile{position:relative;text-align:center;display:flex;flex-
 .module-select-tile .tile-num{position:absolute;top:5px;left:7px;font-size:11px;font-weight:800;color:white}
 .module-select-tile .tile-symbol{font-size:23px;line-height:1.1;height:25px}
 .module-select-tile .tile-name{font-size:13px;line-height:1.12;font-weight:900;overflow-wrap:anywhere}
-.module-select-tile .tile-hint{font-size:10px;line-height:1.1;color:#ebf7fa}
+.module-select-tile .tile-sub{font-size:10px;line-height:1.2;color:#ebf7fa;overflow-wrap:anywhere}
+.module-select-tile .tile-device,#modulePreviewDevice{display:inline-block;border:1px solid currentColor;border-radius:4px;padding:1px 5px;font-size:10px;line-height:1.15;color:#ebf7fa;max-width:100%;overflow-wrap:anywhere}
+.module-select-tile .tile-device[hidden],#modulePreviewDevice[hidden]{display:none}
 .appearance-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(200px,.65fr);align-items:start;gap:16px}
 .module-preview-wrap{border:1px solid #4f7188;padding:13px;border-radius:12px;background:#0a1c2a}
 .module-preview-title{font-size:12px;color:#a3c5d9;font-weight:800;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
@@ -324,7 +326,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
           <div class="module-preview-title">Vista previa de LIVE</div>
           <div id="modulePreview" class="module-preview">
             <span id="modulePreviewIcon" class="preview-icon">✦</span>
-            <div><strong id="modulePreviewName">CLEAN</strong><small id="modulePreviewSub">Twin Clean</small></div>
+            <div><strong id="modulePreviewName">CLEAN</strong><small id="modulePreviewSub">Twin Clean</small><span id="modulePreviewDevice" hidden></span></div>
           </div>
           <p class="help">El aspecto cambiará en LIVE después de Guardar y actualizar la pantalla.</p>
         </div>
@@ -429,7 +431,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261015-complete"></script>
+<script type="module" src="./v3.mjs?v=20261015-preview1"></script>
 </div>
 </body>
 </html>

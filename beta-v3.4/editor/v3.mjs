@@ -243,9 +243,10 @@ function renderModules(){
   tile.append(make("span",i+1,"tile-num"));
   tile.append(make("span",visual.glyph||" ","tile-symbol"));
   tile.append(make("span",slot.name,"tile-name"));
-  tile.append(make("span",slot.deviceTag||"","tile-hint"));
+  tile.append(make("span",slot.sub,"tile-sub"));
+  const device=make("span",slot.deviceTag,"tile-device");
+  device.hidden=!slot.deviceTag;tile.append(device);
   if(slot.hidden)tile.style.opacity=".35";
-  tile.append(make("span",connected?connected.name:"Sin estado","tile-hint"));
   area.append(tile);
  }
  $("selectedModuleLabel").textContent=hasModule?String(activeModule+1):'—';
@@ -274,6 +275,8 @@ function renderModules(){
  $("modulePreviewIcon").textContent=visual.glyph;
  $("modulePreviewName").textContent=slot.name;
  $("modulePreviewSub").textContent=slot.sub;
+ $("modulePreviewDevice").textContent=slot.deviceTag;
+ $("modulePreviewDevice").hidden=!slot.deviceTag;
 }
 function renderStates(){
  const states=currentSong().stateIds;
@@ -330,6 +333,8 @@ function setSlotProperty(key,value){
  $("modulePreviewIcon").textContent=visual.glyph;
  $("modulePreviewName").textContent=normalSlot(activeModule).name;
  $("modulePreviewSub").textContent=normalSlot(activeModule).sub;
+ $("modulePreviewDevice").textContent=normalSlot(activeModule).deviceTag;
+ $("modulePreviewDevice").hidden=!normalSlot(activeModule).deviceTag;
  // Refrescar solo la matriz (sin borrar campos en curso).
  const tiles=$("moduleGrid").children;
  const tile=tiles[activeModule];
@@ -337,7 +342,9 @@ function setSlotProperty(key,value){
   tile.style.background="linear-gradient(160deg,"+visual.color+","+visual.dark+")";
   tile.querySelector(".tile-symbol").textContent=visual.glyph||" ";
   tile.querySelector(".tile-name").textContent=normalSlot(activeModule).name;
-  tile.querySelectorAll(".tile-hint")[0].textContent=currentSlot().deviceTag||"";
+  tile.querySelector(".tile-sub").textContent=normalSlot(activeModule).sub;
+  tile.querySelector(".tile-device").textContent=normalSlot(activeModule).deviceTag;
+  tile.querySelector(".tile-device").hidden=!normalSlot(activeModule).deviceTag;
   tile.style.opacity=currentSlot().hidden?".35":"1";
  }
 }
