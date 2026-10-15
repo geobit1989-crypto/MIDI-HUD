@@ -1,3 +1,13 @@
+## LIVE v3.2 — Lead sheet adaptable, controles +5 % y títulos delimitados (15/10/2026)
+
+- Se asignan **cinco puntos porcentuales adicionales de altura de pantalla** al bloque de controles respecto a la distribución previa. En iPhone, crece la matriz 3×3, preservando encabezado y EXP; el lead sheet utiliza el resto.
+- La partitura ajusta dinámicamente los tamaños de acordes, letras de sección y símbolos de repetición usando mediciones reales de anchura y altura en el navegador. Recalcula al cambiar de canción, modificar la ventana o rotar el dispositivo. Las canciones cortas aprovechan el espacio; las densas reducen tipografía para mostrar todos los compases posibles.
+- Se aprovecha el ancho de renglones cortos sin añadir compases ficticios. Los dos acordes de un compás mantienen su posición proporcional.
+- Los nombres de sección tienen una **columna lateral estricta del 17,6 %**, con límite `min-width:0`, `overflow:hidden`, ajuste de palabras completas y disposición vertical en móvil; nunca invaden las columnas de acordes.
+- El símbolo gráfico de repetición `/` deja de centrarse verticalmente: aparece arriba, a la misma altura que los acordes, y utiliza el tamaño de letra adaptativo.
+- Pruebas automatizadas `tests/sheet-fit.test.mjs` validadas en GitHub Actions (77 pruebas). Adicionalmente, visualización CSS + renderizador de la hoja probada en Chromium `page.set_content` a 390×844 y 1200×800 con partituras cortas, normales y densas, sin invasión lateral ni desbordamiento horizontal. Esta simulación no supone una comprobación del navegador Safari físico ni del arranque completo en la URL pública.
+
+---
 ## Editor v3 — Estados unificados y guardado por sección (15/10/2026)
 
 **Secciones actuales:** Canción · **Estados** · Lead sheet · MIDI.
