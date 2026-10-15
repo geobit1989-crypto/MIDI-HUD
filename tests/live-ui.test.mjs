@@ -8,7 +8,7 @@ const css=readFileSync(new URL("live/responsive-v1.css",source),"utf8");
 const controller=readFileSync(new URL("live/live-controls-v1.js",source),"utf8");
 
 test("LIVE carga motor modular, CSS responsivo y controles interactivos",()=>{
- assert.match(html,/href="\.\/live\/responsive-v1\.css"/);
+ assert.match(html,/href="\.\/live\/responsive-v1\.css(?:\?v=[^"]+)?"/);
  assert.match(html,/src="\.\/live\/live-controls-v1\.js"/);
  assert.match(html,/id="hud-prev"/);
  assert.match(html,/id="hud-next"/);
