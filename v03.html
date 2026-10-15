@@ -412,7 +412,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs";
 import {resolveModuleVisual} from "./core/module-visuals.mjs";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
-import {openBrowserMidi} from "./core/midi-browser.mjs";
+import {openBrowserMidi} from "./core/midi-browser.mjs?v=20261015-ble1";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
 const SETTINGS=readSettings(localStorage),EDITOR_KEY="hudLibraryV1";
 const $=s=>document.querySelector(s);
@@ -496,9 +496,20 @@ function prepare(){
  dialog.querySelector("#hud-midi-btn").onclick=async()=>{
    try{
      if(midiPort)midiPort.close();
-     midiPort=await openBrowserMidi(e=>engine.dispatch(e));
-     dialog.querySelector("#hud-midi-status").textContent=midiPort.supported
-       ?"Recepción habilitada si el sistema expone entradas MIDI."
+     const status=dialog.querySelector("#hud-midi-status");
+     midiPort=await openBrowserMidi(e=>{
+       const result=engine.dispatch(e);
+       status.textContent="RX canal "+e.channel+" · CC "+e.cc+" · valor "+e.value+
+         " → "+(result.matched?(result.changed?"estado actualizado":"reconocido, sin cambio"):"sin asignación");
+     },names=>{
+       status.textContent=names.length
+         ?"Entradas detectadas: "+names.join(", ")+". Esperando mensajes CC…"
+         :"Acceso MIDI disponible, pero no se detectan entradas. Comprueba el enlace BLE del navegador.";
+     });
+     status.textContent=midiPort.supported
+       ?(midiPort.inputCount
+         ?"Entrada MIDI preparada: "+midiPort.inputNames.join(", ")+". Pulsa un switch."
+         :"Acceso MIDI disponible, pero ninguna entrada detectada. Comprueba el enlace BLE dentro del navegador.")
        :midiPort.reason;
    }catch(error){dialog.querySelector("#hud-midi-status").textContent="No se pudo abrir MIDI: "+error.message;}
  };
