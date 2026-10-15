@@ -3,20 +3,20 @@
 .switch-grid .adaptive-module-row{display:flex;flex:1 1 0;gap:4px;width:100%;min-width:0;min-height:0;align-items:stretch}
 .switch-grid .adaptive-module-row>.switch,
 .switch-grid .adaptive-module-row>.expression{width:0;flex:1 1 0;min-width:0;min-height:0;height:auto;max-height:100%;box-sizing:border-box;overflow:hidden;container-type:size}
-.switch-grid .adaptive-module-row>.switch .details{min-width:0;max-width:100%;overflow:hidden}
+.switch-grid .adaptive-module-row>.switch .details{display:flex;flex-direction:column;align-items:stretch;gap:4px;min-width:0;max-width:100%;overflow:hidden}
 .switch-grid .adaptive-module-row>.switch .name,
 .switch-grid .adaptive-module-row>.switch .sub{overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;white-space:nowrap}
-.switch-grid .adaptive-module-row>.switch .name{font-size:clamp(9px,min(11cqw,25cqh),32px)}
-.switch-grid .adaptive-module-row>.switch .sub{font-size:clamp(7px,min(7cqw,17cqh),18px)}
+.switch-grid .adaptive-module-row>.switch .name{font-size:clamp(14px,min(13cqw,27cqh),34px)}
+.switch-grid .adaptive-module-row>.switch .sub{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:clamp(12px,min(9cqw,18cqh),21px);font-weight:600;line-height:1.2;white-space:normal;overflow-wrap:anywhere;color:#fff;margin:0}
 .switch-grid .adaptive-module-row>.expression{display:flex;flex-direction:column;justify-content:center;gap:5px;padding:5px 8px}
 .switch-grid .adaptive-expression .exhead{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;width:100%}
 .switch-grid .adaptive-expression .exlabel{display:flex;align-items:center;gap:5px;min-width:0}
 .switch-grid .adaptive-expression .exicon{display:inline-block;flex:0 0 auto;font-size:clamp(10px,min(10cqw,24cqh),25px)}
 .switch-grid .adaptive-expression .exname,
-.switch-grid .adaptive-expression .value{font-size:clamp(9px,min(10cqw,25cqh),28px);line-height:1.05}
-.switch-grid .adaptive-expression .exsub{display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(7px,min(7cqw,17cqh),17px)}
+.switch-grid .adaptive-expression .value{font-size:clamp(14px,min(12cqw,25cqh),30px);line-height:1.05}
+.switch-grid .adaptive-expression .exsub{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;width:100%;overflow:hidden;white-space:normal;overflow-wrap:anywhere;font-size:clamp(12px,min(9cqw,18cqh),20px);font-weight:600;line-height:1.2;color:#fff}
 .switch-grid .adaptive-expression .exmeter{display:block;width:100%;height:clamp(3px,6cqh,8px)}
-.switch-grid .gt{display:inline-block;border:1px solid currentColor;border-radius:4px;font-size:.81em;line-height:1;padding:0 .35em;margin-left:3px}
+.switch-grid .module-device{display:block;align-self:center;max-width:100%;border:1px solid #fff9;background:#0005;border-radius:5px;font-size:clamp(11px,min(8cqw,16cqh),17px);font-weight:700;line-height:1.2;padding:2px 6px;margin:0;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .switch-grid .modules-empty{display:grid;place-items:center;flex:1;min-height:0;font-size:clamp(12px,2vw,18px);color:#bcd3e2;text-align:center;padding:10px}
 .expression-row[hidden]{display:none!important}
 @media (orientation:portrait) and (max-width:600px){
@@ -24,4 +24,9 @@
 }
 @media (orientation:portrait) and (max-width:600px) and (max-height:650px){
  .switch-grid{height:calc(clamp(141px,27dvh,185px) + 5dvh)}
+}
+
+@container (max-height:100px){
+ .switch-grid .adaptive-module-row>.switch>.icon-wrap{display:none}
+ .switch-grid .adaptive-module-row>.switch .details{gap:2px}
 }

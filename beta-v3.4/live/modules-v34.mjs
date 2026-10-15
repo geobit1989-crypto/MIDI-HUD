@@ -14,16 +14,19 @@ function tileFor(doc,source,index){
  for(const [key,value] of Object.entries({light:visual.light,dark:visual.dark,meter:visual.meter,fill:'0%',edge:visual.light,'exp-a':visual.dark,'exp-b':visual.color}))tile.style.setProperty('--'+key,value);
  const title=node(doc,expression?'strong':'div',expression?'exname':'name',cfg.name);
  const sub=node(doc,'div',expression?'exsub':'sub',source.sub==='GT'&&cfg.deviceTag==='GT'?'':cfg.sub);
- if(cfg.deviceTag){const tag=node(doc,'span','gt',cfg.deviceTag);sub.append(' ',tag);}
+ const tag=cfg.deviceTag?node(doc,'span','gt module-device',cfg.deviceTag):null;
  const icon=node(doc,'span',expression?'exicon':'icon-wrap',visual.glyph);
  icon.setAttribute('aria-hidden','true');
  if(expression){
   const head=node(doc,'div','exhead');
   const label=node(doc,'div','exlabel');label.append(icon,title);
   head.append(label,node(doc,'strong','value','—'));
-  tile.append(head,sub,node(doc,'div','exmeter'));
+  tile.append(head,sub);
+  if(tag)tile.append(tag);
+  tile.append(node(doc,'div','exmeter'));
  }else{
   const details=node(doc,'div','details');details.append(title,sub);
+  if(tag)details.append(tag);
   tile.append(node(doc,'span','number',index+1),icon,details,node(doc,'span','arrow','›'),node(doc,'div','meter'));
  }
  tile.dataset.hudIndex=String(index);tile.tabIndex=0;

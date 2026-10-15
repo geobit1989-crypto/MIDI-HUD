@@ -148,18 +148,19 @@ textarea.sheet-text{border:1px solid #536e84!important;border-radius:0 8px 8px 0
 .section-save-note.pending{color:#ffd48b;font-weight:700}
 .state-module-layout{display:grid;grid-template-columns:minmax(300px,1.1fr) minmax(300px,1fr);gap:14px}
 .module-selector{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
-button.module-select-tile{position:relative;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:97px;border:1px solid #59748b;border-radius:10px;padding:7px 5px;color:white;text-shadow:0 1px 2px #000a}
+button.module-select-tile{position:relative;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:150px;border:1px solid #8ba3b5;border-radius:10px;padding:15px 10px;color:white;text-shadow:0 1px 3px #000}
 .module-select-tile.is-selected{outline:3px solid #c7f9ff;outline-offset:0}
 .module-select-tile .tile-num{position:absolute;top:5px;left:7px;font-size:11px;font-weight:800;color:white}
 .module-select-tile .tile-symbol{font-size:23px;line-height:1.1;height:25px}
-.module-select-tile .tile-name{font-size:13px;line-height:1.12;font-weight:900;overflow-wrap:anywhere}
-.module-select-tile .tile-sub{font-size:10px;line-height:1.2;color:#ebf7fa;overflow-wrap:anywhere}
-.module-select-tile .tile-device{display:inline-block;border:1px solid currentColor;border-radius:4px;padding:1px 5px;font-size:10px;line-height:1.15;color:#ebf7fa;max-width:100%;overflow-wrap:anywhere}
+.module-select-tile .tile-name{font-size:18px;line-height:1.2;font-weight:900;overflow-wrap:anywhere}
+.module-select-tile .tile-sub{display:block;width:100%;font-size:14px;line-height:1.3;font-weight:600;color:#fff;overflow-wrap:anywhere}
+.module-select-tile .tile-device{display:block;border:1px solid #fff9;background:#0005;border-radius:5px;padding:3px 7px;font-size:13px;font-weight:700;line-height:1.2;color:#fff;max-width:100%;overflow-wrap:anywhere}
 .module-select-tile .tile-device[hidden]{display:none}
 .appearance-layout{display:block}
 input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 @media(max-width:1150px){.state-module-layout{grid-template-columns:1fr}}
 @media(max-width:800px){.module-selector{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.module-selector{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 
 /* Biblioteca: cajón lateral independiente, siempre accesible y ocultable. */
@@ -417,7 +418,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261015-preview2"></script>
+<script type="module" src="./v3.mjs?v=20261015-readable1"></script>
 </div>
 </body>
 </html>
