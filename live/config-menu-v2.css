@@ -1,17 +1,11 @@
 /* Configuración MIDI HUD beta — diseño de navegación propio. */
-.hud-editor-shortcut{
- width:clamp(26px,3cqw,40px);height:clamp(24px,3cqw,38px);
- min-width:0;display:inline-flex;align-items:center;justify-content:center;
- font:800 clamp(16px,2cqw,24px)/1 system-ui,sans-serif;
- background:#102b3a;color:#b5f2ff;border:1px solid #477d92;
- border-radius:7px;text-decoration:none;touch-action:manipulation
-}
-.hud-editor-shortcut:hover{background:#1b5067;color:#fff}
-.hud-editor-shortcut:focus-visible{outline:3px solid #baf7ff}
-.hud-right{grid-template-columns:minmax(0,1fr) max-content max-content!important;gap:clamp(3px,.6cqw,10px)!important}
+/* Un único engranaje conserva el encabezado y evita otro icono. */
+.hud-right{grid-template-columns:minmax(0,1fr) max-content!important;gap:clamp(4px,.6cqw,10px)!important}
 .hud-right>.bank{grid-column:1!important}
-.hud-right>.settings{grid-column:2!important}
-.hud-right>.hud-editor-shortcut{grid-column:3!important;grid-row:1;justify-self:end}
+.hud-right>.settings{grid-column:2!important;grid-row:1}
+.settings{position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.settings.hud-holding::after{content:"";position:absolute;inset:0;border-bottom:3px solid #5feafa;transform-origin:left;animation:hud-hold-progress 2s linear forwards;pointer-events:none}
+@keyframes hud-hold-progress{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 #hud-settings-overlay{backdrop-filter:blur(7px)}
 .hud-config-panel{
  background:#101e2c;border:1px solid #527187;border-radius:16px;
@@ -69,5 +63,4 @@
  .hud-config-links{grid-template-columns:1fr 1fr}
  .hud-config-links a:first-child{grid-column:1/-1}
  .hud-config-foot{padding:10px 12px}
- .hud-editor-shortcut{width:26px;height:26px;font-size:17px}
 }
