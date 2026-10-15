@@ -7,8 +7,21 @@ import {newSong,addModule,moveModule,removeModule,setBindingActions} from '../ed
 import {validateLibrary,createEngine} from '../core/engine-v1.mjs';
 import {LIBRARY_KEY,LEGACY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary} from '../core/library-storage.mjs';
 import {moduleRows} from '../core/layout-v3.4.mjs';
+import {normalizeSlot,resolveModuleVisual} from '../core/module-visuals.mjs';
 const fixture=()=>JSON.parse(readFileSync(new URL('../config/midi-hud-data-v2.json',import.meta.url)));
 const storage=()=>{const data=new Map();return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),data};};
+test('el distintivo GT anterior se convierte en etiqueta editable sin duplicarlo en descripción',()=>{
+ const slot=normalizeSlot({name:'Comp',sub:'GT'},6);
+ assert.equal(slot.deviceTag,'GT');assert.equal(slot.sub,'');
+ const edited=normalizeSlot({...slot,deviceTag:'Ampero'},6);
+ assert.equal(edited.deviceTag,'Ampero');assert.equal(edited.sub,'');
+});
+test('mover módulos conserva colores e iconos previos aunque fueran valores por defecto',()=>{
+ const db=fixture(),id=newSong(db,'worship','Prueba','sig');
+ const song=db.songs.find(s=>s.id===id),before=resolveModuleVisual(song.displaySlots[0],0);
+ moveModule(db,id,0,1);
+ assert.deepEqual(resolveModuleVisual(song.displaySlots[1],1),before);
+});
 
 test('guardar mezcla convierte solo tras la elección y conserva raíces, calidad, alteraciones y bajo',async()=>{
  const source='A - Solo de Ana\n| Do | G | Lam | Re♭maj7/La♭ |';
