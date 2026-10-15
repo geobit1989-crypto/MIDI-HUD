@@ -56,7 +56,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monos
 <script type="module">
 import {createEngine,normalizeLibrary,validateLibrary,ENGINE_VERSION} from "../core/engine-v1.mjs";
 import {readSettings,saveSettings} from "../core/settings-v1.mjs";
-import {openBrowserMidi} from "../core/midi-browser.mjs";
+import {openBrowserMidi} from "../core/midi-browser.mjs?v=20261015-ble1";
 const $=id=>document.getElementById(id),KEY="hudLabLibraryV1",EDITOR="hudLibraryV1";
 const settings=readSettings(localStorage);
 let engine,library,logs=[],link;
@@ -126,8 +126,14 @@ $("export").onclick=()=>{
 $("connect").onclick=async()=>{
  try{
   if(link)link.close();
-  link=await openBrowserMidi(receive);
-  $("midiStatus").textContent=link.supported?"Entrada MIDI habilitada si hay puertos disponibles.":"No disponible: "+link.reason;
+  link=await openBrowserMidi(receive,names=>{
+    $("midiStatus").textContent=names.length
+      ?"Entradas MIDI: "+names.join(", ")+". Esperando CC…"
+      :"Acceso MIDI disponible, sin entradas detectadas.";
+  });
+  $("midiStatus").textContent=link.supported
+    ?(link.inputCount?"Entradas MIDI: "+link.inputNames.join(", "):"Acceso MIDI disponible, sin entradas detectadas.")
+    :"No disponible: "+link.reason;
  }catch(e){$("midiStatus").textContent="No se abrió MIDI: "+e.message;}
 };
 (async()=>{
