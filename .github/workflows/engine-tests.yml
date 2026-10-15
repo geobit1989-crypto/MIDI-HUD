@@ -26,7 +26,7 @@ jobs:
           node --check editor/v2.mjs
           node --check live/live-controls-v1.js
       - name: Execute automatic tests
-        run: node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs tests/live-ui.test.mjs tests/lead-sheet-text.test.mjs
+        run: node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs tests/live-ui.test.mjs tests/lead-sheet-text.test.mjs tests/gear-longpress.test.mjs
       - name: Assemble standalone static website
         run: |
           mkdir -p build/MIDI-HUD-BETA/{core,editor,lab,config,live}
