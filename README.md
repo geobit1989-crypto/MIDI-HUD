@@ -1,3 +1,19 @@
+## Editor v3 — Estados unificados y guardado por sección (15/10/2026)
+
+**Secciones actuales:** Canción · **Estados** · Lead sheet · MIDI.
+
+La pestaña **Estados** reúne la definición de estados musicales y la personalización de las nueve casillas de LIVE. Selecciona una casilla 1–9, elige el estado vinculado y configura título, descripción, color (paleta o personalizado) e icono. Las casillas sin estado pueden conservarse para referencias estáticas de la GT. La configuración de color e icono se guarda en las propiedades opcionales de `song.displaySlots[]` para preservar compatibilidad con bibliotecas anteriores. LIVE muestra el gradiente y el icono elegidos.
+
+**Guardado manual:** cada pestaña tiene un único botón con el texto exacto **Guardar**. Editar campos, módulos, lead sheet o asociaciones MIDI solamente actualiza la copia de trabajo en memoria; no modifica `hudLibraryV1` hasta pulsar Guardar. Al abandonar una pestaña con cambios pendientes aparece una advertencia y se pueden descartar. Exportar solo incluye lo último guardado. Se mantiene una copia anterior en `hudLibraryV1Backup`.
+
+**iPhone:** el panel lateral de repertorios se encuentra inicialmente recogido para dar prioridad al contenido del editor. El botón **Biblioteca** permite mostrarlo y elegir otra canción; después se recoge de nuevo.
+
+**Versiones anteriores conservadas:** `editor/v2.html` (edición con guardado automático), `editor/v1.html`, `editor/legacy.html`; la entrada `editor/` abre v3. La biblioteca no se borra ni se reemplaza al cambiar de versión.
+
+**Pruebas:** Node + GitHub Actions; validación interactiva de estados, iconos, colores, canciones, lead sheet y MIDI con Chromium aislado en memoria, incluida comprobación de que el almacenamiento no cambia antes de pulsar Guardar. Prueba con Chrome/Safari reales y Chocolate BLE todavía pendiente.
+
+---
+
 ## Editor beta — Lead sheet textual y guardado automático (14/10/2026)
 
 Restaurado el lector de lead sheets v0.4 del proyecto: edición mediante texto con secciones, compases entre |, acordes mayores/menores con # o b, / como compás anterior, y |: ... :| como repetición. El editor muestra simultáneamente el texto, números de línea, diagnósticos y partitura generada. Un compás permite uno o dos acordes; la posición exacta del pulso no se infiere.
