@@ -18,22 +18,24 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check core/engine-v1.mjs
+          node --check core/module-visuals.mjs
           node --check core/settings-v1.mjs
           node --check core/midi-browser.mjs
           node --check editor/editor-model.mjs
           node --check editor/lead-sheet-text.mjs
           node --check editor/lead-sheet-ui.mjs
           node --check editor/v2.mjs
+          node --check editor/v3.mjs
           node --check live/live-controls-v1.js
       - name: Execute automatic tests
-        run: node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs tests/live-ui.test.mjs tests/lead-sheet-text.test.mjs tests/gear-longpress.test.mjs
+        run: node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs tests/live-ui.test.mjs tests/lead-sheet-text.test.mjs tests/gear-longpress.test.mjs tests/editor-v3.test.mjs
       - name: Assemble standalone static website
         run: |
           mkdir -p build/MIDI-HUD-BETA/{core,editor,lab,config,live}
           cp index.html v03.html README.md build/MIDI-HUD-BETA/
-          cp core/engine.mjs core/engine-v1.mjs core/settings-v1.mjs core/midi-browser.mjs build/MIDI-HUD-BETA/core/
+          cp core/engine.mjs core/engine-v1.mjs core/settings-v1.mjs core/midi-browser.mjs core/module-visuals.mjs build/MIDI-HUD-BETA/core/
           cp live/responsive-v1.css live/live-controls-v1.js live/config-menu-v2.css build/MIDI-HUD-BETA/live/
-          cp editor/index.html editor/v1.html editor/v2.html editor/v2.mjs editor/editor-model.mjs editor/lead-sheet-text.mjs editor/lead-sheet-ui.mjs editor/legacy.html build/MIDI-HUD-BETA/editor/
+          cp editor/index.html editor/v1.html editor/v2.html editor/v2.mjs editor/v3.html editor/v3.mjs editor/editor-model.mjs editor/lead-sheet-text.mjs editor/lead-sheet-ui.mjs editor/legacy.html build/MIDI-HUD-BETA/editor/
           cp lab/index.html lab/midi-v1.html lab/legacy.html build/MIDI-HUD-BETA/lab/
           cp config/midi-hud-data-v1.json config/midi-hud-data-v2.json build/MIDI-HUD-BETA/config/
           touch build/MIDI-HUD-BETA/.nojekyll
@@ -58,7 +60,8 @@ jobs:
           EDITOR: http://localhost:8000/editor/
           LAB:  http://localhost:8000/lab/
 
-          Primero editar en EDITOR; luego actualizar LIVE para ver los cambios.
+          Primero editar en EDITOR y pulsar Guardar por sección; después recargar LIVE.
+          La sección ESTADOS incluye los nueve módulos, colores e iconos.
           LAB utiliza datos de prueba independientes, o permite copiar desde EDITOR.
           El canal MIDI de recepción se configura globalmente en LIVE/LAB.
 
