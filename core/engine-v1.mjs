@@ -3,6 +3,7 @@
  * Sin DOM, audio, temporizadores, redes ni envio MIDI.
  * Los datos de cancion no contienen el canal de recepcion: es un ajuste global.
  */
+import {validModuleColor,validModuleIcon} from "./module-visuals.mjs";
 export const ENGINE_VERSION = "1.0.0-beta.1";
 export const SCHEMA_VERSION = "2.0.0";
 
@@ -96,7 +97,9 @@ export function validateLibrary(raw) {
     }
     insist(s.displaySlots === undefined || (Array.isArray(s.displaySlots) &&
       s.displaySlots.length<=9 && s.displaySlots.every(slot=>isObject(slot) &&
-      typeof slot.name==="string" && typeof slot.sub==="string")),
+      typeof slot.name==="string" && typeof slot.sub==="string" &&
+      (slot.color==null||validModuleColor(slot.color)) &&
+      (slot.icon==null||validModuleIcon(slot.icon)))),
       "matriz visual invalida");
     insist(Array.isArray(s.stateIds) && s.stateIds.length > 0, "cancion sin estados");
     insist(new Set(s.stateIds).size === s.stateIds.length, "estados duplicados");
