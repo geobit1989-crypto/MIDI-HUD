@@ -2,15 +2,16 @@ import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261016-editor-audit1";
 import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch2";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261016-unified1";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261016-patch2";
 import {
  newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
  chocolateMatrix,actionDescription,diagnostics,addModule,moveModule,removeModule,
- newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState
-} from "./editor-model.mjs?v=20261016-editor-audit1";
+ newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
+ addConfiguredModule,renameModule,setModulePurpose,modulePurpose
+} from "./editor-model.mjs?v=20261016-unified1";
 
 /**
  * Editor MIDI HUD v3
@@ -48,17 +49,17 @@ function currentRep(){return working.repertoires.find(x=>x.id===activeRep);}
 function currentSong(){return working.songs.find(x=>x.id===activeSong);}
 function currentState(){return working.states.find(x=>x.id===activeState);}
 function stateSelectionText(st=currentState()){
- if(st)return 'Editando estado: '+st.name+(st.displayIndex==null?' · Sin módulo asociado':' · Módulo '+(st.displayIndex+1));
+ if(st)return st.displayIndex==null?'Estado sin módulo visible. Puedes asignarle uno en las opciones avanzadas.':'El nombre se actualiza en el módulo y en su estado musical.';
  if(Number.isInteger(activeModule)&&currentSong().displaySlots?.[activeModule])
-  return currentSlot().kind==='expression'?'Este módulo de expresión no tiene estado musical asociado. Selecciona un estado o un módulo de control para elegir el inicial.':'Este módulo no tiene estado musical asociado. Usa «+ Estado» para crearlo o «Crear estado y usar como inicial» para comenzar la canción aquí.';
+  return modulePurpose(working,activeSong,activeModule)==='control'?'Escribe el nombre; el estado se crea y se vincula automáticamente.':'Este módulo funciona sin crear un estado musical.';
  return 'Selecciona un estado musical o un módulo para editarlo.';
 }
 function renderInitialState(){
  const song=currentSong(),st=currentState(),initial=working.states.find(state=>state.id===song.initialStateId);
  $("statesInitialStatus").textContent='Estado inicial de la canción: '+initial.name;
  const action=$("stateMakeInitial"),slot=song.displaySlots?.[activeModule];
- action.disabled=st?st.id===song.initialStateId:!Number.isInteger(activeModule)||!slot||slot.kind==='expression';
- action.textContent=st?(st.id===song.initialStateId?'Ya es el estado inicial':'Usar como inicial'):'Crear estado y usar como inicial';
+ action.disabled=st?st.id===song.initialStateId:!Number.isInteger(activeModule)||!slot||modulePurpose(working,activeSong,activeModule)!=='control';
+ action.textContent=st?.id===song.initialStateId?'Ya es el estado inicial':'Usar como inicial';
 }
 function makeSelectionInitial(){
  const st=currentState();
@@ -267,6 +268,7 @@ function renderModules(){
  $("moduleUp").disabled=!hasModule||activeModule===0;
  $("moduleDown").disabled=!hasModule||activeModule===slots.length-1;
  $("moduleAdd").disabled=slots.length>=256;
+ $("moduleExpressionAdd").disabled=slots.length>=256;$("moduleUtilityAdd").disabled=slots.length>=256;
  for(const id of ['moduleName','moduleSub','moduleDeviceTag','moduleKind','moduleHidden','moduleColor','moduleColorPreset','moduleIcon','moduleLinkedState','moduleRowBreak'])$(id).disabled=!hasModule;
  const area=$("moduleGrid");area.replaceChildren();
  if(!slots.length)area.append(make('p','Sin módulos. Pulsa + Módulo para añadir uno.','help'));
@@ -288,10 +290,11 @@ function renderModules(){
  }
  $("selectedModuleLabel").textContent=hasModule?String(activeModule+1):'—';
  const slot=normalSlot(activeModule),visual=resolveModuleVisual(slot,activeModule);
- $("moduleName").value=slot.name;
+ $("moduleName").disabled=!hasModule&&!currentState();
+ $("moduleName").value=hasModule?(slot.name==='—'?'':slot.name):currentState()?.name||'';
  $("moduleSub").value=slot.sub;
  $("moduleDeviceTag").value=slot.deviceTag;
- $("moduleKind").value=currentSlot().kind||"control";
+ $("moduleKind").value=hasModule?modulePurpose(working,activeSong,activeModule):'control';
  $("moduleHidden").checked=!!currentSlot().hidden;
  $("moduleRowBreak").checked=!!currentSlot().rowBreakBefore;
  $("moduleRowBreak").disabled=!hasModule||activeModule===0;
@@ -328,10 +331,9 @@ function renderStates(){
  const st=currentState(),index=states.indexOf(st?.id);
  $("stateUp").disabled=!st||index<=0;$("stateDown").disabled=!st||index>=states.length-1;
  $("stateRemove").disabled=!st||states.length<=1;
- for(const id of ['stateCopy','stateName','stateSlot','statePatch','indicatorId','indicatorLabel','indicatorSlot','indicatorActive','indicatorAdd'])$(id).disabled=!st;
+ for(const id of ['stateCopy','stateSlot','statePatch','indicatorId','indicatorLabel','indicatorSlot','indicatorActive','indicatorAdd'])$(id).disabled=!st;
  $("stateSelectionNote").textContent=stateSelectionText(st);
  renderInitialState();
- $("stateName").value=st?.name||'';
  entries("stateSlot",[["","Sin módulo"]].concat(
   Array.from({length:currentSong().displaySlots.length},(_,i)=>[i,(i+1)+" · "+normalSlot(i).name])
  ),st?.displayIndex??"");
@@ -367,18 +369,22 @@ function setSlotProperty(key,value){
  const base=normalSlot(activeModule);
  currentSong().displaySlots[activeModule]={...currentSlot(),...base,[key]:value};
  dirty();
- const visual=resolveModuleVisual(currentSlot(),activeModule);
+ refreshModuleTile(activeModule);
+}
+function refreshModuleTile(index){
+ const slot=currentSlot(index),visual=resolveModuleVisual(slot,index);
  // Refrescar solo la matriz (sin borrar campos en curso).
  const tiles=$("moduleGrid").children;
- const tile=tiles[activeModule];
+ const tile=tiles[index];
  if(tile){
   tile.style.background="linear-gradient(160deg,"+visual.color+","+visual.dark+")";
+  tile.title='Editar módulo '+(index+1)+' · '+slot.name;
   tile.querySelector(".tile-symbol").textContent=visual.glyph||" ";
-  tile.querySelector(".tile-name").textContent=normalSlot(activeModule).name;
-  tile.querySelector(".tile-sub").textContent=normalSlot(activeModule).sub;
-  tile.querySelector(".tile-device").textContent=normalSlot(activeModule).deviceTag;
-  tile.querySelector(".tile-device").hidden=!normalSlot(activeModule).deviceTag;
-  tile.style.opacity=currentSlot().hidden?".35":"1";
+  tile.querySelector(".tile-name").textContent=normalSlot(index).name;
+  tile.querySelector(".tile-sub").textContent=normalSlot(index).sub;
+  tile.querySelector(".tile-device").textContent=normalSlot(index).deviceTag;
+  tile.querySelector(".tile-device").hidden=!normalSlot(index).deviceTag;
+  tile.style.opacity=slot.hidden?".35":"1";
  }
 }
 function linkState(id,index){
@@ -405,27 +411,39 @@ function confirmModuleAssignment(stateId,index){
 function changeStateField(key,value){
  const st=currentState();
  if(!st)return;
- const oldName=st.name;
  st[key]=value;
- if(key==="name"&&st.displayIndex!=null){
-  const sl=normalSlot(st.displayIndex);
-  if(sl.name===oldName||sl.name==='—'){
-   ensureSlots();
-   currentSong().displaySlots[st.displayIndex]={...currentSlot(st.displayIndex),...sl,name:value};
-  }
- }
- if(key==='name'){
-  $("stateSelectionNote").textContent=stateSelectionText(st);
-  renderInitialState();renderSong();
-  for(const option of $("moduleLinkedState").options)if(option.value===st.id)option.textContent=value+(st.displayIndex==null?' · Sin módulo':' · Módulo '+(st.displayIndex+1));
-  if(st.displayIndex!=null){
-   const slot=normalSlot(st.displayIndex),tile=$("moduleGrid").children[st.displayIndex];
-   if(tile)tile.querySelector('.tile-name').textContent=slot.name;
-   if(activeModule===st.displayIndex)$("moduleName").value=slot.name;
-   for(const option of $("stateSlot").options)if(option.value===String(st.displayIndex))option.textContent=(st.displayIndex+1)+' · '+slot.name;
-  }
- }
  dirty();
+}
+function renameSelection(){
+ const field=$("moduleName"),name=field.value,start=field.selectionStart,end=field.selectionEnd;
+ const previous=activeState;
+ if(Number.isInteger(activeModule)&&currentSong().displaySlots?.[activeModule])
+  activeState=renameModule(working,activeSong,activeModule,name);
+ else if(currentState())currentState().name=name;
+ else return;
+ dirty();renderSong();
+ if(previous!==activeState){
+  renderStates();
+  if(Number.isInteger(start))field.setSelectionRange(start,end);
+  return;
+ }
+ if(Number.isInteger(activeModule)){
+  refreshModuleTile(activeModule);
+  for(const id of ['stateSlot','indicatorSlot'])for(const option of $(id).options)
+   if(option.value===String(activeModule))option.textContent=(activeModule+1)+' · '+name;
+ }
+ const st=currentState(),pill=$("stateList").querySelector('[aria-pressed=true]');
+ if(st&&pill)pill.textContent=st.name+(st.id===currentSong().initialStateId?' · Inicial':'');
+ if(st)for(const option of $("moduleLinkedState").options)if(option.value===st.id)
+  option.textContent=st.name+(st.displayIndex==null?' · Sin módulo':' · Módulo '+(st.displayIndex+1));
+ $("stateSelectionNote").textContent=stateSelectionText(st);renderInitialState();
+}
+function addEditorModule(purpose){
+ try{
+  const result=addConfiguredModule(working,activeSong,purpose);
+  activeModule=result.index;activeState=result.stateId;dirty();renderStates();renderSong();
+  $("moduleName").focus();$("moduleName").select?.();
+ }catch(error){notice(error.message,true);}
 }
 function renderLead(){
  $("sheetNotation").value=currentSong().chordNotation||"americano";
@@ -676,10 +694,9 @@ function register(){
  };
  $("stateMakeInitial").onclick=makeSelectionInitial;
  $("songSave").onclick=save;
- $("moduleAdd").onclick=()=>{
-  try{activeModule=addModule(working,activeSong);activeState=null;dirty();renderStates();}
-  catch(error){notice(error.message,true);}
- };
+ $("moduleAdd").onclick=()=>addEditorModule('control');
+ $("moduleExpressionAdd").onclick=()=>addEditorModule('expression');
+ $("moduleUtilityAdd").onclick=()=>addEditorModule('utility');
  for(const [id,delta] of [["moduleUp",-1],["moduleDown",1]])$(id).onclick=()=>{
   activeModule=moveModule(working,activeSong,activeModule,delta);dirty();renderStates();
  };
@@ -707,11 +724,6 @@ function register(){
  };
  $("stateUp").onclick=()=>{moveState(working,activeState,-1);dirty();renderStates();renderSong();};
  $("stateDown").onclick=()=>{moveState(working,activeState,1);dirty();renderStates();renderSong();};
- $("stateName").oninput=()=>{
-  changeStateField("name",$("stateName").value);
-  const pill=$("stateList").querySelector("[aria-pressed=true]");
-  if(pill)pill.textContent=$("stateName").value+(activeState===currentSong().initialStateId?' · Inicial':'');
- };
  $("statePatch").oninput=()=>changeStateField("gtPatch",
   $("statePatch").value.trim()||null);
  $("stateSlot").onchange=()=>{
@@ -723,10 +735,14 @@ function register(){
   assignStateModule(working,activeSong,activeState,next,{replace:true});activeModule=next;
   if(previous!==currentState().displayIndex){dirty();renderStates();}
  };
- $("moduleName").oninput=()=>setSlotProperty("name",$("moduleName").value);
+ $("moduleName").oninput=renameSelection;
  $("moduleSub").oninput=()=>setSlotProperty("sub",$("moduleSub").value);
  $("moduleDeviceTag").oninput=()=>setSlotProperty("deviceTag",$("moduleDeviceTag").value);
- $("moduleKind").onchange=()=>setSlotProperty("kind",$("moduleKind").value);
+ $("moduleKind").onchange=()=>{
+  if(!Number.isInteger(activeModule))return;
+  activeState=setModulePurpose(working,activeSong,activeModule,$("moduleKind").value);
+  dirty();renderStates();renderSong();
+ };
  $("moduleLayout").onchange=()=>{
   currentSong().moduleLayout=$("moduleLayout").value;
   if(currentSong().moduleLayout==='auto')for(const slot of currentSong().displaySlots)slot.rowBreakBefore=false;

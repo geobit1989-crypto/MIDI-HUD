@@ -159,6 +159,8 @@ button.module-select-tile{position:relative;text-align:center;display:flex;flex-
 .module-select-tile .tile-device{display:block;border:1px solid #fff9;background:#0005;border-radius:5px;padding:3px 7px;font-size:13px;font-weight:700;line-height:1.2;color:#fff;max-width:100%;overflow-wrap:anywhere}
 .module-select-tile .tile-device[hidden]{display:none}
 .appearance-layout{display:block}
+#stateAdvanced>summary{cursor:pointer;font-size:16px;font-weight:700;color:var(--txt)}
+#stateAdvanced .ctrlrow{margin:12px 0}
 input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 @media(max-width:1150px){.state-module-layout{grid-template-columns:1fr}}
 @media(max-width:800px){.module-selector{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -263,67 +265,54 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
   <section data-panel="states" hidden>
     <div class="panel-title">
       <h2>Estados</h2>
-      <p>Una sola configuración por canción. Selecciona un módulo, asígnale un estado y define su texto, color e icono; después pulsa Guardar.</p>
+      <p>Añade un módulo y escribe su nombre una vez. Su estado musical se crea y se vincula automáticamente. Pulsa Guardar cuando termines.</p>
     </div>
     <div class="state-module-layout">
       <section class="section-card">
-        <h3>Módulos visuales · distribución adaptable</h3>
+        <h3>Módulos</h3>
         <label class="field">Distribución de filas<select id="moduleLayout"><option value="auto">Automática</option><option value="manual">Filas elegidas</option></select></label>
-        <div class="ctrlrow"><button id="moduleAdd" class="small primary">+ Módulo</button><button id="moduleRemove" class="small danger">Quitar</button><button id="moduleUp" class="small">↑ Mover</button><button id="moduleDown" class="small">↓ Mover</button></div><div id="moduleGrid" class="module-grid module-selector" aria-label="Módulos visuales"></div>
-        <p class="help">Añade, quita, oculta o mueve módulos. El tamaño se adapta al espacio de LIVE. Marca «Empezar una fila nueva» para elegir el reparto.</p>
+        <div class="ctrlrow"><button id="moduleAdd" class="small primary">+ Módulo</button><button id="moduleExpressionAdd" class="small">+ Expresión</button><button id="moduleRemove" class="small danger">Quitar</button><button id="moduleUp" class="small">↑ Mover</button><button id="moduleDown" class="small">↓ Mover</button></div>
+        <div id="moduleGrid" class="module-grid module-selector" aria-label="Módulos de la canción"></div>
+        <p class="help">Para Morph, Wah o Volumen usa + Expresión. Marca «Empezar una fila nueva» para elegir el reparto.</p>
       </section>
       <section class="section-card">
-        <h3>Estados musicales de esta canción</h3>
-        <p id="statesInitialStatus" class="help" role="status"></p>
-        <div id="stateList" class="state-picker"></div>
+        <h3>Editar módulo <span id="selectedModuleLabel"></span></h3>
         <p id="stateSelectionNote" class="help" role="status"></p>
-        <div class="ctrlrow">
-          <button id="stateAdd" class="small primary">+ Estado</button>
-          <button id="stateMakeInitial" class="small primary">Usar como inicial</button>
-          <button id="stateCopy" class="small">Duplicar</button>
-          <button id="stateRemove" class="small danger">Eliminar</button>
-          <button id="stateUp" class="small">↑ Orden</button>
-          <button id="stateDown" class="small">↓ Orden</button>
-        </div>
         <div class="grid">
-          <label class="field">Nombre del estado<input id="stateName" maxlength="80" placeholder="Clean, Ambient, Solo…"></label>
-          <label class="field">Módulo vinculado al estado
-            <select id="stateSlot"></select>
-          </label>
+          <label class="field">Nombre<input id="moduleName" maxlength="80" placeholder="Intro, Verso, Coro…"></label>
+          <label class="field">Descripción<input id="moduleSub" maxlength="75"></label>
+          <label class="field">Dispositivo (etiqueta)<input id="moduleDeviceTag" maxlength="16" placeholder="GT, MIDI, EXP…"></label>
+          <label class="field">Tipo de módulo<select id="moduleKind"><option value="control">Estado musical</option><option value="expression">Expresión</option><option value="utility">Control auxiliar</option></select></label>
+          <label class="field"><input id="moduleHidden" type="checkbox"> Ocultar módulo</label>
+          <label class="field"><input id="moduleRowBreak" type="checkbox"> Empezar una fila nueva</label>
+          <label class="field">Color del módulo<select id="moduleColorPreset"></select></label>
+          <label class="field">Color personalizado<input id="moduleColor" type="color" value="#075eff"></label>
+          <label class="field">Icono<select id="moduleIcon"></select></label>
           <label class="field">Referencia patch GT (solo informativa)
             <input id="statePatch" type="text" inputmode="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" pattern="[A-Za-z0-9\-]*" placeholder="Ej.: U01-1 o P50-5">
           </label>
         </div>
-        <p class="help">Admite letras, números y guion: U01-1, P50-5. Es una referencia informativa; no aparece en LIVE ni envía MIDI desde el Editor.</p>
+        <p class="help">La referencia patch admite letras, números y guion. No aparece en LIVE ni envía MIDI desde el Editor.</p>
+        <p id="statesInitialStatus" class="help" role="status"></p>
+        <button id="stateMakeInitial" class="small primary">Usar como inicial</button>
       </section>
     </div>
-    <section class="section-card">
-      <h3>Apariencia del módulo <span id="selectedModuleLabel"></span></h3>
-      <div class="appearance-layout">
-        <div class="appearance-fields">
-          <div class="grid">
-            <label class="field">Título visible<input id="moduleName" maxlength="45"></label>
-            <label class="field">Descripción<input id="moduleSub" maxlength="75"></label>
-            <label class="field">Dispositivo (etiqueta)<input id="moduleDeviceTag" maxlength="16" placeholder="GT, MIDI, EXP…"></label>
-            <label class="field">Tipo de módulo<select id="moduleKind"><option value="control">Control</option><option value="expression">Expresión</option></select></label>
-            <label class="field"><input id="moduleHidden" type="checkbox"> Ocultar módulo</label>
-            <label class="field"><input id="moduleRowBreak" type="checkbox"> Empezar una fila nueva</label>
-            <label class="field">Color del módulo
-              <select id="moduleColorPreset"></select>
-            </label>
-            <label class="field">Color personalizado
-              <input id="moduleColor" type="color" value="#075eff">
-            </label>
-            <label class="field">Icono
-              <select id="moduleIcon"></select>
-            </label>
-            <label class="field">Estado asociado a esta casilla
-              <select id="moduleLinkedState"></select>
-            </label>
-          </div>
-        </div>
+    <details id="stateAdvanced" class="section-card">
+      <summary>Asociaciones avanzadas</summary>
+      <p class="help">Puedes gestionar estados existentes, cambiar sus asociaciones o añadir controles auxiliares.</p>
+      <div id="stateList" class="state-picker"></div>
+      <div class="ctrlrow">
+        <button id="stateAdd" class="small">+ Estado</button>
+        <button id="moduleUtilityAdd" class="small">+ Control auxiliar</button>
+        <button id="stateCopy" class="small">Duplicar estado</button>
+        <button id="stateRemove" class="small danger">Eliminar estado</button>
+        <button id="stateUp" class="small">↑ Orden</button>
+        <button id="stateDown" class="small">↓ Orden</button>
       </div>
-    </section>
+      <div class="grid">
+        <label class="field">Módulo vinculado al estado<select id="stateSlot"></select></label>
+        <label class="field">Estado asociado al módulo<select id="moduleLinkedState"></select></label>
+      </div>
     <section class="section-card">
       <h3>Indicadores del estado seleccionado</h3>
       <div id="indicatorList"></div>
@@ -338,6 +327,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
       </div>
       <p class="help">Los indicadores representan la configuración prevista, no telemetría del hardware.</p>
     </section>
+    </details>
     <div class="section-footer"><span id="statesDirty" class="section-save-note">Sin cambios pendientes</span><button id="statesSave" class="primary">Guardar</button></div>
   </section>
   <section data-panel="sheet" hidden>
@@ -423,7 +413,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261016-editor-audit1"></script>
+<script type="module" src="./v3.mjs?v=20261016-unified1"></script>
 </div>
 </body>
 </html>

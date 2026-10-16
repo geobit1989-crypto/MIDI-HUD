@@ -68,9 +68,8 @@ test('se pueden construir todos los estados y guardarlos una sola vez al final',
  const t=setup(),ids=[t.snapshot().activeState];
  for(const name of ['Verso','Coro','Solo']){
   t.elements.get('stateAdd').onclick();ids.push(t.snapshot().activeState);
-  t.elements.get('stateName').value=name;t.elements.get('stateName').oninput();
-  assert.equal(t.elements.get('moduleName').value,name);
-  assert.ok(t.elements.get('stateSelectionNote').textContent.includes(name));
+  t.elements.get('moduleName').value=name;t.elements.get('moduleName').oninput();
+  assert.equal(t.elements.get('moduleGrid').children[t.snapshot().activeModule].querySelector('.tile-name').textContent,name);
   t.elements.get('moduleSub').value='Sonido '+name;t.elements.get('moduleSub').oninput();
  }
  // Visitar estados pendientes no descarta ni escribe los demás.
@@ -111,14 +110,16 @@ test('referencias U01-1 y P50-5 se guardan y se recuperan como texto por estado'
  assert.equal(cleared.states.find(st=>st.id===ids[2]).gtPatch,null);
  assert.deepEqual(ids.slice(0,2).map(id=>cleared.states.find(st=>st.id===id).gtPatch),patches.slice(0,2));
 });
-test('elegir un módulo sin estado no permite editar por accidente el estado anterior',()=>{
+test('nombrar un módulo vacío crea su estado y conserva el estado anterior',()=>{
  const t=setup(),initial=t.snapshot().activeState;
  t.elements.get('moduleGrid').children[1].onclick();
  assert.equal(t.snapshot().activeState,null);assert.equal(t.snapshot().activeModule,1);
- assert.equal(t.elements.get('stateName').disabled,true);
- t.elements.get('stateName').value='No debe sustituir Intro';t.elements.get('stateName').oninput();
+ assert.equal(t.elements.get('moduleName').disabled,false);
+ t.elements.get('moduleName').value='Verso';t.elements.get('moduleName').oninput();
  assert.equal(t.snapshot().working.states.find(st=>st.id===initial).name,'Intro');
- assert.equal(t.snapshot().hasDraft,false);assert.equal(t.writes.length,0);
+ const state=t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState);
+ assert.equal(state.name,'Verso');assert.equal(state.displayIndex,1);
+ assert.equal(t.snapshot().hasDraft,true);assert.equal(t.writes.length,0);
 });
 test('crear más estados no usa Morph ni vuelve a editar el módulo anterior',()=>{
  const t=setup();for(let i=0;i<3;i++)t.elements.get('stateAdd').onclick();
@@ -200,7 +201,7 @@ test('cambiar el inicial existente no cambia módulos ni asignaciones MIDI',asyn
 test('cancelar un cambio de repertorio devuelve el selector al repertorio actual',()=>{
  let other;
  const t=setup({prepare(db){other=model.newRepertoire(db,'Otro');}});
- t.elements.get('stateName').value='Intro pendiente';t.elements.get('stateName').oninput();
+ t.elements.get('moduleName').value='Intro pendiente';t.elements.get('moduleName').oninput();
  t.context.confirmResult=false;
  t.elements.get('repSelect').value=other;t.elements.get('repSelect').onchange({target:t.elements.get('repSelect')});
  assert.equal(t.snapshot().activeRep,'worship');
@@ -268,7 +269,7 @@ test('recorrido completo: Canción, Estados, Lead sheet y MIDI conservan los gua
  await t.elements.get('songSave').onclick();
  t.context.api.updateTab('states');
  t.elements.get('stateAdd').onclick();const verse=t.snapshot().activeState;
- t.elements.get('stateName').value='Verso';t.elements.get('stateName').oninput();
+ t.elements.get('moduleName').value='Verso';t.elements.get('moduleName').oninput();
  t.elements.get('statePatch').value='U01-2';t.elements.get('statePatch').oninput();
  t.elements.get('stateMakeInitial').onclick();
  await t.elements.get('statesSave').onclick();
@@ -298,7 +299,7 @@ test('cancelar la salida de una pestaña conserva el borrador; confirmar solo de
  const t=setup();
  t.elements.get('statePatch').value='P50-5';t.elements.get('statePatch').oninput();
  await t.context.api.save();
- t.elements.get('stateName').value='Pendiente';t.elements.get('stateName').oninput();
+ t.elements.get('moduleName').value='Pendiente';t.elements.get('moduleName').oninput();
  t.context.confirmResult=false;t.context.api.updateTab('sheet');
  assert.equal(t.snapshot().activeTab,'states');assert.equal(t.snapshot().hasDraft,true);
  assert.equal(t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState).name,'Pendiente');
@@ -353,7 +354,7 @@ test('rechazar importar y cancelar exportación con borradores no escribe ni des
  const file={size:1000,text:async()=>JSON.stringify(before)};
  await t.elements.get('importFile').onchange({target:{files:[file],value:'test.json'}});
  assert.equal(t.writes.length,0);assert.deepEqual(t.snapshot().committed,before);
- t.elements.get('stateName').value='Solo borrador';t.elements.get('stateName').oninput();
+ t.elements.get('moduleName').value='Solo borrador';t.elements.get('moduleName').oninput();
  t.elements.get('exportBtn').onclick();assert.equal(t.downloads.length,0);
  t.context.confirmResult=true;t.elements.get('exportBtn').onclick();
  assert.deepEqual(JSON.parse(await t.downloads[0].text()),before);
@@ -412,4 +413,102 @@ test('cancelar mover un estado a un módulo libre mantiene su asociación origin
  assert.deepEqual(t.snapshot().working,before);
  assert.equal(t.snapshot().activeState,null);assert.equal(t.snapshot().activeModule,1);
  assert.equal(select.value,'');assert.equal(t.snapshot().hasDraft,false);
+});
+test('añadir módulo, escribir un nombre y guardar crea el estado y su asociación automáticamente',async()=>{
+ const t=setup(),before=t.snapshot().working;
+ t.elements.get('moduleAdd').onclick();
+ const id=t.snapshot().activeState,index=t.snapshot().activeModule;
+ assert.ok(id);assert.equal(index,before.songs.find(s=>s.id===t.songId).displaySlots.length);
+ for(const name of ['C','Co','Cor','Coro']){
+  t.elements.get('moduleName').value=name;t.elements.get('moduleName').oninput();
+  assert.equal(t.snapshot().activeState,id);
+ }
+ assert.equal(t.writes.length,0);
+ await t.elements.get('statesSave').onclick();
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),state=saved.states.find(st=>st.id===id),song=saved.songs.find(s=>s.id===t.songId);
+ assert.equal(state.name,'Coro');assert.equal(state.displayIndex,index);assert.equal(song.displaySlots[index].name,'Coro');
+ assert.equal(song.stateIds.length,2);assert.deepEqual(saved.bindings,before.bindings);
+});
+test('los cuatro módulos vacíos de una canción se nombran sin crear ni asociar estados a mano',async()=>{
+ const t=setup({prepare(db,song,initial){initial.name='Estado inicial';song.displaySlots[0].name='—';}});
+ const names=['Intro','Verso','Coro','Solo'],initial=t.currentSong().initialStateId;
+ for(const [i,name] of names.entries()){
+  t.elements.get('moduleGrid').children[i].onclick();
+  t.elements.get('moduleName').value=name;t.elements.get('moduleName').oninput();
+ }
+ await t.elements.get('statesSave').onclick();
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),song=saved.songs.find(s=>s.id===t.songId);
+ assert.equal(song.stateIds.length,4);assert.equal(song.initialStateId,initial);
+ assert.deepEqual(song.stateIds.map(id=>saved.states.find(st=>st.id===id).name),names);
+ assert.deepEqual(song.stateIds.map(id=>saved.states.find(st=>st.id===id).displayIndex),[0,1,2,3]);
+ assert.deepEqual(song.displaySlots.map(slot=>slot.name),names);
+});
+test('renombrar una sola vez conserva el ID y la asignación MIDI del estado',async()=>{
+ let id;
+ const t=setup({prepare(db,song,initial){id=initial.id;model.setBindingActions(db,100,127,[{type:'ACTIVATE_STATE',stateId:id}]);}});
+ const bindings=t.snapshot().working.bindings;
+ t.elements.get('moduleName').value='Coro';t.elements.get('moduleName').oninput();
+ await t.elements.get('statesSave').onclick();
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY));
+ assert.deepEqual(saved.bindings,bindings);assert.equal(t.snapshot().activeState,id);
+ const result=engine.createEngine(saved).dispatch({type:'MIDI_CC',cc:100,value:127,channel:1});
+ assert.equal(result.view.state.id,id);assert.equal(result.view.state.name,'Coro');
+ assert.equal(result.view.song.displaySlots[result.view.state.displayIndex].name,'Coro');
+});
+test('añadir y nombrar Morph como expresión no crea un estado ni cambia el inicial',async()=>{
+ const t=setup(),before=t.snapshot().working,initial=t.currentSong().initialStateId;
+ t.elements.get('moduleExpressionAdd').onclick();const index=t.snapshot().activeModule;
+ t.elements.get('moduleName').value='Morph';t.elements.get('moduleName').oninput();
+ t.elements.get('moduleSub').value='+delay+reverb';t.elements.get('moduleSub').oninput();
+ await t.elements.get('statesSave').onclick();
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),song=saved.songs.find(s=>s.id===t.songId);
+ assert.equal(song.displaySlots[index].kind,'expression');assert.equal(song.displaySlots[index].name,'Morph');
+ assert.deepEqual(song.stateIds,before.songs.find(s=>s.id===t.songId).stateIds);
+ assert.equal(song.initialStateId,initial);assert.deepEqual(saved.bindings,before.bindings);
+ assert.equal(t.snapshot().activeState,null);
+});
+test('los controles auxiliares no crean estados y conservan ese comportamiento tras guardar y mover',async()=>{
+ const t=setup(),initial=t.currentSong().initialStateId;
+ t.elements.get('moduleUtilityAdd').onclick();
+ t.elements.get('moduleName').value='Tap tempo';t.elements.get('moduleName').oninput();
+ t.elements.get('moduleUp').onclick();
+ t.elements.get('moduleName').value='Tap';t.elements.get('moduleName').oninput();
+ await t.elements.get('statesSave').onclick();
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),song=saved.songs.find(s=>s.id===t.songId);
+ assert.deepEqual(song.stateIds,[initial]);assert.equal(t.snapshot().activeState,null);
+ assert.equal(song.displaySlots[t.snapshot().activeModule].stateMode,'manual');
+});
+test('convertir un módulo recién añadido en expresión retira solo el estado automático sin uso',()=>{
+ const t=setup(),before=t.currentSong().stateIds;
+ t.elements.get('moduleAdd').onclick();t.elements.get('moduleName').value='Morph';t.elements.get('moduleName').oninput();
+ t.elements.get('moduleKind').value='expression';t.elements.get('moduleKind').onchange();
+ assert.deepEqual(t.currentSong().stateIds,before);assert.equal(t.snapshot().activeState,null);
+ assert.equal(t.currentSong().displaySlots[t.snapshot().activeModule].name,'Morph');
+});
+test('cambiar el tipo conserva estados con patch, indicadores o referencias MIDI existentes',()=>{
+ let stateId;
+ const t=setup({prepare(db,song,initial){stateId=initial.id;initial.gtPatch='U01-1';model.setBindingActions(db,100,127,[{type:'ACTIVATE_STATE',stateId}]);}});
+ const before=t.snapshot().working;
+ t.elements.get('moduleKind').value='expression';t.elements.get('moduleKind').onchange();
+ assert.deepEqual(t.snapshot().working.bindings,before.bindings);
+ assert.deepEqual(t.snapshot().working.states.find(st=>st.id===stateId),before.states.find(st=>st.id===stateId));
+});
+test('el formulario tiene un solo nombre y las asociaciones manuales están cerradas por defecto',()=>{
+ const html=readFileSync(new URL('../editor/v3.html',import.meta.url),'utf8');
+ assert.equal((html.match(/id="moduleName"/g)||[]).length,1);
+ assert.doesNotMatch(html,/id="stateName"|Título visible|Nombre del estado/);
+ const details=html.match(/<details\b[^>]*id="stateAdvanced"[^>]*>[\s\S]*?<\/details>/)?.[0];
+ assert.ok(details);assert.doesNotMatch(details.split('>')[0],/\bopen\b/);
+ assert.match(details,/id="stateSlot"/);assert.match(details,/id="moduleLinkedState"/);
+});
+test('escribir el nombre conserva las casillas y los campos de indicadores pendientes',()=>{
+ const t=setup(),tiles=[...t.elements.get('moduleGrid').children];
+ t.elements.get('indicatorSlot').value='2';
+ t.elements.get('indicatorLabel').value='Boost pendiente';
+ for(const name of ['C','Co','Cor','Coro']){
+  t.elements.get('moduleName').value=name;t.elements.get('moduleName').oninput();
+  assert.ok(t.elements.get('moduleGrid').children.every((tile,i)=>tile===tiles[i]));
+ }
+ assert.equal(t.elements.get('indicatorSlot').value,'2');
+ assert.equal(t.elements.get('indicatorLabel').value,'Boost pendiente');
 });

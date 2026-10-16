@@ -50,7 +50,7 @@ test('generic song four empty modules, SIG template four mapped states',()=>{
  assert.equal(gen.displaySlots.length,4);
  assert.ok(gen.displaySlots.every(x=>x.name==='—'&&x.kind==='control'));
  assert.equal(gen.stateIds.length,1);
- assert.equal(db.states.find(st=>st.id===gen.initialStateId).displayIndex,null);
+ assert.equal(db.states.find(st=>st.id===gen.initialStateId).displayIndex,0);
  let b=newSong(db,'worship','Otra canción','sig');let sig=db.songs.find(x=>x.id===b);
  assert.deepEqual(sig.displaySlots.map(x=>x.name),['Clean','Ambient','Drive','Solo']);
  assert.deepEqual(sig.stateIds.map(id=>db.states.find(x=>x.id===id).displayIndex),[0,1,2,3]);

@@ -114,7 +114,7 @@ test('un inicial ajeno, un módulo inexistente o una expresión sin estado no al
  assert.equal(JSON.stringify(db),before);
  const initial=useModuleAsInitialState(db,id,0);
  assert.equal(useModuleAsInitialState(db,id,0),initial);
- assert.equal(song.stateIds.length,2);assert.equal(song.displaySlots.length,4);
+ assert.equal(song.stateIds.length,1);assert.equal(song.displaySlots.length,4);
  assert.equal(validateLibrary(db),true);
 });
 test('un fallo en la escritura principal conserva también el backup anterior',()=>{
