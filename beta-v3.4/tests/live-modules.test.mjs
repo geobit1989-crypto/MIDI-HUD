@@ -33,8 +33,10 @@ test('Morph sin telemetría no muestra guion ni barra vacía; conserva dos filas
  const grid=new Element(document),vm=view();
  vm.song.displaySlots=Array.from({length:5},(_,i)=>({name:i===4?'Morph':'Estado '+i,sub:'Descripción',kind:i===4?'expression':'control',icon:'blank'}));
  renderLiveModules(grid,vm);
- assert.equal(grid.style['--module-row-count'],'2');
+ assert.equal(grid.style.display,'flex');assert.equal(grid.style.flexDirection,'column');
+ assert.equal(grid.style.gridTemplateColumns,'none');assert.equal(grid.style.gridTemplateRows,'none');
  assert.deepEqual(grid.children.map(row=>row.children.length),[3,2]);
+ assert.ok(grid.children.every(row=>row.style.flex==='1 1 0'&&row.style.minHeight==='0'));
  const morph=grid.querySelectorAll().find(tile=>tile.dataset.hudIndex==='4');
  const head=morph.children[0],label=head.children[0],value=head.children[1],meter=morph.children.at(-1);
  assert.equal(label.children.length,1);assert.equal(label.children[0].textContent,'Morph');

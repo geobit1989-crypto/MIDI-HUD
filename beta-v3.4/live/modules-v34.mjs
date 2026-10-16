@@ -44,10 +44,13 @@ export function renderLiveModules(grid,vm){
  const signature=JSON.stringify([vm.song.id,slots,vm.song.moduleLayout]);
  if(rendered.get(grid)!==signature){
   const doc=grid.ownerDocument,rows=moduleRows(slots,{manual:vm.song.moduleLayout==='manual'});
-  grid.style.setProperty('--module-row-count',String(Math.max(1,rows.length)));
+  // Las filas adaptativas son una columna flex; la cuadrícula 3x3 heredada no debe distribuirlas.
+  grid.style.display='flex';grid.style.flexDirection='column';
+  grid.style.gridTemplateColumns='none';grid.style.gridTemplateRows='none';
   const maxColumns=Math.max(1,...rows.map(items=>items.length));
   const content=rows.map(items=>{
    const row=node(doc,'div','adaptive-module-row');
+   row.style.flex='1 1 0';row.style.minHeight='0';
    row.append(...items.map(({cfg,index})=>{
     const tile=tileFor(doc,cfg,index);
     tile.style.setProperty('--module-width-ratio',String(items.length/maxColumns));
