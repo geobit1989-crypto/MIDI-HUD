@@ -37,8 +37,10 @@ jobs:
               out.write('HUD_SIMULATOR=' + devices[0]['udid'] + '\n')
           PY
       - name: Compile and test native MIDI parser and offline Editor to LIVE
+        # GoogleSignIn SPM products are built for arm64 on Apple Silicon.
+        # Avoid mixing an x86_64 app link with arm64-only package objects.
         run: |
-          xcodebuild test -project native/ios/MIDIHUD.xcodeproj -scheme MIDIHUD -configuration Debug -destination "platform=iOS Simulator,id=$HUD_SIMULATOR" -derivedDataPath build/ios-simulator -resultBundlePath build/iOS-Tests.xcresult CODE_SIGNING_ALLOWED=NO
+          xcodebuild test -project native/ios/MIDIHUD.xcodeproj -scheme MIDIHUD -configuration Debug -destination "platform=iOS Simulator,id=$HUD_SIMULATOR" -derivedDataPath build/ios-simulator -resultBundlePath build/iOS-Tests.xcresult CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES
       - name: Build device application without signing
         run: |
           xcodebuild build -project native/ios/MIDIHUD.xcodeproj -scheme MIDIHUD -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/ios-device CODE_SIGNING_ALLOWED=NO
