@@ -10,7 +10,7 @@ import {
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
  chocolateMatrix,actionDescription,diagnostics,addModule,moveModule,removeModule,
  newStateWithModule,duplicateStateWithModule,assignStateModule
-} from "./editor-model.mjs";
+} from "./editor-model.mjs?v=20261016-state-safety2";
 
 /**
  * Editor MIDI HUD v3
