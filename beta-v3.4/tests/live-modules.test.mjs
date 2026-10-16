@@ -43,3 +43,19 @@ test('Morph sin telemetría no muestra guion ni barra vacía; conserva dos filas
  assert.equal(value.hidden,true);assert.equal(value.textContent,'');assert.equal(meter.hidden,true);
  assert.equal(morph.style['--module-width-ratio'],String(2/3));
 });
+test('Intro y tres expresiones pueden iluminarse juntas conservando las filas y sin porcentaje ficticio',()=>{
+ const grid=new Element(document),vm=view();
+ vm.song.displaySlots=['Intro','Coro','Morph','Wah','Whammy'].map((name,i)=>({name,sub:'',kind:i>1?'expression':'control'}));
+ renderLiveModules(grid,vm);const rows=[...grid.children],tiles=grid.querySelectorAll();
+ vm.state.indicators=[2,3,4].map(displayIndex=>({id:'fx-'+displayIndex,active:true,displayIndex}));
+ renderLiveModules(grid,vm);
+ assert.deepEqual(grid.children,rows);assert.deepEqual(grid.children.map(row=>row.children.length),[3,2]);
+ assert.deepEqual(tiles.map(tile=>tile.attributes['aria-pressed']),['true','false','true','true','true']);
+ for(const tile of tiles.slice(2)){
+  assert.equal(tile.children[0].children[1].hidden,true);assert.equal(tile.children.at(-1).hidden,true);
+ }
+ vm.state.indicators[1].active=false;renderLiveModules(grid,vm);
+ assert.deepEqual(tiles.map(tile=>tile.attributes['aria-pressed']),['true','false','true','false','true']);
+ vm.song.moduleLayout='manual';vm.song.displaySlots[2].rowBreakBefore=true;
+ renderLiveModules(grid,vm);assert.deepEqual(grid.children.map(row=>row.children.length),[2,3]);
+});

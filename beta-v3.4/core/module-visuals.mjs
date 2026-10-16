@@ -62,6 +62,7 @@ export function normalizeSlot(slot,index){
    deviceTag:typeof slot?.deviceTag==="string"?slot.deviceTag:slot?.sub==="GT"?"GT":"",
    kind:slot?.kind==="expression"?"expression":"control",
    ...(slot?.stateMode==null?{}:{stateMode:slot.stateMode}),
+   ...(slot?.indicatorId==null?{}:{indicatorId:slot.indicatorId}),
    hidden:slot?.hidden===true,
    rowBreakBefore:slot?.rowBreakBefore===true,
    color:style.color,icon:style.icon};

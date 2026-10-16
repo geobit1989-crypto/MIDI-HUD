@@ -2,7 +2,7 @@ import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261016-editor-audit1";
 import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch2";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261016-unified1";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261016-overlays1";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261016-patch2";
 import {
@@ -10,8 +10,9 @@ import {
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
  chocolateMatrix,actionDescription,diagnostics,addModule,moveModule,removeModule,
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
- addConfiguredModule,renameModule,setModulePurpose,modulePurpose
-} from "./editor-model.mjs?v=20261016-unified1";
+ addConfiguredModule,renameModule,setModulePurpose,modulePurpose,
+ moduleActivation,setModuleActiveOnEntry,moduleActivationActions
+} from "./editor-model.mjs?v=20261016-overlays1";
 
 /**
  * Editor MIDI HUD v3
@@ -49,6 +50,8 @@ function currentRep(){return working.repertoires.find(x=>x.id===activeRep);}
 function currentSong(){return working.songs.find(x=>x.id===activeSong);}
 function currentState(){return working.states.find(x=>x.id===activeState);}
 function stateSelectionText(st=currentState()){
+ if(Number.isInteger(activeModule)&&['effect','expression'].includes(modulePurpose(working,activeSong,activeModule)))
+  return st?'Este módulo conserva una asociación musical anterior. Puedes revisarla en Asociaciones avanzadas.':'Este módulo se suma al estado musical activo. Configura abajo su encendido al entrar en cada estado.';
  if(st)return st.displayIndex==null?'Estado sin módulo visible. Puedes asignarle uno en las opciones avanzadas.':'El nombre se actualiza en el módulo y en su estado musical.';
  if(Number.isInteger(activeModule)&&currentSong().displaySlots?.[activeModule])
   return modulePurpose(working,activeSong,activeModule)==='control'?'Escribe el nombre; el estado se crea y se vincula automáticamente.':'Este módulo funciona sin crear un estado musical.';
@@ -58,10 +61,12 @@ function renderInitialState(){
  const song=currentSong(),st=currentState(),initial=working.states.find(state=>state.id===song.initialStateId);
  $("statesInitialStatus").textContent='Estado inicial de la canción: '+initial.name;
  const action=$("stateMakeInitial"),slot=song.displaySlots?.[activeModule];
- action.disabled=st?st.id===song.initialStateId:!Number.isInteger(activeModule)||!slot||modulePurpose(working,activeSong,activeModule)!=='control';
+ const musical=!Number.isInteger(activeModule)||!slot||modulePurpose(working,activeSong,activeModule)==='control';
+ action.disabled=!musical||(st?st.id===song.initialStateId:!slot);
  action.textContent=st?.id===song.initialStateId?'Ya es el estado inicial':'Usar como inicial';
 }
 function makeSelectionInitial(){
+ if($('stateMakeInitial').disabled)return;
  const st=currentState();
  if(st?.id===currentSong().initialStateId)return;
  try{
@@ -268,10 +273,10 @@ function renderModules(){
  $("moduleUp").disabled=!hasModule||activeModule===0;
  $("moduleDown").disabled=!hasModule||activeModule===slots.length-1;
  $("moduleAdd").disabled=slots.length>=256;
- $("moduleExpressionAdd").disabled=slots.length>=256;$("moduleUtilityAdd").disabled=slots.length>=256;
+ for(const id of ['moduleEffectAdd','moduleExpressionAdd','moduleUtilityAdd'])$(id).disabled=slots.length>=256;
  for(const id of ['moduleName','moduleSub','moduleDeviceTag','moduleKind','moduleHidden','moduleColor','moduleColorPreset','moduleIcon','moduleLinkedState','moduleRowBreak'])$(id).disabled=!hasModule;
  const area=$("moduleGrid");area.replaceChildren();
- if(!slots.length)area.append(make('p','Sin módulos. Pulsa + Módulo para añadir uno.','help'));
+ if(!slots.length)area.append(make('p','Sin módulos. Añade un estado musical, efecto o expresión.','help'));
  for(let i=0;i<slots.length;i++){
   const slot=normalSlot(i),visual=resolveModuleVisual(slot,i),connected=linkedState(i);
   const tile=button("",()=>{activeModule=i;activeState=connected?.id??null;renderStates();},
@@ -309,14 +314,33 @@ function renderModules(){
  const stateChoices=[["","Sin estado asociado"]],stateSelect=$("moduleLinkedState");
  let createValue='__create_module_state__';
  while(currentSong().stateIds.includes(createValue))createValue+='_';
- stateSelect.dataset.createValue=hasModule&&!linkedState()&&slot.kind!=='expression'?createValue:'';
+ stateSelect.dataset.createValue=hasModule&&!linkedState()&&modulePurpose(working,activeSong,activeModule)==='control'?createValue:'';
  if(stateSelect.dataset.createValue)stateChoices.push([createValue,'+ Crear estado para este módulo']);
  for(const id of currentSong().stateIds){
   const state=working.states.find(st=>st.id===id);
   stateChoices.push([id,state.name+(state.displayIndex==null?' · Sin módulo':' · Módulo '+(state.displayIndex+1))]);
  }
  entries(stateSelect,stateChoices,linkedState()?.id||'');
-
+ renderModuleActivation();
+}
+function renderModuleActivation(){
+ const config=Number.isInteger(activeModule)?moduleActivation(working,activeSong,activeModule):null;
+ $('moduleActivation').hidden=!config;
+ const area=$('moduleActivationRows');area.replaceChildren();
+ $('expressionActivationNote').hidden=currentSlot().kind!=='expression';
+ if(!config)return;
+ const index=activeModule;
+ for(const row of config.rows){
+  const label=make('label',undefined,'field activation-row');
+  const select=make('select');
+  entries(select,[[false,'Apagado'],[true,'Encendido']],row.active);
+  select.setAttribute('aria-label',normalSlot(index).name+' al entrar en '+row.name);
+  select.onchange=()=>{
+   try{setModuleActiveOnEntry(working,activeSong,index,row.stateId,select.value==='true');dirty();}
+   catch(error){renderModuleActivation();notice(error.message,true);}
+  };
+  label.append(make('span',row.name),select);area.append(label);
+ }
 }
 function renderStates(){
  const states=currentSong().stateIds;
@@ -347,6 +371,10 @@ function renderStates(){
   const row=make("div",undefined,"action-row");
   row.append(make("span",(indicator.active?"● ":"○ ")+indicator.label+
    " ("+indicator.id+")"+(indicator.displayIndex==null?"":" · Módulo "+(indicator.displayIndex+1)),"name"));
+  const managed=currentSong().displaySlots?.[indicator.displayIndex];
+  if(managed?.indicatorId&&['effect','expression'].includes(modulePurpose(working,activeSong,indicator.displayIndex))){
+   row.append(make('span','Editar desde su módulo','help'));list.append(row);continue;
+  }
   row.append(button("Eliminar",()=>{
    if(!window.confirm("¿Quitar este indicador del estado?"))return;
    const target=currentState();
@@ -436,7 +464,7 @@ function renameSelection(){
  if(st&&pill)pill.textContent=st.name+(st.id===currentSong().initialStateId?' · Inicial':'');
  if(st)for(const option of $("moduleLinkedState").options)if(option.value===st.id)
   option.textContent=st.name+(st.displayIndex==null?' · Sin módulo':' · Módulo '+(st.displayIndex+1));
- $("stateSelectionNote").textContent=stateSelectionText(st);renderInitialState();
+ $("stateSelectionNote").textContent=stateSelectionText(st);renderInitialState();renderModuleActivation();
 }
 function addEditorModule(purpose){
  try{
@@ -524,6 +552,11 @@ function midiTarget(){
  let records=[];
  if(type==="ACTIVATE_STATE")
   records=working.states.map(st=>[st.id,(working.songs.find(s=>s.id===st.songId)?.title||"")+" · "+st.name]);
+ else if(type==='MODULE_ON'||type==='MODULE_OFF'){
+  for(const song of working.songs)for(const [index,slot] of (song.displaySlots||[]).entries())
+   if(['effect','expression'].includes(modulePurpose(working,song.id,index)))
+    records.push([JSON.stringify([song.id,index]),song.title+' · '+slot.name]);
+ }
  else if(type==="SELECT_SONG")records=working.songs.map(s=>[s.id,s.title]);
  else{
   const ids=new Map();
@@ -695,6 +728,7 @@ function register(){
  $("stateMakeInitial").onclick=makeSelectionInitial;
  $("songSave").onclick=save;
  $("moduleAdd").onclick=()=>addEditorModule('control');
+ $("moduleEffectAdd").onclick=()=>addEditorModule('effect');
  $("moduleExpressionAdd").onclick=()=>addEditorModule('expression');
  $("moduleUtilityAdd").onclick=()=>addEditorModule('utility');
  for(const [id,delta] of [["moduleUp",-1],["moduleDown",1]])$(id).onclick=()=>{
@@ -823,12 +857,18 @@ function register(){
   try{pair=validatePair();}catch(e){notice(e.message,true);return;}
   const type=$("actionType").value,target=$("actionTarget").value;
   if(!target)return;
-  const action=type==="ACTIVATE_STATE"?{type,stateId:target}:
-   type==="SELECT_SONG"?{type,songId:target}:
-   {type,indicatorId:target,active:$("actionActive").value==="true"};
+  let actions;
+  try{
+   if(type==='MODULE_ON'||type==='MODULE_OFF'){
+    const [songId,index]=JSON.parse(target);
+    actions=moduleActivationActions(working,songId,index,type==='MODULE_ON');
+   }else actions=[type==="ACTIVATE_STATE"?{type,stateId:target}:
+    type==="SELECT_SONG"?{type,songId:target}:
+    {type,indicatorId:target,active:$("actionActive").value==="true"}];
+  }catch(error){notice(error.message,true);return;}
   const found=bindingFor(working,pair.cc,pair.value);
-  if(found)found.actions.push(action);
-  else setBindingActions(working,pair.cc,pair.value,[action]);
+  if(found)found.actions.push(...actions);
+  else setBindingActions(working,pair.cc,pair.value,actions);
   cc=pair.cc;value=pair.value;
   dirty();renderMidi();
  };

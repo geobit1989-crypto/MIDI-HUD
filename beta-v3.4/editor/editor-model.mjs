@@ -3,7 +3,7 @@
  * No altera hardware ni mezcla la configuracion de canal global con canciones.
  */
 import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch2";
-import {normalizeSlot} from "../core/module-visuals.mjs?v=20261016-unified1";
+import {normalizeSlot} from "../core/module-visuals.mjs?v=20261016-overlays1";
 
 const copy=x=>JSON.parse(JSON.stringify(x));
 function requireThat(ok,message){if(!ok)throw Error("Editor MIDI HUD: "+message);}
@@ -126,6 +126,7 @@ export function newState(db,songId,name="Nuevo estado"){
  const song=locate(db.songs,songId,"canción"),id=nextId(db,"state");
  db.states.push({id,songId,name,gtPatch:null,displayIndex:null,indicators:[]});
  song.stateIds.push(id);
+ inheritModuleIndicators(db,song,id);
  return id;
 }
 export function setInitialState(db,songId,stateId){
@@ -140,11 +141,13 @@ export function ensureModuleState(db,songId,index){
  requireThat(Number.isInteger(index)&&index>=0&&index<slots.length,'selecciona un módulo de control');
  const existing=db.states.find(st=>st.songId===songId&&st.displayIndex===index);
  if(existing)return existing.id;
- requireThat(slots[index].kind!=='expression','selecciona un estado musical o un módulo de control');
+ requireThat(modulePurpose(db,songId,index)==='control','selecciona un estado musical o un módulo de control');
  const label=slots[index].name.trim(),name=label&&label!=='—'?label:'Estado inicial';
  const initial=db.states.find(st=>st.id===song.initialStateId);
  const reusable=initial&&song.stateIds.length===1&&initial.name==='Estado inicial'&&initial.displayIndex==null&&
-  initial.gtPatch==null&&!(initial.indicators||[]).length&&!db.bindings.some(b=>b.actions.some(a=>a.type==='ACTIVATE_STATE'&&a.stateId===initial.id));
+  initial.gtPatch==null&&(initial.indicators||[]).every(ind=>!ind.active&&
+   slots.some((slot,i)=>slot.indicatorId===ind.id&&ind.displayIndex===i))&&
+  !db.bindings.some(b=>b.actions.some(a=>a.type==='ACTIVATE_STATE'&&a.stateId===initial.id));
  const id=reusable?initial.id:newState(db,songId,name);
  const state=db.states.find(st=>st.id===id);state.name=name;state.displayIndex=index;
  return id;
@@ -155,20 +158,73 @@ export function useModuleAsInitialState(db,songId,index){
 export function modulePurpose(db,songId,index){
  const slot=locate(db.songs,songId,'canción').displaySlots?.[index];
  if(slot?.kind==='expression')return 'expression';
+ if(slot?.stateMode==='effect')return 'effect';
  if(slot?.stateMode==='manual')return 'utility';
  const states=db.states.filter(st=>st.songId===songId);
  if(slot?.stateMode!=='auto'&&!states.some(st=>st.displayIndex===index)&&
   states.some(st=>(st.indicators||[]).some(ind=>ind.displayIndex===index)))return 'utility';
  return 'control';
 }
+/** Efectos y expresiones comparten encendido por estado; no representan posición del pedal. */
+export function moduleActivation(db,songId,index){
+ const song=locate(db.songs,songId,'canción'),slot=song.displaySlots?.[index];
+ if(!slot||!['effect','expression'].includes(modulePurpose(db,songId,index)))return null;
+ const ids=new Set(slot.indicatorId?[slot.indicatorId]:[]);
+ const rows=song.stateIds.map(stateId=>{
+  const state=locate(db.states,stateId,'estado');
+  const indicators=(state.indicators||[]).filter(ind=>ind.displayIndex===index);
+  for(const ind of indicators)ids.add(ind.id);
+  return {stateId,name:state.name,active:indicators.some(ind=>ind.active)};
+ });
+ return {ids:[...ids],rows};
+}
+function inheritModuleIndicators(db,song,stateId){
+ const state=locate(db.states,stateId,'estado');
+ (song.displaySlots||[]).forEach((slot,index)=>{
+  if(!slot.indicatorId||!['effect','expression'].includes(modulePurpose(db,song.id,index)))return;
+  state.indicators.push({id:slot.indicatorId,label:slot.name,active:false,displayIndex:index});
+ });
+}
+export function ensureModuleActivation(db,songId,index){
+ const config=moduleActivation(db,songId,index);
+ requireThat(config,'selecciona un efecto o una expresión');
+ const song=locate(db.songs,songId,'canción'),slot=song.displaySlots[index];
+ if(!slot.indicatorId){
+  const used=new Set(db.states.flatMap(st=>(st.indicators||[]).map(ind=>ind.id)));
+  for(const other of db.songs)for(const item of other.displaySlots||[])if(item.indicatorId)used.add(item.indicatorId);
+  for(const binding of db.bindings)for(const action of binding.actions)if(action.type==='SET_INDICATOR')used.add(action.indicatorId);
+  let n=1;while(used.has('module-fx-'+n))n++;
+  slot.indicatorId=config.ids[0]||'module-fx-'+n;
+ }
+ for(const stateId of song.stateIds){
+  const state=locate(db.states,stateId,'estado');state.indicators??=[];
+  if(state.indicators.some(ind=>ind.displayIndex===index))continue;
+  const detached=state.indicators.find(ind=>ind.id===slot.indicatorId&&ind.displayIndex==null);
+  if(detached)detached.displayIndex=index;
+  else state.indicators.push({id:slot.indicatorId,label:slot.name,active:false,displayIndex:index});
+ }
+ return moduleActivation(db,songId,index);
+}
+export function setModuleActiveOnEntry(db,songId,index,stateId,active){
+ const song=locate(db.songs,songId,'canción');
+ requireThat(song.stateIds.includes(stateId),'el estado no pertenece a la canción');
+ requireThat(typeof active==='boolean','encendido inválido');
+ ensureModuleActivation(db,songId,index);
+ for(const ind of locate(db.states,stateId,'estado').indicators)if(ind.displayIndex===index)ind.active=active;
+}
+export function moduleActivationActions(db,songId,index,active){
+ requireThat(typeof active==='boolean','encendido inválido');
+ return ensureModuleActivation(db,songId,index).ids.map(indicatorId=>({type:'SET_INDICATOR',indicatorId,active}));
+}
 /** Una sola creación para el módulo y su estado, con IDs estables para MIDI. */
 export function addConfiguredModule(db,songId,purpose='control'){
- requireThat(['control','expression','utility'].includes(purpose),'tipo de módulo inválido');
+ requireThat(['control','effect','expression','utility'].includes(purpose),'tipo de módulo inválido');
  const index=addModule(db,songId),song=locate(db.songs,songId,'canción'),slot=song.displaySlots[index];
  slot.kind=purpose==='expression'?'expression':'control';
- slot.stateMode=purpose==='control'?'auto':'manual';
- slot.name=purpose==='control'?'Nuevo estado':purpose==='expression'?'Nueva expresión':'Nuevo control';
+ slot.stateMode=purpose==='control'?'auto':purpose==='effect'?'effect':'manual';
+ slot.name=purpose==='control'?'Nuevo estado':purpose==='expression'?'Nueva expresión':purpose==='effect'?'Nuevo efecto':'Nuevo control';
  const stateId=purpose==='control'?ensureModuleState(db,songId,index):null;
+ if(purpose==='effect'||purpose==='expression')ensureModuleActivation(db,songId,index);
  return {index,stateId};
 }
 export function renameModule(db,songId,index,name){
@@ -178,29 +234,40 @@ export function renameModule(db,songId,index,name){
  slot.name=name;
  const id=automatic?ensureModuleState(db,songId,index):db.states.find(st=>st.songId===songId&&st.displayIndex===index)?.id??null;
  if(id)db.states.find(st=>st.id===id).name=name;
+ if(['effect','expression'].includes(modulePurpose(db,songId,index)))
+  for(const state of db.states.filter(st=>st.songId===songId))
+   for(const ind of state.indicators||[])if(ind.displayIndex===index)ind.label=name;
  return id;
 }
 export function setModulePurpose(db,songId,index,purpose){
- requireThat(['control','expression','utility'].includes(purpose),'tipo de módulo inválido');
+ requireThat(['control','effect','expression','utility'].includes(purpose),'tipo de módulo inválido');
  const song=locate(db.songs,songId,'canción'),slot=song.displaySlots?.[index];
  requireThat(slot,'módulo inexistente');
- slot.kind=purpose==='expression'?'expression':'control';slot.stateMode=purpose==='control'?'auto':'manual';
+ const previous=modulePurpose(db,songId,index);
+ slot.kind=purpose==='expression'?'expression':'control';slot.stateMode=purpose==='control'?'auto':purpose==='effect'?'effect':'manual';
  const state=db.states.find(st=>st.songId===songId&&st.displayIndex===index);
- if(purpose==='control')return ensureModuleState(db,songId,index);
- if(!state)return null;
- const used=state.gtPatch!=null||(state.indicators||[]).length||
-  db.bindings.some(b=>b.actions.some(a=>a.type==='ACTIVATE_STATE'&&a.stateId===state.id));
+ if(purpose==='control'){
+  if(previous!=='control')
+   for(const st of db.states.filter(st=>st.songId===songId))
+    for(const ind of st.indicators||[])if(ind.displayIndex===index)ind.displayIndex=null;
+  return ensureModuleState(db,songId,index);
+ }
+ const used=state&&(state.gtPatch!=null||(state.indicators||[]).some(ind=>ind.active||
+  !song.displaySlots.some((item,i)=>item.indicatorId===ind.id&&ind.displayIndex===i))||
+  db.bindings.some(b=>b.actions.some(a=>a.type==='ACTIVATE_STATE'&&a.stateId===state.id)));
  // Conservar los estados ya configurados o usados por MIDI. Solo retirar
  // el estado vacío creado automáticamente al cambiar el tipo del módulo.
- if(used)return state.id;
- if(song.stateIds.length>1)deleteState(db,state.id);
- else{state.displayIndex=null;state.name='Estado inicial';}
- return null;
+ if(state&&!used){
+  if(song.stateIds.length>1)deleteState(db,state.id);
+  else{state.displayIndex=null;state.name='Estado inicial';}
+ }
+ if(!used&&(purpose==='effect'||purpose==='expression'))ensureModuleActivation(db,songId,index);
+ return used?state.id:null;
 }
 function freeControlModule(db,song,preferred=null,blankOnly=false){
  const used=new Set(db.states.filter(st=>st.songId===song.id).flatMap(st=>[st.displayIndex,...(st.indicators||[]).map(ind=>ind.displayIndex)]).filter(Number.isInteger));
  const available=i=>Number.isInteger(i)&&i>=0&&i<(song.displaySlots||[]).length&&!used.has(i)&&
-  song.displaySlots[i].kind!=='expression'&&!song.displaySlots[i].hidden&&
+  modulePurpose(db,song.id,i)==='control'&&!song.displaySlots[i].hidden&&
   (!blankOnly||song.displaySlots[i].name==='—');
  if(available(preferred))return preferred;
  return (song.displaySlots||[]).findIndex((_,i)=>available(i));
@@ -381,7 +448,10 @@ export function actionDescription(db,a){
   return st&&so ? so.title+" · "+st.name : "Estado desconocido";
  }
  if(a.type==="SELECT_SONG")return "Canción: "+(db.songs.find(s=>s.id===a.songId)?.title||"desconocida");
- if(a.type==="SET_INDICATOR")return (a.active?"Encender ":"Apagar ")+a.indicatorId;
+ if(a.type==="SET_INDICATOR"){
+  const indicator=db.states.flatMap(st=>st.indicators||[]).find(ind=>ind.id===a.indicatorId);
+  return (a.active?"Encender ":"Apagar ")+(indicator?.label||a.indicatorId);
+ }
  return "Acción desconocida";
 }
 /** Avisos no bloqueantes del EDITOR: nunca reemplazan la ejecución determinista del motor. */

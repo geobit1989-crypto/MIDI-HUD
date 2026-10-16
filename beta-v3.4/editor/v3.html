@@ -161,6 +161,9 @@ button.module-select-tile{position:relative;text-align:center;display:flex;flex-
 .appearance-layout{display:block}
 #stateAdvanced>summary{cursor:pointer;font-size:16px;font-weight:700;color:var(--txt)}
 #stateAdvanced .ctrlrow{margin:12px 0}
+.activation-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,.65fr);align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:16px}
+.activation-row span{overflow-wrap:anywhere}
+.activation-row select{margin:0}
 input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 @media(max-width:1150px){.state-module-layout{grid-template-columns:1fr}}
 @media(max-width:800px){.module-selector{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -265,15 +268,15 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
   <section data-panel="states" hidden>
     <div class="panel-title">
       <h2>Estados</h2>
-      <p>Añade un módulo y escribe su nombre una vez. Su estado musical se crea y se vincula automáticamente. Pulsa Guardar cuando termines.</p>
+      <p>Escribe cada nombre una vez. Los estados musicales se alternan; los efectos y expresiones se suman al estado activo. Pulsa Guardar cuando termines.</p>
     </div>
     <div class="state-module-layout">
       <section class="section-card">
         <h3>Módulos</h3>
         <label class="field">Distribución de filas<select id="moduleLayout"><option value="auto">Automática</option><option value="manual">Filas elegidas</option></select></label>
-        <div class="ctrlrow"><button id="moduleAdd" class="small primary">+ Módulo</button><button id="moduleExpressionAdd" class="small">+ Expresión</button><button id="moduleRemove" class="small danger">Quitar</button><button id="moduleUp" class="small">↑ Mover</button><button id="moduleDown" class="small">↓ Mover</button></div>
+        <div class="ctrlrow"><button id="moduleAdd" class="small primary">+ Estado musical</button><button id="moduleEffectAdd" class="small">+ Efecto</button><button id="moduleExpressionAdd" class="small">+ Expresión</button><button id="moduleRemove" class="small danger">Quitar</button><button id="moduleUp" class="small">↑ Mover</button><button id="moduleDown" class="small">↓ Mover</button></div>
         <div id="moduleGrid" class="module-grid module-selector" aria-label="Módulos de la canción"></div>
-        <p class="help">Para Morph, Wah o Volumen usa + Expresión. Marca «Empezar una fila nueva» para elegir el reparto.</p>
+        <p class="help">Para Delay o Boost usa + Efecto. Para Morph, Wah, Whammy o Volumen usa + Expresión. Marca «Empezar una fila nueva» para elegir el reparto.</p>
       </section>
       <section class="section-card">
         <h3>Editar módulo <span id="selectedModuleLabel"></span></h3>
@@ -282,7 +285,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
           <label class="field">Nombre<input id="moduleName" maxlength="80" placeholder="Intro, Verso, Coro…"></label>
           <label class="field">Descripción<input id="moduleSub" maxlength="75"></label>
           <label class="field">Dispositivo (etiqueta)<input id="moduleDeviceTag" maxlength="16" placeholder="GT, MIDI, EXP…"></label>
-          <label class="field">Tipo de módulo<select id="moduleKind"><option value="control">Estado musical</option><option value="expression">Expresión</option><option value="utility">Control auxiliar</option></select></label>
+          <label class="field">Tipo de módulo<select id="moduleKind"><option value="control">Estado musical</option><option value="effect">Efecto</option><option value="expression">Expresión</option><option value="utility">Control auxiliar</option></select></label>
           <label class="field"><input id="moduleHidden" type="checkbox"> Ocultar módulo</label>
           <label class="field"><input id="moduleRowBreak" type="checkbox"> Empezar una fila nueva</label>
           <label class="field">Color del módulo<select id="moduleColorPreset"></select></label>
@@ -297,6 +300,13 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
         <button id="stateMakeInitial" class="small primary">Usar como inicial</button>
       </section>
     </div>
+    <section id="moduleActivation" class="section-card" hidden>
+      <h3>Al entrar en cada estado</h3>
+      <p class="help">Elige si este efecto o expresión comienza encendido o apagado. Después puedes cambiarlo por MIDI mientras continúa el estado musical.</p>
+      <div id="moduleActivationRows"></div>
+      <p class="help">Al cambiar de estado se usa su configuración de entrada. Configura los mensajes de encendido y apagado en la pestaña MIDI.</p>
+      <p id="expressionActivationNote" class="help" hidden>Esta configuración representa encendido y apagado; no determina la posición del pedal ni muestra su porcentaje.</p>
+    </section>
     <details id="stateAdvanced" class="section-card">
       <summary>Asociaciones avanzadas</summary>
       <p class="help">Puedes gestionar estados existentes, cambiar sus asociaciones o añadir controles auxiliares.</p>
@@ -381,8 +391,10 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
         <label class="field">Acción a añadir
           <select id="actionType">
             <option value="ACTIVATE_STATE">Activar estado</option>
+            <option value="MODULE_ON">Encender efecto o expresión</option>
+            <option value="MODULE_OFF">Apagar efecto o expresión</option>
             <option value="SELECT_SONG">Seleccionar canción</option>
-            <option value="SET_INDICATOR">Encender/apagar indicador</option>
+            <option value="SET_INDICATOR">Indicador avanzado: encender/apagar</option>
           </select>
         </label>
       </div>
@@ -413,7 +425,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261016-unified1"></script>
+<script type="module" src="./v3.mjs?v=20261016-overlays1"></script>
 </div>
 </body>
 </html>

@@ -1,4 +1,4 @@
-import {normalizeSlot,resolveModuleVisual} from '../core/module-visuals.mjs';
+import {normalizeSlot,resolveModuleVisual} from '../core/module-visuals.mjs?v=20261016-overlays1';
 import {moduleRows} from '../core/layout-v3.4.mjs';
 
 const rendered=new WeakMap();
@@ -66,6 +66,6 @@ export function renderLiveModules(grid,vm){
   const selected=(vm.previewModuleIndex??vm.state.displayIndex)===i;
   const lit=vm.state.indicators.some(ind=>ind.active&&ind.displayIndex===i);
   tile.style.boxShadow=selected?'inset 0 0 0 3px #f3ffff,0 0 14px #00d6f455':lit?'inset 0 0 0 3px #5fe9f0,0 0 12px #00d6f455':'';
-  tile.setAttribute('aria-pressed',String(selected));
+  tile.setAttribute('aria-pressed',String(selected||lit));
  }
 }

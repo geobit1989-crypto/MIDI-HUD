@@ -512,3 +512,72 @@ test('escribir el nombre conserva las casillas y los campos de indicadores pendi
  assert.equal(t.elements.get('indicatorSlot').value,'2');
  assert.equal(t.elements.get('indicatorLabel').value,'Boost pendiente');
 });
+test('Morph, Wah y Whammy se configuran una vez y responden encima de Intro sin sustituirlo',async()=>{
+ const t=setup({prepare(db,song){
+  song.displaySlots=[song.displaySlots[0],{name:'Coro',sub:'Dist',kind:'control',stateMode:'auto'}];
+  model.ensureModuleState(db,song.id,1);
+ }});
+ const [intro,coro]=t.currentSong().stateIds,expressions=[];
+ for(const name of ['Morph','Wah','Whammy']){
+  t.elements.get('moduleExpressionAdd').onclick();
+  const index=t.snapshot().activeModule;
+  t.elements.get('moduleName').value=name;t.elements.get('moduleName').oninput();
+  assert.equal(t.snapshot().activeState,null);assert.equal(t.elements.get('moduleActivation').hidden,false);
+  assert.equal(t.elements.get('expressionActivationNote').hidden,false);
+  assert.equal(t.elements.get('moduleActivationRows').children.length,2);
+  if(name==='Morph'){
+   const select=t.elements.get('moduleActivationRows').children[1].children[1];
+   select.value='true';select.onchange();
+  }
+  expressions.push({name,index,id:t.currentSong().displaySlots[index].indicatorId});
+ }
+ assert.deepEqual(t.currentSong().stateIds,[intro,coro]);assert.equal(t.currentSong().initialStateId,intro);
+ assert.equal(t.writes.length,0);await t.elements.get('statesSave').onclick();
+ t.context.api.updateTab('midi');
+ const assign=(cc,value,type,target)=>{
+  t.elements.get('midiCC').value=String(cc);t.elements.get('midiCC').onchange();
+  t.elements.get('midiValue').value=String(value);t.elements.get('midiValue').onchange();
+  t.elements.get('actionType').value=type;t.elements.get('actionType').onchange();
+  t.elements.get('actionTarget').value=target;t.elements.get('actionAdd').onclick();
+ };
+ assign(100,127,'ACTIVATE_STATE',intro);assign(101,127,'ACTIVATE_STATE',coro);
+ for(const [i,item] of expressions.entries()){
+  const target=JSON.stringify([t.songId,item.index]);
+  assign(110+i,127,'MODULE_ON',target);assign(110+i,0,'MODULE_OFF',target);
+  assert.ok(t.elements.get('actionTarget').options.some(option=>option.textContent==='Prueba · '+item.name));
+ }
+ await t.elements.get('midiSave').onclick();
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),hud=engine.createEngine(saved);
+ const send=(cc,value=127)=>hud.dispatch({type:'MIDI_CC',channel:1,cc,value});
+ send(100);
+ assert.ok(hud.getViewModel().state.indicators.every(ind=>!ind.active));
+ for(let i=0;i<expressions.length;i++){
+  const result=send(110+i);
+  assert.equal(result.view.state.id,intro);assert.deepEqual(result.intents,[]);
+ }
+ assert.deepEqual(hud.getViewModel().state.indicators.filter(ind=>ind.active).map(ind=>ind.label),['Morph','Wah','Whammy']);
+ send(111,0);
+ assert.equal(hud.getViewModel().state.id,intro);
+ assert.deepEqual(hud.getViewModel().state.indicators.filter(ind=>ind.active).map(ind=>ind.label),['Morph','Whammy']);
+ send(101);
+ assert.equal(hud.getViewModel().state.id,coro);
+ assert.deepEqual(hud.getViewModel().state.indicators.filter(ind=>ind.active).map(ind=>ind.label),['Morph']);
+ send(110,0);assert.ok(hud.getViewModel().state.indicators.every(ind=>!ind.active));
+ send(100);assert.ok(hud.getViewModel().state.indicators.every(ind=>!ind.active));
+ assert.equal(t.snapshot().hasDraft,false);assert.equal(engine.validateLibrary(saved),true);
+});
+test('crear Delay como efecto configura su encendido sin crear un estado musical',async()=>{
+ const t=setup(),initial=t.currentSong().initialStateId;
+ t.elements.get('moduleEffectAdd').onclick();
+ t.elements.get('moduleName').value='Delay';t.elements.get('moduleName').oninput();
+ const select=t.elements.get('moduleActivationRows').children[0].children[1];
+ select.value='true';select.onchange();
+ assert.equal(t.elements.get('expressionActivationNote').hidden,true);
+ assert.equal(t.elements.get('stateMakeInitial').disabled,true);
+ await t.elements.get('statesSave').onclick();
+ const song=t.currentSong(),state=t.snapshot().working.states.find(st=>st.id===initial);
+ assert.deepEqual(song.stateIds,[initial]);assert.equal(song.initialStateId,initial);
+ assert.equal(state.indicators.find(ind=>ind.displayIndex===t.snapshot().activeModule).active,true);
+ t.elements.get('moduleGrid').children[0].onclick();
+ assert.equal(t.elements.get('moduleActivation').hidden,true);
+});
