@@ -27,7 +27,7 @@ test("el editor contiene los campos musicales aprobados sin canal por canción",
  assert.match(engineUI,/key\.textContent=vm\.song\.tono/);
 });
 test("módulos y MIDI disponen de controles de entrada sin editar JSON directamente",()=>{
- for(const id of ["moduleGrid","barGrid","midiMatrix","actionType","actionTarget","bindingsTable"]){
+ for(const id of ["moduleGrid","leadText","leadPreview","midiMatrix","actionType","actionTarget","bindingsTable"]){
   assert.ok(ids.has(id),id);
  }
  assert.doesNotMatch(page,/textarea[^>]+id="actions"/);
@@ -36,5 +36,7 @@ test("se preserva la versión anterior del editor para recuperación",()=>{
  const backup=readFileSync(new URL("../editor/legacy.html",import.meta.url),"utf8");
  const index=readFileSync(new URL("../editor/index.html",import.meta.url),"utf8");
  assert.match(backup,/Configura|Configuración/);
- assert.match(index,/v2\.html/);
+ assert.match(index,/v3\.html/);
+ const previous=readFileSync(new URL("../editor/v2.html",import.meta.url),"utf8");
+ assert.match(previous,/id="moduleGrid"/);
 });
