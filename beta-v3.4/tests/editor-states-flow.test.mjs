@@ -20,34 +20,49 @@ class Element{
  get options(){return this.children;}
  setAttribute(k,v){this.attributes[k]=String(v);}
  addEventListener(k,f){this.listeners[k]=f;}
+ toggleAttribute(k,value){if(value)this.setAttribute(k,'');else delete this.attributes[k];}
+ contains(target){return target===this||this.children.some(x=>x instanceof Element&&x.contains(target));}
+ focus(){}
+ click(){this.onclick?.();}
+ remove(){}
  querySelectorAll(selector){
   const matches=x=>selector.startsWith('.')?x.className.split(' ').includes(selector.slice(1)):selector==='[aria-pressed=true]'?x.attributes['aria-pressed']==='true':false;
   return this.children.flatMap(x=>x instanceof Element?[...(matches(x)?[x]:[]),...x.querySelectorAll(selector)]:[]);
  }
  querySelector(s){return this.querySelectorAll(s)[0]??null;}
 }
-function setup(){
+function setup({prepare=()=>{},tab='states'}={}){
  const html=readFileSync(new URL('../editor/v3.html',import.meta.url),'utf8'),elements=new Map();
  for(const m of html.matchAll(/<([a-z][a-z0-9]*)\b[^>]*\bid="([^"]+)"[^>]*>/gi))elements.set(m[2],new Element(m[1]));
+ for(const m of html.matchAll(/<input\b[^>]*\bid="([^"]+)"[^>]*>/gi)){
+  const value=m[0].match(/\bvalue="([^"]*)"/);if(value)elements.get(m[1]).value=value[1];
+ }
+ for(const m of html.matchAll(/<select\b[^>]*\bid="([^"]+)"[^>]*>([\s\S]*?)<\/select>/gi)){
+  const first=m[2].match(/<option\b[^>]*\bvalue="([^"]*)"/);if(first)elements.get(m[1]).value=first[1];
+ }
  const data=new Map(),writes=[];
- const storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>{data.set(k,v);writes.push(k);}};
+ const storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>{data.set(k,v);writes.push(k);},removeItem:k=>data.delete(k)};
  const fixture=JSON.parse(readFileSync(new URL('../config/midi-hud-data-v2.json',import.meta.url)));
  const songId=model.newSong(fixture,'worship','Prueba');
  const song=fixture.songs.find(s=>s.id===songId),initial=fixture.states.find(st=>st.id===song.initialStateId);
  initial.name='Intro';initial.displayIndex=0;song.displaySlots[0].name='Intro';
+ prepare(fixture,song,initial);
+ data.set(storageAPI.LIBRARY_KEY,JSON.stringify(fixture));
+ const downloads=[];
  const context=vm.createContext({...model,...engine,...visuals,...notation,...parser,...sheetSave,...storageAPI,...recovery,
-  document:{getElementById:id=>elements.get(id),createElement:tag=>new Element(tag),querySelectorAll:()=>[],addEventListener(){}},
+  document:{body:new Element('body'),getElementById:id=>elements.get(id),createElement:tag=>new Element(tag),querySelectorAll:()=>[],addEventListener(){}},
   Option:class extends Element{constructor(label,value){super('option');this.textContent=label;this.value=String(value);}},
-  localStorage:storage,window:{confirm:()=>context.confirmResult,addEventListener(){}},confirmResult:true,
-  console,setTimeout(){},clearTimeout(){},seed:fixture,testSongId:songId
+  localStorage:storage,window:{confirm:()=>context.confirmResult,prompt:()=>context.promptResult,addEventListener(){}},confirmResult:true,promptResult:null,
+  confirm:()=>context.confirmResult,Blob,URL:{createObjectURL(blob){downloads.push(blob);return 'blob:test';},revokeObjectURL(){}},
+  console,setTimeout(){},clearTimeout(){},seed:fixture,testSongId:songId,testTab:tab
  });
  let source=readFileSync(new URL('../editor/v3.mjs',import.meta.url),'utf8');
  source=source.replace(/^import\b[\s\S]*?;\s*/gm,'').replace(/^boot\(\)\.catch.*$/m,'');
  vm.runInContext(source,context);
- vm.runInContext(`committed=copy(seed);working=copy(seed);activeRep='worship';activeSong=testSongId;activeState=currentSong().initialStateId;activeModule=0;activeTab='states';register();renderStates();globalThis.api={selectState,save,snapshot:()=>JSON.parse(JSON.stringify({working,committed,activeState,activeModule,hasDraft}))};`,context);
+ vm.runInContext(`committed=copy(seed);working=copy(seed);activeRep='worship';activeSong=testSongId;activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;activeTab=testTab;leadSource=formatLeadSheetText(currentSong().leadSheet);register();render();globalThis.api={selectState,save,render,updateTab,useSong,useRepertoire,snapshot:()=>JSON.parse(JSON.stringify({working,committed,activeState,activeModule,activeRep,activeSong,activeTab,hasDraft,leadSource}))};`,context);
  const snapshot=()=>JSON.parse(JSON.stringify(context.api.snapshot()));
  const currentSong=()=>snapshot().working.songs.find(s=>s.id===songId);
- return {context,elements,storage,writes,snapshot,currentSong,songId};
+ return {context,elements,storage,writes,snapshot,currentSong,songId,downloads};
 }
 test('se pueden construir todos los estados y guardarlos una sola vez al final',async()=>{
  const t=setup(),ids=[t.snapshot().activeState];
@@ -140,4 +155,261 @@ test('un nuevo estado respeta los módulos ya usados por indicadores',()=>{
  vm.runInContext("currentState().indicators=[{id:'boost',label:'Boost',active:false,displayIndex:1}];",t.context);
  t.elements.get('stateAdd').onclick();
  assert.equal(t.snapshot().activeModule,2);
+});
+
+test('un módulo Intro sin estado puede convertirse en inicial sin sustituir Morph',async()=>{
+ const t=setup({prepare(db,song,initial){
+  initial.name='Morph';initial.displayIndex=4;
+  song.displaySlots[4]={name:'Morph',sub:'+delay+reverb',kind:'expression'};
+  song.moduleLayout='manual';song.displaySlots[2].rowBreakBefore=true;
+ }});
+ const morph=t.snapshot().activeState,before=t.snapshot().working;
+ t.elements.get('moduleGrid').children[0].onclick();
+ assert.equal(t.snapshot().activeState,null);
+ t.elements.get('stateMakeInitial').onclick();
+ const intro=t.snapshot().activeState;
+ assert.notEqual(intro,morph);assert.equal(t.currentSong().initialStateId,intro);
+ assert.equal(t.snapshot().working.states.find(st=>st.id===intro).name,'Intro');
+ assert.equal(t.snapshot().working.states.find(st=>st.id===intro).displayIndex,0);
+ assert.deepEqual(t.snapshot().working.states.find(st=>st.id===morph),before.states.find(st=>st.id===morph));
+ assert.deepEqual(t.currentSong().displaySlots,before.songs.find(s=>s.id===t.songId).displaySlots);
+ assert.deepEqual(t.snapshot().working.bindings,before.bindings);
+ assert.equal(t.writes.length,0);assert.equal(t.snapshot().hasDraft,true);
+ assert.equal(t.elements.get('songInitial').value,intro);
+ assert.ok(t.elements.get('stateList').children.find(p=>p.textContent==='Intro · Inicial'));
+ await t.context.api.save();
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY));
+ const live=engine.createEngine(saved).dispatch({type:'PREVIEW_SONG',songId:t.songId});
+ assert.equal(live.view.state.id,intro);assert.deepEqual(live.intents,[]);
+ t.elements.get('stateMakeInitial').onclick();
+ assert.equal(t.currentSong().stateIds.length,2);
+});
+test('cambiar el inicial existente no cambia módulos ni asignaciones MIDI',async()=>{
+ const t=setup({tab:'song'}),intro=t.snapshot().activeState;
+ t.elements.get('stateAdd').onclick();const second=t.snapshot().activeState;
+ const before=t.snapshot().working;
+ t.elements.get('songInitial').value=second;t.elements.get('songInitial').onchange();
+ assert.equal(t.currentSong().initialStateId,second);
+ assert.equal(t.elements.get('stateList').children.find(p=>p.attributes['aria-pressed']==='true').textContent,'Nuevo estado · Inicial');
+ assert.deepEqual(t.currentSong().displaySlots,before.songs.find(s=>s.id===t.songId).displaySlots);
+ assert.deepEqual(t.snapshot().working.bindings,before.bindings);
+ await t.context.api.save();
+ t.context.api.selectState(intro);t.elements.get('stateMakeInitial').onclick();
+ assert.equal(t.currentSong().initialStateId,intro);assert.equal(t.currentSong().stateIds.length,2);
+});
+test('cancelar un cambio de repertorio devuelve el selector al repertorio actual',()=>{
+ let other;
+ const t=setup({prepare(db){other=model.newRepertoire(db,'Otro');}});
+ t.elements.get('stateName').value='Intro pendiente';t.elements.get('stateName').oninput();
+ t.context.confirmResult=false;
+ t.elements.get('repSelect').value=other;t.elements.get('repSelect').onchange({target:t.elements.get('repSelect')});
+ assert.equal(t.snapshot().activeRep,'worship');
+ assert.equal(t.elements.get('repSelect').value,'worship');
+ assert.equal(t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState).name,'Intro pendiente');
+ assert.equal(t.writes.length,0);
+});
+test('CC y valor vacíos no se convierten en cero ni crean asignaciones',()=>{
+ for(const field of ['midiCC','midiValue']){
+  const t=setup({tab:'midi'}),before=t.snapshot().working.bindings;
+  t.elements.get(field).value='';t.elements.get('actionAdd').onclick();
+  assert.deepEqual(t.snapshot().working.bindings,before);
+  assert.equal(t.snapshot().hasDraft,false);assert.equal(t.writes.length,0);
+  assert.match(t.elements.get('editorNotice').textContent,/CC y valor/);
+ }
+});
+test('fallar al almacenar una importación mantiene la biblioteca activa y guardada',async()=>{
+ const t=setup(),before=t.snapshot(),stored=t.storage.getItem(storageAPI.LIBRARY_KEY);
+ const incoming=structuredClone(before.committed);incoming.songs[0].title='IMPORTADA';
+ const baseSet=t.storage.setItem;
+ t.storage.setItem=(key,value)=>{if(key===storageAPI.LIBRARY_KEY)throw Error('Sin espacio');baseSet(key,value);};
+ const file={size:1000,text:async()=>JSON.stringify(incoming)};
+ await t.elements.get('importFile').onchange({target:{files:[file],value:'test.json'}});
+ assert.deepEqual(t.snapshot().committed,before.committed);
+ assert.deepEqual(t.snapshot().working,before.working);
+ assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),stored);
+ assert.match(t.elements.get('editorNotice').textContent,/No se pudo importar/);
+});
+test('fallar al escribir el backup durante Deshacer conserva el guardado actual',()=>{
+ const t=setup(),before=t.snapshot(),stored=t.storage.getItem(storageAPI.LIBRARY_KEY);
+ const previous=structuredClone(before.committed);previous.songs[0].title='ANTES';
+ t.storage.setItem(storageAPI.BACKUP_KEY,JSON.stringify(previous));
+ const baseSet=t.storage.setItem;
+ t.storage.setItem=(key,value)=>{if(key===storageAPI.BACKUP_KEY)throw Error('Sin espacio');baseSet(key,value);};
+ t.elements.get('undo').onclick();
+ assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),stored);
+ assert.deepEqual(t.snapshot().committed,before.committed);
+ assert.match(t.elements.get('editorNotice').textContent,/Error al deshacer/);
+});
+test('bibliotecas sin array opcional de indicadores permiten añadir el primero',()=>{
+ const t=setup({prepare(db,song,initial){delete initial.indicators;}});
+ t.elements.get('indicatorId').value='boost';t.elements.get('indicatorLabel').value='Boost';
+ t.elements.get('indicatorAdd').onclick();
+ const indicators=t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState).indicators;
+ assert.deepEqual(indicators,[{id:'boost',label:'Boost',active:false,displayIndex:null}]);
+});
+test('guardar datos inválidos conserva el último guardado y mantiene el aviso hasta corregirlos',async()=>{
+ const t=setup(),before=t.storage.getItem(storageAPI.LIBRARY_KEY);
+ t.elements.get('statePatch').value='U01/1';t.elements.get('statePatch').oninput();
+ await t.context.api.save();
+ assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),before);
+ assert.equal(t.snapshot().hasDraft,true);assert.equal(t.writes.length,0);
+ assert.equal(t.elements.get('saveStatus').textContent,'Revisar datos');
+ assert.match(t.elements.get('editorNotice').textContent,/No se guardó/);
+ t.elements.get('statePatch').value='U01-1';t.elements.get('statePatch').oninput();
+ await t.context.api.save();
+ assert.equal(t.snapshot().hasDraft,false);assert.equal(t.elements.get('saveStatus').textContent,'Guardado');
+});
+test('recorrido completo: Canción, Estados, Lead sheet y MIDI conservan los guardados anteriores',async()=>{
+ const t=setup({tab:'song'});
+ t.elements.get('songTitle').value='Canción de prueba';t.elements.get('songTitle').listeners.input();
+ t.elements.get('songTone').value='Dm';t.elements.get('songTone').listeners.input();
+ t.elements.get('songBpm').value='70';t.elements.get('songBpm').listeners.input();
+ t.elements.get('songBank').value='C1';t.elements.get('songBank').listeners.input();
+ await t.elements.get('songSave').onclick();
+ t.context.api.updateTab('states');
+ t.elements.get('stateAdd').onclick();const verse=t.snapshot().activeState;
+ t.elements.get('stateName').value='Verso';t.elements.get('stateName').oninput();
+ t.elements.get('statePatch').value='U01-2';t.elements.get('statePatch').oninput();
+ t.elements.get('stateMakeInitial').onclick();
+ await t.elements.get('statesSave').onclick();
+ t.context.api.updateTab('sheet');
+ t.elements.get('leadText').value='A - Intro\n| Do | Sol |';t.elements.get('leadText').oninput();
+ await t.elements.get('sheetSave').onclick();
+ t.context.api.updateTab('midi');
+ const selectMessage=(cc,value)=>{
+  t.elements.get('midiCC').value=String(cc);t.elements.get('midiCC').onchange();
+  t.elements.get('midiValue').value=String(value);t.elements.get('midiValue').onchange();
+ };
+ selectMessage(100,64);t.elements.get('actionTarget').value=verse;t.elements.get('actionAdd').onclick();
+ selectMessage(101,0);t.elements.get('actionType').value='SELECT_SONG';t.elements.get('actionType').onchange();
+ t.elements.get('actionTarget').value=t.songId;t.elements.get('actionAdd').onclick();
+ assert.equal(t.writes.length,6);
+ await t.elements.get('midiSave').onclick();
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),song=saved.songs.find(s=>s.id===t.songId);
+ assert.equal(song.title,'Canción de prueba');assert.equal(song.tono,'Dm');assert.equal(song.tempoBpm,70);assert.equal(song.bank,'C1');
+ assert.equal(song.initialStateId,verse);assert.equal(saved.states.find(st=>st.id===verse).gtPatch,'U01-2');
+ assert.equal(song.chordNotation,'latino');assert.equal(song.leadSheet.sourceText,'A - Intro\n| Do | Sol |');
+ assert.equal(saved.bindings.find(b=>b.cc===100&&b.value===64).actions[0].stateId,verse);
+ assert.equal(saved.bindings.find(b=>b.cc===101&&b.value===0).actions[0].songId,t.songId);
+ assert.equal(engine.createEngine(saved).dispatch({type:'MIDI_CC',cc:100,value:64,channel:1}).view.state.id,verse);
+ assert.equal(t.writes.length,8);assert.equal(t.snapshot().hasDraft,false);
+});
+test('cancelar la salida de una pestaña conserva el borrador; confirmar solo descarta lo pendiente',async()=>{
+ const t=setup();
+ t.elements.get('statePatch').value='P50-5';t.elements.get('statePatch').oninput();
+ await t.context.api.save();
+ t.elements.get('stateName').value='Pendiente';t.elements.get('stateName').oninput();
+ t.context.confirmResult=false;t.context.api.updateTab('sheet');
+ assert.equal(t.snapshot().activeTab,'states');assert.equal(t.snapshot().hasDraft,true);
+ assert.equal(t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState).name,'Pendiente');
+ t.context.confirmResult=true;t.context.api.updateTab('sheet');
+ assert.equal(t.snapshot().activeTab,'sheet');assert.equal(t.snapshot().hasDraft,false);
+ const state=t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState);
+ assert.equal(state.name,'Intro');assert.equal(state.gtPatch,'P50-5');assert.equal(t.writes.length,2);
+});
+test('un Lead Sheet inválido no reemplaza al anterior; convertir y guardar conserva el cifrado elegido',async()=>{
+ const t=setup({tab:'sheet'}),stored=t.storage.getItem(storageAPI.LIBRARY_KEY);
+ t.elements.get('leadText').value='A - Intro\n| Q | G |';t.elements.get('leadText').oninput();
+ await t.elements.get('sheetSave').onclick();
+ assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),stored);
+ assert.equal(t.snapshot().hasDraft,true);assert.equal(t.elements.get('saveStatus').textContent,'Revisar datos');
+ t.elements.get('leadText').value='A - Intro\n| Do | Sol/Si | Lam7 |';t.elements.get('leadText').oninput();
+ t.elements.get('sheetNotation').value='americano';t.elements.get('sheetConvert').onclick();
+ assert.equal(t.elements.get('leadText').value,'A - Intro\n| C | G/B | Am7 |');
+ assert.equal(t.writes.length,0);
+ await t.elements.get('sheetSave').onclick();
+ const song=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)).songs.find(s=>s.id===t.songId);
+ assert.equal(song.leadSheet.sourceText,'A - Intro\n| C | G/B | Am7 |');assert.equal(song.chordNotation,'americano');
+});
+test('CC cero explícito es válido y los campos vacíos de la matriz muestran error',async()=>{
+ const t=setup({tab:'midi'});
+ t.elements.get('midiCC').value='0';t.elements.get('midiValue').value='0';t.elements.get('actionAdd').onclick();
+ await t.elements.get('midiSave').onclick();
+ assert.ok(JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)).bindings.some(b=>b.cc===0&&b.value===0));
+ t.elements.get('matrixStart').value='';t.elements.get('matrixStart').onchange();
+ assert.equal(t.elements.get('midiMatrix').children.length,1);
+ assert.match(t.elements.get('midiMatrix').children[0].textContent,/CC inicial/);
+ t.elements.get('matrixStart').value='20';t.elements.get('matrixValue').value='';t.elements.get('matrixValue').onchange();
+ assert.match(t.elements.get('midiMatrix').children[0].textContent,/valor fuera de rango/);
+});
+test('importación, exportación y Deshacer conservan las bibliotecas completas y sus iniciales',async()=>{
+ const t=setup(),original=t.snapshot().committed,incoming=structuredClone(original);
+ incoming.songs[0].title='Importada';incoming.songs[0].initialStateId='q-solo';incoming.states[3].gtPatch='P50-5';
+ const file={size:1000,text:async()=>JSON.stringify(incoming)};
+ await t.elements.get('importFile').onchange({target:{files:[file],value:'test.json'}});
+ assert.deepEqual(t.snapshot().committed,incoming);assert.equal(t.snapshot().activeState,'q-solo');
+ assert.deepEqual(JSON.parse(t.storage.getItem(storageAPI.BACKUP_KEY)),original);
+ t.elements.get('exportBtn').onclick();
+ assert.deepEqual(JSON.parse(await t.downloads[0].text()),incoming);
+ t.elements.get('undo').onclick();
+ assert.deepEqual(t.snapshot().committed,original);
+ assert.deepEqual(JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),original);
+ t.elements.get('undo').onclick();
+ assert.deepEqual(t.snapshot().committed,incoming);
+});
+test('rechazar importar y cancelar exportación con borradores no escribe ni descarga',async()=>{
+ const t=setup(),before=t.snapshot().committed;
+ t.context.confirmResult=false;
+ const file={size:1000,text:async()=>JSON.stringify(before)};
+ await t.elements.get('importFile').onchange({target:{files:[file],value:'test.json'}});
+ assert.equal(t.writes.length,0);assert.deepEqual(t.snapshot().committed,before);
+ t.elements.get('stateName').value='Solo borrador';t.elements.get('stateName').oninput();
+ t.elements.get('exportBtn').onclick();assert.equal(t.downloads.length,0);
+ t.context.confirmResult=true;t.elements.get('exportBtn').onclick();
+ assert.deepEqual(JSON.parse(await t.downloads[0].text()),before);
+});
+test('crear, duplicar y quitar canciones y repertorios conserva una selección válida',()=>{
+ const t=setup({tab:'song'});
+ t.context.promptResult='Ensayo';t.elements.get('repAdd').onclick();const rep=t.snapshot().activeRep;
+ assert.equal(t.snapshot().working.repertoires.find(r=>r.id===rep).name,'Ensayo');
+ t.elements.get('songAddSig').onclick();const sig=t.snapshot().activeSong;
+ assert.equal(t.snapshot().working.songs.find(s=>s.id===sig).stateIds.length,4);
+ t.elements.get('songCopy').onclick();const duplicate=t.snapshot().activeSong;
+ assert.notEqual(sig,duplicate);t.elements.get('songRemove').onclick();
+ assert.equal(t.snapshot().working.songs.some(s=>s.id===duplicate),false);
+ t.elements.get('repRemove').onclick();
+ assert.equal(t.snapshot().working.repertoires.some(r=>r.id===rep),false);
+ assert.equal(t.snapshot().activeRep,'worship');assert.equal(engine.validateLibrary(t.snapshot().working),true);
+});
+test('un estado sin módulo no desplaza los botones de la matriz ni anuncia que no hay módulos',()=>{
+ const t=setup();
+ t.elements.get('stateSlot').value='';t.elements.get('stateSlot').onchange();
+ assert.equal(t.snapshot().activeModule,null);
+ assert.equal(t.elements.get('moduleGrid').children.length,t.currentSong().displaySlots.length);
+ assert.ok(t.elements.get('moduleGrid').children.every(tile=>tile.className.includes('module-select-tile')));
+});
+test('un módulo de expresión sin estado no crea un inicial por accidente',()=>{
+ const t=setup();t.elements.get('moduleAdd').onclick();
+ t.elements.get('moduleKind').value='expression';t.elements.get('moduleKind').onchange();
+ t.context.api.render();const before=t.snapshot().working;
+ assert.equal(t.elements.get('stateMakeInitial').disabled,true);
+ t.elements.get('stateMakeInitial').onclick();
+ assert.deepEqual(t.snapshot().working,before);
+});
+test('el menú de asociación permite crear Intro conservando Morph y su estado inicial',()=>{
+ const t=setup({prepare(db,song,initial){
+  initial.name='Morph';initial.displayIndex=4;
+  song.displaySlots[4]={name:'Morph',sub:'Expresión',kind:'expression'};
+ }});
+ const morph=t.snapshot().activeState,before=t.snapshot().working;
+ t.elements.get('moduleGrid').children[0].onclick();
+ const select=t.elements.get('moduleLinkedState');
+ assert.ok(select.options.some(o=>o.textContent.includes('Crear estado para este módulo')));
+ select.value=select.dataset.createValue;select.onchange();
+ const intro=t.snapshot().activeState;
+ assert.notEqual(intro,morph);assert.equal(t.currentSong().initialStateId,morph);
+ assert.equal(t.snapshot().working.states.find(st=>st.id===intro).name,'Intro');
+ assert.equal(t.snapshot().working.states.find(st=>st.id===intro).displayIndex,0);
+ assert.deepEqual(t.snapshot().working.states.find(st=>st.id===morph),before.states.find(st=>st.id===morph));
+ assert.deepEqual(t.currentSong().displaySlots,before.songs.find(s=>s.id===t.songId).displaySlots);
+ assert.deepEqual(t.snapshot().working.bindings,before.bindings);assert.equal(t.writes.length,0);
+ t.elements.get('stateMakeInitial').onclick();assert.equal(t.currentSong().initialStateId,intro);
+});
+test('cancelar mover un estado a un módulo libre mantiene su asociación original',()=>{
+ const t=setup(),intro=t.snapshot().activeState,before=t.snapshot().working;
+ t.elements.get('moduleGrid').children[1].onclick();t.context.confirmResult=false;
+ const select=t.elements.get('moduleLinkedState');select.value=intro;select.onchange();
+ assert.deepEqual(t.snapshot().working,before);
+ assert.equal(t.snapshot().activeState,null);assert.equal(t.snapshot().activeModule,1);
+ assert.equal(select.value,'');assert.equal(t.snapshot().hasDraft,false);
 });

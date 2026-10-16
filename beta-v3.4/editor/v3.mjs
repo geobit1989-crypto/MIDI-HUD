@@ -1,6 +1,6 @@
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
-import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary} from "../core/library-storage.mjs?v=20261016-patch2";
+import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261016-editor-audit1";
 import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch2";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
@@ -9,8 +9,8 @@ import {
  newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
  chocolateMatrix,actionDescription,diagnostics,addModule,moveModule,removeModule,
- newStateWithModule,duplicateStateWithModule,assignStateModule
-} from "./editor-model.mjs?v=20261016-patch2";
+ newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState
+} from "./editor-model.mjs?v=20261016-editor-audit1";
 
 /**
  * Editor MIDI HUD v3
@@ -48,7 +48,35 @@ function currentRep(){return working.repertoires.find(x=>x.id===activeRep);}
 function currentSong(){return working.songs.find(x=>x.id===activeSong);}
 function currentState(){return working.states.find(x=>x.id===activeState);}
 function stateSelectionText(st=currentState()){
- return st?('Editando estado: '+st.name+(st.displayIndex==null?' · Sin módulo asociado':' · Módulo '+(st.displayIndex+1))):'Este módulo no tiene estado asociado. Puedes usar + Estado o elegir uno en «Estado asociado a esta casilla».';
+ if(st)return 'Editando estado: '+st.name+(st.displayIndex==null?' · Sin módulo asociado':' · Módulo '+(st.displayIndex+1));
+ if(Number.isInteger(activeModule)&&currentSong().displaySlots?.[activeModule])
+  return currentSlot().kind==='expression'?'Este módulo de expresión no tiene estado musical asociado. Selecciona un estado o un módulo de control para elegir el inicial.':'Este módulo no tiene estado musical asociado. Usa «+ Estado» para crearlo o «Crear estado y usar como inicial» para comenzar la canción aquí.';
+ return 'Selecciona un estado musical o un módulo para editarlo.';
+}
+function renderInitialState(){
+ const song=currentSong(),st=currentState(),initial=working.states.find(state=>state.id===song.initialStateId);
+ $("statesInitialStatus").textContent='Estado inicial de la canción: '+initial.name;
+ const action=$("stateMakeInitial"),slot=song.displaySlots?.[activeModule];
+ action.disabled=st?st.id===song.initialStateId:!Number.isInteger(activeModule)||!slot||slot.kind==='expression';
+ action.textContent=st?(st.id===song.initialStateId?'Ya es el estado inicial':'Usar como inicial'):'Crear estado y usar como inicial';
+}
+function makeSelectionInitial(){
+ const st=currentState();
+ if(st?.id===currentSong().initialStateId)return;
+ try{
+  const next=copy(working);
+  const id=st?setInitialState(next,activeSong,st.id):useModuleAsInitialState(next,activeSong,activeModule);
+  working=next;activeState=id;activeModule=currentState().displayIndex??null;
+  dirty();renderStates();renderSong();
+  notice('«'+currentState().name+'» será el estado inicial. Pulsa Guardar en Estados.');
+ }catch(error){notice(error.message,true);}
+}
+function createSelectedModuleState(){
+ try{
+  const next=copy(working),id=ensureModuleState(next,activeSong,activeModule);
+  working=next;activeState=id;
+  dirty();renderStates();renderSong();
+ }catch(error){renderStates();notice(error.message,true);}
 }
 function currentSlot(i=activeModule){return currentSong().displaySlots?.[i]||{};}
 function linkedState(i=activeModule){
@@ -80,7 +108,7 @@ function dirty(){
 function selected(){
  if(!working.repertoires.some(x=>x.id===activeRep))activeRep=working.repertoires[0].id;
  if(!currentRep().songIds.includes(activeSong))activeSong=currentRep().songIds[0];
- if(activeState!==null&&!currentSong().stateIds.includes(activeState))activeState=currentSong().stateIds[0];
+ if(activeState!==null&&!currentSong().stateIds.includes(activeState))activeState=currentSong().initialStateId;
  if(currentState())activeModule=currentState().displayIndex??null;
  else if(activeModule!==null&&(!Number.isInteger(activeModule)||activeModule<0||activeModule>=(currentSong().displaySlots?.length||0)))activeModule=null;
 }
@@ -113,15 +141,17 @@ function toggleLibrary(force){
 }
 function useSong(id){
  if(!currentRep().songIds.includes(id)||!allowLeaving())return;
- activeSong=id;activeState=currentSong().stateIds[0];
- activeModule=currentState().displayIndex??0;
+ activeSong=id;activeState=currentSong().initialStateId;
+ activeModule=currentState().displayIndex??null;
  leadSource=formatLeadSheetText(currentSong().leadSheet);toggleLibrary(false);render();
 }
 function useRepertoire(id){
- if(!working.repertoires.some(x=>x.id===id)||!allowLeaving())return;
+ if(!working.repertoires.some(x=>x.id===id)||!allowLeaving()){
+  $("repSelect").value=activeRep;return;
+ }
  activeRep=id;activeSong=currentRep().songIds[0];
- activeState=currentSong().stateIds[0];
- activeModule=currentState().displayIndex??0;
+ activeState=currentSong().initialStateId;
+ activeModule=currentState().displayIndex??null;
  leadSource=formatLeadSheetText(currentSong().leadSheet);toggleLibrary(false);render();
 }
 function persistLibrary(next,message){
@@ -154,6 +184,7 @@ function awaitNotationChoice(){
 }
 async function save(){
  if(!hasDraft||saving)return;
+ let failed=false;
  saving=true;syncStatus();
  try{
   const next=copy(working),song=next.songs.find(s=>s.id===activeSong);
@@ -166,8 +197,8 @@ async function save(){
    Object.assign(song,prepared);
   }
   persistLibrary(next,"Cambios guardados en «"+LABELS[activeTab]+"». Actualiza LIVE para verlos.");
- }catch(error){notice("No se guardó: "+error.message,true);}
- finally{saving=false;syncStatus();}
+ }catch(error){failed=true;notice("No se guardó: "+error.message,true);}
+ finally{saving=false;syncStatus(failed);}
 }
 function immediate(action,message){
  if(!allowLeaving())return;
@@ -238,7 +269,7 @@ function renderModules(){
  $("moduleAdd").disabled=slots.length>=256;
  for(const id of ['moduleName','moduleSub','moduleDeviceTag','moduleKind','moduleHidden','moduleColor','moduleColorPreset','moduleIcon','moduleLinkedState','moduleRowBreak'])$(id).disabled=!hasModule;
  const area=$("moduleGrid");area.replaceChildren();
- if(!hasModule)area.append(make('p','Sin módulos. Pulsa + Módulo para añadir uno.','help'));
+ if(!slots.length)area.append(make('p','Sin módulos. Pulsa + Módulo para añadir uno.','help'));
  for(let i=0;i<slots.length;i++){
   const slot=normalSlot(i),visual=resolveModuleVisual(slot,i),connected=linkedState(i);
   const tile=button("",()=>{activeModule=i;activeState=connected?.id??null;renderStates();},
@@ -272,9 +303,16 @@ function renderModules(){
   $("moduleColorPreset").value=visual.color;
  }
  entries("moduleIcon",MODULE_ICONS.map(x=>[x.id,(x.glyph?x.glyph+" · ":"")+x.label]),slot.icon);
- entries("moduleLinkedState",[["","Sin estado asociado"]].concat(
-  currentSong().stateIds.map(id=>[id,working.states.find(x=>x.id===id)?.name||id])
- ),linkedState()?.id||"");
+ const stateChoices=[["","Sin estado asociado"]],stateSelect=$("moduleLinkedState");
+ let createValue='__create_module_state__';
+ while(currentSong().stateIds.includes(createValue))createValue+='_';
+ stateSelect.dataset.createValue=hasModule&&!linkedState()&&slot.kind!=='expression'?createValue:'';
+ if(stateSelect.dataset.createValue)stateChoices.push([createValue,'+ Crear estado para este módulo']);
+ for(const id of currentSong().stateIds){
+  const state=working.states.find(st=>st.id===id);
+  stateChoices.push([id,state.name+(state.displayIndex==null?' · Sin módulo':' · Módulo '+(state.displayIndex+1))]);
+ }
+ entries(stateSelect,stateChoices,linkedState()?.id||'');
 
 }
 function renderStates(){
@@ -292,6 +330,7 @@ function renderStates(){
  $("stateRemove").disabled=!st||states.length<=1;
  for(const id of ['stateCopy','stateName','stateSlot','statePatch','indicatorId','indicatorLabel','indicatorSlot','indicatorActive','indicatorAdd'])$(id).disabled=!st;
  $("stateSelectionNote").textContent=stateSelectionText(st);
+ renderInitialState();
  $("stateName").value=st?.name||'';
  entries("stateSlot",[["","Sin módulo"]].concat(
   Array.from({length:currentSong().displaySlots.length},(_,i)=>[i,(i+1)+" · "+normalSlot(i).name])
@@ -356,9 +395,12 @@ function linkState(id,index){
 }
 function confirmModuleAssignment(stateId,index){
  const occupant=linkedState(index);
- if(!occupant||occupant.id===stateId)return true;
  const target=working.states.find(st=>st.id===stateId);
- return window.confirm('El módulo '+(index+1)+' está asociado a «'+occupant.name+'». Si lo reasignas a «'+target.name+'», «'+occupant.name+'» quedará sin módulo. ¿Continuar?');
+ const changes=[];
+ if(occupant&&occupant.id!==stateId)changes.push('«'+occupant.name+'» quedará sin módulo.');
+ if(target.displayIndex!=null&&target.displayIndex!==index)
+  changes.push('«'+target.name+'» pasará del módulo '+(target.displayIndex+1)+' al módulo '+(index+1)+'.');
+ return !changes.length||window.confirm(changes.join(' ')+' ¿Continuar?');
 }
 function changeStateField(key,value){
  const st=currentState();
@@ -374,7 +416,8 @@ function changeStateField(key,value){
  }
  if(key==='name'){
   $("stateSelectionNote").textContent=stateSelectionText(st);
-  for(const option of $("moduleLinkedState").options)if(option.value===st.id)option.textContent=value;
+  renderInitialState();renderSong();
+  for(const option of $("moduleLinkedState").options)if(option.value===st.id)option.textContent=value+(st.displayIndex==null?' · Sin módulo':' · Módulo '+(st.displayIndex+1));
   if(st.displayIndex!=null){
    const slot=normalSlot(st.displayIndex),tile=$("moduleGrid").children[st.displayIndex];
    if(tile)tile.querySelector('.tile-name').textContent=slot.name;
@@ -448,7 +491,8 @@ function paintLead(){
   chart.append(make("p","Escribe una sección y sus compases para generar la vista previa.","sheet-helper"));
  }
 }
-function pair(){return {cc:Number($("midiCC").value),value:Number($("midiValue").value)};}
+function midiNumber(id){const raw=$(id).value;return raw.trim()===''?NaN:Number(raw);}
+function pair(){return {cc:midiNumber("midiCC"),value:midiNumber("midiValue")};}
 function validatePair(){
  const v=pair();
  if(!Number.isInteger(v.cc)||v.cc<0||v.cc>127||
@@ -480,7 +524,7 @@ function renderMidiMatrix(){
  const area=$("midiMatrix");area.replaceChildren();
  let cells;
  try{cells=chocolateMatrix(working,{
-  startCC:Number($("matrixStart").value),value:Number($("matrixValue").value)
+  startCC:midiNumber("matrixStart"),value:midiNumber("matrixValue")
  });}
  catch(e){area.append(make("p",e.message,"warning"));return;}
  area.append(make("span","","axis"));
@@ -627,8 +671,10 @@ function register(){
   });
  }
  $("songInitial").onchange=()=>{
-  currentSong().initialStateId=$("songInitial").value;dirty();
+  try{setInitialState(working,activeSong,$("songInitial").value);dirty();renderStates();}
+  catch(error){renderSong();notice(error.message,true);}
  };
+ $("stateMakeInitial").onclick=makeSelectionInitial;
  $("songSave").onclick=save;
  $("moduleAdd").onclick=()=>{
   try{activeModule=addModule(working,activeSong);activeState=null;dirty();renderStates();}
@@ -704,17 +750,22 @@ function register(){
   $("moduleColorPreset").value=color;
  };
  $("moduleIcon").onchange=()=>setSlotProperty("icon",$("moduleIcon").value);
- $("moduleLinkedState").onchange=()=>linkState($("moduleLinkedState").value,activeModule);
+ $("moduleLinkedState").onchange=()=>{
+  const select=$("moduleLinkedState");
+  if(select.dataset.createValue&&select.value===select.dataset.createValue)createSelectedModuleState();
+  else linkState(select.value,activeModule);
+ };
  $("indicatorAdd").onclick=()=>{
   if(!currentState())return;
   const id=$("indicatorId").value.trim(),label=$("indicatorLabel").value.trim();
   if(!/^[A-Za-z][A-Za-z0-9_-]{0,49}$/.test(id)||!label){
    notice("Escribe un identificador válido y descripción del indicador.",true);return;
   }
-  if(currentState().indicators.some(x=>x.id===id)){
+  const indicators=currentState().indicators??=[];
+  if(indicators.some(x=>x.id===id)){
    notice("Ese indicador ya existe en este estado.",true);return;
   }
-  currentState().indicators.push({id,label,active:$("indicatorActive").checked,
+  indicators.push({id,label,active:$("indicatorActive").checked,
    displayIndex:$("indicatorSlot").value===""?null:Number($("indicatorSlot").value)});
   $("indicatorId").value="";$("indicatorLabel").value="";$("indicatorActive").checked=false;
   dirty();renderStates();
@@ -776,13 +827,10 @@ function register(){
    const incoming=normalizeLibrary(JSON.parse(await file.text()));
    validateLibrary(incoming);
    if(!window.confirm("¿Importar y reemplazar la biblioteca actual? Se guarda una copia previa."))return;
-   committed=incoming;
-   // Respaldar antes de reemplazar, sin mutar si falla el almacenamiento.
-   localStorage.setItem(BACKUP,localStorage.getItem(STORAGE)||JSON.stringify(working));
-   localStorage.setItem(STORAGE,JSON.stringify(incoming));
-   working=copy(incoming);activeRep=working.repertoires[0].id;
-   activeSong=currentRep().songIds[0];activeState=currentSong().stateIds[0];
-   activeModule=currentState().displayIndex??0;
+   const written=replaceLibrary(localStorage,incoming,committed);
+   committed=written;working=copy(written);activeRep=working.repertoires[0].id;
+   activeSong=currentRep().songIds[0];activeState=currentSong().initialStateId;
+   activeModule=currentState().displayIndex??null;
    leadSource=formatLeadSheetText(currentSong().leadSheet);
    activeTab="song";hasDraft=false;render();notice("Biblioteca importada.");
   }catch(e){notice("No se pudo importar: "+e.message,true);}
@@ -799,10 +847,8 @@ function register(){
   if(!window.confirm("¿Recuperar la biblioteca guardada antes del último cambio?"))return;
   try{
    const last=normalizeLibrary(JSON.parse(backup));validateLibrary(last);
-   const current=JSON.stringify(committed);
-   localStorage.setItem(STORAGE,JSON.stringify(last));
-   localStorage.setItem(BACKUP,current);
-   committed=last;working=copy(last);hasDraft=false;selected();leadSource=formatLeadSheetText(currentSong().leadSheet);
+   const written=replaceLibrary(localStorage,last,committed);
+   committed=written;working=copy(written);hasDraft=false;selected();leadSource=formatLeadSheetText(currentSong().leadSheet);
    render();notice("Se ha recuperado el guardado anterior.");
   }catch(e){notice("Error al deshacer: "+e.message,true);}
  };
@@ -863,7 +909,7 @@ async function boot(){
  }
  committed=library;working=copy(library);
  activeRep=working.repertoires[0].id;activeSong=currentRep().songIds[0];
- activeState=currentSong().stateIds[0];activeModule=currentState().displayIndex??0;
+ activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;
  leadSource=formatLeadSheetText(currentSong().leadSheet);
  render();notice(saved?"Biblioteca local cargada. Pulsa Guardar tras editar una sección.":"Editor listo con datos de ejemplo. Busca guardados anteriores desde Biblioteca.");
 }

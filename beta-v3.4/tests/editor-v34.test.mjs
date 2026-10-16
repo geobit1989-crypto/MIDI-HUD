@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {prepareLeadSheetSave,convertLeadSheetDraft} from '../editor/sheet-save.mjs';
 import {convertChord,convertSheet} from '../editor/chord-notation.mjs';
-import {newSong,addModule,moveModule,removeModule,setBindingActions} from '../editor/editor-model.mjs';
+import {newSong,addModule,moveModule,removeModule,setBindingActions,setInitialState,useModuleAsInitialState} from '../editor/editor-model.mjs';
 import {validateLibrary,createEngine} from '../core/engine-v1.mjs';
 import {LIBRARY_KEY,LEGACY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary} from '../core/library-storage.mjs';
 import {moduleRows} from '../core/layout-v3.4.mjs';
 import {normalizeSlot,resolveModuleVisual} from '../core/module-visuals.mjs';
 const fixture=()=>JSON.parse(readFileSync(new URL('../config/midi-hud-data-v2.json',import.meta.url)));
-const storage=()=>{const data=new Map();return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),data};};
+const storage=()=>{const data=new Map();return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k),data};};
 test('el distintivo GT anterior se convierte en etiqueta editable sin duplicarlo en descripción',()=>{
  const slot=normalizeSlot({name:'Comp',sub:'GT'},6);
  assert.equal(slot.deviceTag,'GT');assert.equal(slot.sub,'');
@@ -105,4 +105,23 @@ test('error de validación o almacenamiento conserva la última versión guardad
  store.setItem=(key,val)=>{if(key===LIBRARY_KEY)throw Error('Sin espacio');baseSet(key,val);};
  assert.throws(()=>saveLibrary(store,candidate,old),/Sin espacio/);
  assert.equal(store.getItem(LIBRARY_KEY),last);
+});
+test('un inicial ajeno, un módulo inexistente o una expresión sin estado no alteran la biblioteca',()=>{
+ const db=fixture(),id=newSong(db,'worship'),song=db.songs.find(s=>s.id===id);
+ song.displaySlots[1].kind='expression';const before=JSON.stringify(db);
+ assert.throws(()=>setInitialState(db,id,'q-clean'),/no pertenece/);
+ for(const index of [null,-1,4,1])assert.throws(()=>useModuleAsInitialState(db,id,index));
+ assert.equal(JSON.stringify(db),before);
+ const initial=useModuleAsInitialState(db,id,0);
+ assert.equal(useModuleAsInitialState(db,id,0),initial);
+ assert.equal(song.stateIds.length,2);assert.equal(song.displaySlots.length,4);
+ assert.equal(validateLibrary(db),true);
+});
+test('un fallo en la escritura principal conserva también el backup anterior',()=>{
+ const store=storage(),old=fixture();saveLibrary(store,old,old);
+ const beforeMain=store.getItem(LIBRARY_KEY),beforeBackup=store.getItem(BACKUP_KEY),candidate=fixture();
+ candidate.songs[0].title='Nuevo';const baseSet=store.setItem;
+ store.setItem=(key,val)=>{if(key===LIBRARY_KEY)throw Error('Sin espacio');baseSet(key,val);};
+ assert.throws(()=>saveLibrary(store,candidate,old),/Sin espacio/);
+ assert.equal(store.getItem(LIBRARY_KEY),beforeMain);assert.equal(store.getItem(BACKUP_KEY),beforeBackup);
 });

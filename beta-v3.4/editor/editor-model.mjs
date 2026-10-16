@@ -128,6 +128,27 @@ export function newState(db,songId,name="Nuevo estado"){
  song.stateIds.push(id);
  return id;
 }
+export function setInitialState(db,songId,stateId){
+ const song=locate(db.songs,songId,'canción'),state=locate(db.states,stateId,'estado');
+ requireThat(state.songId===songId&&song.stateIds.includes(stateId),'el estado inicial no pertenece a la canción');
+ song.initialStateId=stateId;
+ return stateId;
+}
+/** Acción explícita: reutiliza el estado del módulo o crea uno sin mover módulos. */
+export function ensureModuleState(db,songId,index){
+ const song=locate(db.songs,songId,'canción'),slots=song.displaySlots||[];
+ requireThat(Number.isInteger(index)&&index>=0&&index<slots.length,'selecciona un módulo de control');
+ const existing=db.states.find(st=>st.songId===songId&&st.displayIndex===index);
+ if(existing)return existing.id;
+ requireThat(slots[index].kind!=='expression','selecciona un estado musical o un módulo de control');
+ const label=slots[index].name.trim(),name=label&&label!=='—'?label:'Estado inicial';
+ const id=newState(db,songId,name);
+ db.states.find(st=>st.id===id).displayIndex=index;
+ return id;
+}
+export function useModuleAsInitialState(db,songId,index){
+ return setInitialState(db,songId,ensureModuleState(db,songId,index));
+}
 function freeControlModule(db,song,preferred=null,blankOnly=false){
  const used=new Set(db.states.filter(st=>st.songId===song.id).flatMap(st=>[st.displayIndex,...(st.indicators||[]).map(ind=>ind.displayIndex)]).filter(Number.isInteger));
  const available=i=>Number.isInteger(i)&&i>=0&&i<(song.displaySlots||[]).length&&!used.has(i)&&
