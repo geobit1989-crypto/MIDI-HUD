@@ -1,0 +1,4 @@
+{
+  "googleWebClientId": "",
+  "description": "Configurar el cliente OAuth web del mismo proyecto Google Cloud que la app iOS. No introducir secretos."
+}

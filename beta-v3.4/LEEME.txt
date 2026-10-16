@@ -1,0 +1,9 @@
+MIDI HUD v3.4 · Beta del editor (15/10/2026)
+
+Abrir editor/ para configurar; v03.html para LIVE; lab/ para pruebas MIDI.
+Servir la carpeta dentro del repositorio mediante HTTP. La versión anterior se conserva en la raíz.
+
+Se mantienen las canciones de la versión anterior como punto de partida. Los cambios de la beta se guardan por separado. Guardar confirma la sección editada; exportar JSON conserva una copia transportable.
+
+Se conserva el adaptador MIDI de navegadores y el diagnóstico de puertos/CC añadido esta noche.
+La comprobación física en iPhone y Chocolate debe completarse en el dispositivo.

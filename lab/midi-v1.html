@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIDI HUD — LAB del motor v1</title>
+<style>
+:root{font-family:system-ui,sans-serif;background:#09111a;color:#edf6fd;color-scheme:dark}
+*{box-sizing:border-box}body{max-width:850px;margin:auto;padding:16px}h1{font-size:26px}
+.card{border:1px solid #314556;background:#152333;padding:15px;border-radius:12px;margin:14px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+label{display:block;margin:8px 0;font-size:14px}
+input,select,button{font:inherit;max-width:100%;min-height:42px;color:white;background:#243a4f;border:1px solid #7190a4;border-radius:8px;padding:8px}
+input,select{display:block;width:100%}button{cursor:pointer;margin:6px 4px 0 0}
+p,.help{color:#c1d2df;line-height:1.5}a{color:#82ddf4}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monospace;background:#071522;padding:12px;border-radius:8px;max-height:420px;overflow:auto}
+#log{max-height:160px}.ok{color:#86edcc}.warn{color:#ffd29d}
+</style></head><body>
+<h1>Motor MIDI HUD · LAB v1</h1>
+<p>Entorno aislado: simula CC sin transmitir MIDI a la GT ni modificar la interfaz LIVE.</p>
+<p><a href="../v03.html">LIVE</a> · <a href="../editor/v1.html">Editor MIDI v1</a> · <a href="../lab/">LAB antiguo (respaldo)</a></p>
+<section class="card"><h2>Canal MIDI de recepción (global)</h2>
+<label for="channel">Canal de MIDI HUD</label><select id="channel"></select>
+<p class="help">Se guarda en este navegador y es independiente de las canciones. Los transmisores deben usar el mismo canal.</p>
+</section>
+<section class="card"><h2>Enviar un mensaje simulado</h2>
+<div class="grid">
+<label>Canal emisor<input id="sender" type="number" min="1" max="16" value="1"></label>
+<label>Número CC<input id="cc" type="number" min="0" max="127" value="23"></label>
+<label>Valor CC<input id="value" type="number" min="0" max="127" value="127"></label>
+</div>
+<button id="send">Procesar CC</button>
+<button id="zero">Enviar el mismo CC con valor 0</button>
+<button id="unknown">Enviar CC sin asignación</button>
+</section>
+<section class="card"><h2>Consulta anticipada (sin alterar estado activo)</h2>
+<label>Canción de consulta<select id="preview"></select></label>
+<button id="look">Previsualizar</button><button id="return">Volver al activo</button>
+</section>
+<section class="card"><h2>Biblioteca aislada</h2>
+<p>Usa el JSON de ensayo v2 o una copia preparada en el editor. LAB no modifica el repertorio del editor.</p>
+<button id="reload">Restaurar ejemplo</button>
+<button id="clone">Copiar editor → LAB</button>
+<button id="import">Importar JSON</button>
+<input type="file" id="file" accept="application/json,.json" hidden>
+<button id="export">Exportar copia LAB</button>
+</section>
+<section class="card"><h2>Entrada MIDI real (opcional)</h2>
+<p>Solo cuando el navegador ofrece Web MIDI y el sistema expone un puerto de entrada. No implica Bluetooth MIDI garantizado en Safari/iPhone.</p>
+<button id="connect">Autorizar entrada MIDI</button>
+<p id="midiStatus" role="status">Sin conexión solicitada. La simulación funciona independientemente.</p>
+</section>
+<section class="card">
+<h2>Estado y vista</h2><p id="notice" role="status">Preparando…</p>
+<pre id="view"></pre>
+<h3>Registro de pruebas</h3><pre id="log"></pre>
+</section>
+<script type="module">
+import {createEngine,normalizeLibrary,validateLibrary,ENGINE_VERSION} from "../core/engine-v1.mjs";
+import {readSettings,saveSettings} from "../core/settings-v1.mjs";
+import {openBrowserMidi} from "../core/midi-browser.mjs?v=20261015-ble1";
+const $=id=>document.getElementById(id),KEY="hudLabLibraryV1",EDITOR="hudLibraryV1";
+const settings=readSettings(localStorage);
+let engine,library,logs=[],link;
+for(let ch=1;ch<=16;ch++) $("channel").add(new Option("Canal "+ch,ch));
+$("channel").value=String(settings.midiChannel);$("sender").value=String(settings.midiChannel);
+function log(s){logs.unshift(new Date().toLocaleTimeString()+" · "+s);logs=logs.slice(0,25);$("log").textContent=logs.join("\n");}
+function render(){
+ const vm=engine.getViewModel();
+ $("view").textContent=JSON.stringify(vm,null,2);
+ $("notice").textContent="Motor "+ENGINE_VERSION+" · "+(vm.isPreview?"PREVISUALIZACIÓN":"ACTIVO")+
+  " · "+vm.song.title+" / "+vm.state.name+" · CC RX canal "+vm.midiChannel;
+}
+function open(data,save=false){
+ const normalized=normalizeLibrary(data);validateLibrary(normalized);
+ const candidate=createEngine(normalized,{midiChannel:Number($("channel").value)});
+ library=normalized;engine=candidate;
+ engine.subscribe(()=>render());
+ $("preview").replaceChildren(...library.songs.map(s=>new Option(s.title,s.id)));
+ if(save)localStorage.setItem(KEY,JSON.stringify(library));
+ logs=[];log("Biblioteca "+library.schemaVersion+" cargada");render();
+}
+function receive(msg){
+ try{
+  const out=engine.dispatch(msg);
+  log("RX ch"+msg.channel+" CC"+msg.cc+"="+msg.value+" → "+
+    (out.matched?out.changed?"ejecutado":"reconocido, sin cambio":"ignorado"));
+  render();
+ }catch(e){log("ERROR: "+e.message);}
+}
+$("channel").onchange=()=>{
+ try{
+  const channel=Number($("channel").value);
+  saveSettings(localStorage,{midiChannel:channel});
+  engine.dispatch({type:"SET_CHANNEL",channel});
+  $("sender").value=String(channel);render();log("Canal global cambiado a "+channel);
+ }catch(e){log("ERROR canal: "+e.message);}
+};
+$("send").onclick=()=>receive({type:"MIDI_CC",channel:Number($("sender").value),
+ cc:Number($("cc").value),value:Number($("value").value)});
+$("zero").onclick=()=>receive({type:"MIDI_CC",channel:Number($("sender").value),
+ cc:Number($("cc").value),value:0});
+$("unknown").onclick=()=>receive({type:"MIDI_CC",channel:Number($("sender").value),cc:127,value:99});
+$("look").onclick=()=>{try{engine.dispatch({type:"PREVIEW_SONG",songId:$("preview").value});render();log("Consulta anticipada");}catch(e){log(e.message)}};
+$("return").onclick=()=>{engine.dispatch({type:"RETURN_TO_ACTIVE"});render();};
+$("reload").onclick=async()=>{
+ try{const r=await fetch("../config/midi-hud-data-v2.json",{cache:"no-store"});
+ if(!r.ok)throw Error("No se pudo cargar ejemplo");open(await r.json(),true);}catch(e){log("ERROR: "+e.message);}
+};
+$("clone").onclick=()=>{
+ const raw=localStorage.getItem(EDITOR);
+ if(!raw){log("No hay datos en editor v1");return;}
+ if(!confirm("¿Copiar el editor a LAB sin modificar el editor?"))return;
+ try{open(JSON.parse(raw),true);}catch(e){log("ERROR: "+e.message);}
+};
+$("import").onclick=()=>$("file").click();
+$("file").onchange=async e=>{
+ const f=e.target.files?.[0];e.target.value="";if(!f)return;
+ try{if(f.size>500000)throw Error("Archivo demasiado grande");open(JSON.parse(await f.text()),true);}
+ catch(err){log("Importación rechazada: "+err.message);}
+};
+$("export").onclick=()=>{
+ if(!library)return;
+ const u=URL.createObjectURL(new Blob([JSON.stringify(library,null,2)],{type:"application/json"}));
+ const a=document.createElement("a");a.href=u;a.download="midi-hud-lab-v1.json";a.click();
+ setTimeout(()=>URL.revokeObjectURL(u),5000);
+};
+$("connect").onclick=async()=>{
+ try{
+  if(link)link.close();
+  link=await openBrowserMidi(receive,names=>{
+    $("midiStatus").textContent=names.length
+      ?"Entradas MIDI: "+names.join(", ")+". Esperando CC…"
+      :"Acceso MIDI disponible, sin entradas detectadas.";
+  });
+  $("midiStatus").textContent=link.supported
+    ?(link.inputCount?"Entradas MIDI: "+link.inputNames.join(", "):"Acceso MIDI disponible, sin entradas detectadas.")
+    :"No disponible: "+link.reason;
+ }catch(e){$("midiStatus").textContent="No se abrió MIDI: "+e.message;}
+};
+(async()=>{
+ try{
+  const raw=localStorage.getItem(KEY);
+  if(raw){try{open(JSON.parse(raw));return;}catch{}}
+  const response=await fetch("../config/midi-hud-data-v2.json");
+  if(!response.ok)throw Error("Biblioteca no accesible");
+  open(await response.json());
+ }catch(e){$("notice").textContent="Error: "+e.message;}
+})();
+</script></body></html>

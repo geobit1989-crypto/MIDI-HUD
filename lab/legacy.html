@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#09111a">
+  <title>MIDI HUD · LAB v0.2</title>
+  <style>
+    :root{font-family:system-ui,sans-serif;color:#ebf4fb;background:#09111a;color-scheme:dark}
+    *{box-sizing:border-box}body{max-width:980px;margin:auto;padding:16px}
+    h1{font-size:clamp(24px,5vw,31px);margin:0 0 6px}h2{font-size:18px;margin:0 0 12px}
+    p{line-height:1.45}small,.muted{color:#b4c5d2}
+    .card{background:#152435;border:1px solid #314456;border-radius:12px;padding:16px;margin:15px 0}
+    .bar{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+    button,select,input{font:inherit}
+    button,select{background:#263c51;color:#fff;border:1px solid #607d95;border-radius:9px;padding:12px;min-height:44px}
+    button{cursor:pointer}button:disabled{opacity:.42;cursor:not-allowed}
+    button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #6dd9f5;outline-offset:2px}
+    .bar button{flex:1 1 auto}label{display:block;margin:12px 0 8px}
+    select{max-width:100%;width:100%}input[type=range]{width:100%;accent-color:#25bade}
+    .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .presets button{font-size:13px;overflow-wrap:anywhere;min-width:0}
+    .presets button.active{border-color:#75e8ff;background:#07536b}
+    output{font-variant-numeric:tabular-nums}a{color:#8bdfff}
+    #log{white-space:pre-wrap;overflow-wrap:anywhere;min-height:46px;font:12px/1.5 ui-monospace,monospace;background:#07121e;padding:12px;border-radius:8px}
+    #notice,#configNotice{min-height:1.4em}
+    /* Ensayo del indicador de conexión. Excluido de LIVE y del motor MIDI. */
+    .connection-test{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:14px;align-items:stretch}
+    .connection-preview{background:#010305;color:#fff;border:1px solid #53616d;border-radius:10px;padding:14px;min-width:0}
+    .connection-preview-header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:38px}
+    .connection-song{font-size:clamp(14px,2.6vw,20px);font-weight:800;min-width:0}
+    .connection-bank{display:flex;align-items:center;gap:8px;font-weight:800;white-space:nowrap}
+    .connection-icon-slot{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px}
+    .connection-icon{width:24px;height:24px;display:block}
+    .connection-icon[hidden]{display:none}
+    .connection-controls{display:flex;flex-direction:column;justify-content:center;gap:10px}
+    .connection-controls button{width:100%}
+    #connectionStatus{margin:0;color:#b4c5d2;font-size:13px}
+    #connectionStatus.is-lost{color:#ff9999}
+    @media(max-width:650px){.connection-test{grid-template-columns:1fr}}
+    @media(max-width:550px){body{padding:10px}.two{grid-template-columns:1fr}.presets{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  </style>
+</head>
+<body>
+  <header><h1>MIDI HUD · LAB <small>v0.2</small></h1>
+    <p class="muted">Único banco de pruebas. Simula eventos del motor sin enviar MIDI ni modificar el diseño LIVE v0.3.</p>
+    <p><a href="../v03.html">Ver maqueta LIVE v0.3</a> · <a href="../editor/">Abrir editor</a></p></header>
+  <section class="card" aria-label="Datos de prueba">
+    <h2>Datos aislados de LAB</h2>
+    <p class="muted">LAB usa su propia copia de repertorios. El editor solo cambia si pulsas «Aplicar al editor» y confirmas.</p>
+    <div class="bar">
+      <button id="clone" type="button">Copiar editor → LAB</button>
+      <button id="load" type="button">Importar JSON a LAB</button>
+      <button id="export" type="button">Exportar LAB</button>
+      <button id="promote" type="button">Aplicar LAB al editor</button>
+      <button id="reset" type="button">Restaurar LAB</button>
+    </div>
+    <input id="upload" type="file" accept=".json,application/json" hidden>
+    <p id="configNotice" role="status"></p>
+  </section>
+  <section class="card" aria-label="Navegación de canciones y presets">
+    <h2>Navegación simulada</h2>
+    <label for="repertoire">Repertorio</label>
+    <select id="repertoire"></select>
+    <label for="song">Canción</label>
+    <div class="bar">
+      <button id="prevSong" type="button" aria-label="Canción anterior">◀</button>
+      <select id="song" style="flex:6 1 160px;width:auto"></select>
+      <button id="nextSong" type="button" aria-label="Canción siguiente">▶</button>
+    </div>
+    <p id="songDetails" class="muted"></p>
+    <label>Preset activo</label><div class="presets" id="presets"></div>
+    <div class="bar" style="margin-top:10px">
+      <button id="prevPreset" type="button">◀ Preset</button>
+      <button id="nextPreset" type="button">Preset ▶</button>
+    </div>
+  </section>
+  <section class="card" aria-label="Prueba aislada de pérdida de conexión">
+    <h2>Indicador de conexión — LAB</h2>
+    <p class="muted">Prueba visual aislada. El estado «conectado» es simulado: no comprueba dispositivos reales, no envía MIDI ni modifica LIVE.</p>
+    <div class="connection-test">
+      <div class="connection-preview" aria-label="Vista de prueba del encabezado">
+        <div class="connection-preview-header">
+          <span class="connection-song">Canción de ejemplo</span>
+          <span class="connection-bank">Banco C1
+            <span class="connection-icon-slot" aria-label="Espacio reservado para el indicador">
+              <svg id="connectionIcon" class="connection-icon" viewBox="0 0 24 24" fill="none" role="img" aria-label="Conexión con el controlador interrumpida" hidden>
+                <path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 2.93l-1.72 1.71" stroke="#FFFFFF" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21.07l1.71-1.71" stroke="#FFFFFF" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="4" y1="4" x2="20" y2="20" stroke="#E53935" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </span>
+          </span>
+        </div>
+        <small class="muted">Espacio reservado junto al banco; el símbolo aparece solo cuando se simula un fallo.</small>
+      </div>
+      <aside class="connection-controls" aria-label="Controles laterales de simulación">
+        <button id="connectionToggle" type="button" aria-pressed="false">Simular pérdida de conexión</button>
+        <p id="connectionStatus" role="status" aria-live="polite">Conexión simulada: normal.</p>
+      </aside>
+    </div>
+  </section>
+  <div class="two">
+    <section class="card" aria-label="Control Morph">
+      <h2>Morph</h2><p id="morphAssignment" class="muted"></p>
+      <label for="morph">Valor MIDI: <output id="morphValue">0</output></label>
+      <input id="morph" type="range" min="0" max="127" value="0">
+      <p id="morphDetail" class="muted"></p>
+    </section>
+    <section class="card" aria-label="Control Wah">
+      <h2>Wah / EXP</h2>
+      <p class="muted">Posición simulada; el estado de activación queda pendiente de definición.</p>
+      <label for="wah">Posición: <output id="wahValue">0%</output></label>
+      <input id="wah" type="range" min="0" max="100" value="0">
+    </section>
+  </div>
+  <section class="card">
+    <h2>Registro de eventos</h2>
+    <p id="notice" role="status">Inicializando motor…</p>
+    <div id="log" aria-label="Últimas instrucciones MIDI simuladas"></div>
+    <small>Los valores MIDI de ejemplo son provisionales. No se abre ningún puerto MIDI.</small>
+  </section>
+  <script type="module">
+    import {createEngine,normalizeLibrary,validateLibrary,ENGINE_VERSION} from "../core/engine.mjs";
+    const $ = id => document.getElementById(id);
+    // Estado de ensayo exclusivamente local en LAB; no existe comunicación física.
+    let simulatedConnectionLost = false;
+    function renderConnectionSimulation(){
+      $("connectionIcon").hidden = !simulatedConnectionLost;
+      $("connectionToggle").textContent = simulatedConnectionLost
+        ? "Simular reconexión" : "Simular pérdida de conexión";
+      $("connectionToggle").setAttribute("aria-pressed",String(simulatedConnectionLost));
+      $("connectionStatus").textContent = simulatedConnectionLost
+        ? "Conexión simulada: perdida." : "Conexión simulada: normal.";
+      $("connectionStatus").classList.toggle("is-lost",simulatedConnectionLost);
+    }
+    $("connectionToggle").addEventListener("click",()=>{
+      simulatedConnectionLost = !simulatedConnectionLost;
+      renderConnectionSimulation();
+    });
+    renderConnectionSimulation();
+    const STORAGE = "hudLabLibrary";
+    const SOURCE = "../config/midi-hud-data-v1.json";
+    let engine, library, activeRepertoire="", activeSong="", history=[];
+    const clone = x => JSON.parse(JSON.stringify(x));
+    function clean(raw){const normalized=normalizeLibrary(raw);validateLibrary(normalized);return normalized;}
+    function tell(message){$("configNotice").textContent=message;}
+    function showError(error){$("notice").textContent="Error: "+error.message;}
+    function send(event){if(!engine)return;try{engine.dispatch(event);}catch(e){showError(e);}}
+    function labelIntent(intent){
+      const m=intent.message;
+      if(m.kind==="program-change")return "PC canal "+m.channel+" · programa "+m.program;
+      if(m.kind==="control-change")return "CC canal "+m.channel+" · controlador "+m.controller+" · valor "+m.value;
+      return "Evento MIDI";
+    }
+    function showLog(event,intents){
+      const label=event?event.type:"Motor inicializado";
+      history.unshift(label+"  →  "+(intents.length?intents.map(labelIntent).join(" | "):"sin MIDI"));
+      history=history.slice(0,12);
+      $("log").textContent=history.join("\n");
+    }
+    function options(select,items,id,label){
+      if(select.options.length!==items.length ||
+        items.some((it,i)=>select.options[i].value!==it[id] ||
+          select.options[i].textContent!==label(it))){
+        select.replaceChildren(...items.map(it=>new Option(label(it),it[id])));
+      }
+    }
+    function render(){
+      if(!engine)return;
+      const vm=engine.getViewModel();
+      const reps=library.repertoires;
+      const rep=reps.find(x=>x.id===vm.repertoire.id);
+      const song=library.songs.find(x=>x.id===vm.song.id);
+      const songList=rep.songIds.map(id=>library.songs.find(x=>x.id===id)).filter(Boolean);
+      const presetList=song.presetIds.map(id=>library.presets.find(x=>x.id===id)).filter(Boolean);
+      options($("repertoire"),reps,"id",x=>x.name);$("repertoire").value=rep.id;
+      options($("song"),songList,"id",x=>x.title);$("song").value=song.id;
+      $("songDetails").textContent="Canción "+vm.song.position+" de "+vm.song.total+
+        " · "+(vm.song.tempoBpm===null?"BPM sin definir":vm.song.tempoBpm+" BPM");
+      if(activeSong!==song.id||activeRepertoire!==rep.id){
+        $("presets").replaceChildren(...presetList.map((p,i)=>{
+          const b=document.createElement("button");b.type="button";
+          b.dataset.presetId=p.id;b.textContent=(i+1)+". "+p.name;
+          b.addEventListener("click",()=>send({type:"SELECT_PRESET",presetId:p.id}));
+          return b;
+        }));
+        activeSong=song.id;activeRepertoire=rep.id;
+      }
+      for(const b of $("presets").children){
+        const selected=b.dataset.presetId===vm.preset.id;
+        b.classList.toggle("active",selected);b.setAttribute("aria-pressed",selected?"true":"false");
+      }
+      $("prevSong").disabled=vm.song.position===1;
+      $("nextSong").disabled=vm.song.position===vm.song.total;
+      $("prevPreset").disabled=vm.preset.position===1;
+      $("nextPreset").disabled=vm.preset.position===vm.preset.total;
+      const m=vm.morph;
+      $("morph").min=String(m.min);$("morph").max=String(m.max);
+      $("morph").value=String(m.value);
+      $("morph").disabled=m.assignment==="none"||m.min===m.max;
+      $("morphValue").textContent=m.assignment==="none"?"sin asignación":String(m.value);
+      $("morphAssignment").textContent="Asignación: "+m.assignment;
+      $("morphDetail").textContent=Object.entries(m.parameters)
+        .map(([name,value])=>name+": "+Math.round(value*10)/10).join(" · ")||"Sin parámetros asignados";
+      $("wah").value=String(vm.wahPercent);
+      $("wahValue").textContent=Math.round(vm.wahPercent)+"%";
+      $("notice").textContent="Motor "+ENGINE_VERSION+" · "+vm.song.title+
+        " · "+vm.preset.name+" · secuencia "+vm.sequence;
+    }
+    function activate(raw,saveToLab){
+      const next=clean(raw);
+      const candidate=createEngine(next);
+      library=candidate.getLibrary();engine=candidate;
+      activeSong="";activeRepertoire="";history=[];
+      engine.subscribe((state,intents,event)=>{showLog(event,intents);render();});
+      if(saveToLab)localStorage.setItem(STORAGE,JSON.stringify(library));
+      showLog(null,[]);render();
+    }
+    $("repertoire").onchange=e=>send({type:"SELECT_REPERTOIRE",repertoireId:e.target.value});
+    $("song").onchange=e=>send({type:"SELECT_SONG",songId:e.target.value});
+    $("prevSong").onclick=()=>send({type:"PREVIOUS_SONG"});
+    $("nextSong").onclick=()=>send({type:"NEXT_SONG"});
+    $("prevPreset").onclick=()=>send({type:"PREVIOUS_PRESET"});
+    $("nextPreset").onclick=()=>send({type:"NEXT_PRESET"});
+    $("morph").oninput=e=>send({type:"SET_MORPH",value:Number(e.target.value)});
+    $("wah").oninput=e=>send({type:"SET_WAH",percent:Number(e.target.value)});
+    $("clone").onclick=()=>{
+      const raw=localStorage.getItem("hudLibrary");
+      if(!raw){tell("No hay datos guardados en el editor. Puedes importar un JSON o usar el repertorio de ejemplo.");return;}
+      if(!confirm("¿Reemplazar los datos de LAB con una copia del editor?"))return;
+      try{activate(JSON.parse(raw),true);tell("Configuración copiada a LAB. El editor no ha cambiado.");}
+      catch(e){tell("No se copió: "+e.message);}
+    };
+    $("promote").onclick=()=>{
+      if(!library)return;
+      if(!confirm("¿Reemplazar la configuración del editor con estos datos de LAB? Se guardará un respaldo local."))return;
+      try{
+        const previous=localStorage.getItem("hudLibrary");
+        if(previous)localStorage.setItem("hudLibraryBackup",previous);
+        const promoted=clone(library);
+        promoted.revision=(Number.isInteger(promoted.revision)?promoted.revision:0)+1;
+        promoted.updatedAt=new Date().toISOString();
+        localStorage.setItem("hudLibrary",JSON.stringify(promoted));
+        tell("Datos aplicados al editor; respaldo local guardado. La maqueta LIVE v0.3 no cambia.");
+      }catch(e){tell("No se aplicó: "+e.message);}
+    };
+    $("reset").onclick=async()=>{
+      if(!confirm("¿Descartar la configuración de LAB y restaurar el ejemplo?"))return;
+      try{
+        const response=await fetch(SOURCE,{cache:"no-store"});
+        if(!response.ok)throw Error("No se encontró el ejemplo");
+        const data=await response.json();
+        activate(data,true);tell("LAB restaurado al repertorio de ejemplo.");
+      }catch(e){tell("Error restaurando LAB: "+e.message);}
+    };
+    $("load").onclick=()=>$("upload").click();
+    $("upload").onchange=async e=>{
+      const file=e.target.files?.[0];e.target.value="";if(!file)return;
+      try{
+        if(file.size>500000)throw Error("Archivo demasiado grande (máximo 500 KB)");
+        const data=JSON.parse(await file.text());
+        activate(data,true);tell("JSON importado solo a LAB.");
+      }catch(err){tell("Importación rechazada: "+err.message);}
+    };
+    $("export").onclick=()=>{
+      if(!library)return;
+      const blob=new Blob([JSON.stringify(library,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");a.href=url;a.download="MIDI-HUD-LAB.json";
+      document.body.append(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      tell("Copia de LAB exportada.");
+    };
+    (async()=>{
+      try{
+        const local=localStorage.getItem(STORAGE);
+        if(local){try{activate(JSON.parse(local),false);tell("Copia local de LAB cargada.");return;}
+          catch(e){tell("Copia LAB incompatible: "+e.message+". Se cargará el ejemplo.");}}
+        const r=await fetch(SOURCE,{cache:"no-store"});
+        if(!r.ok)throw Error("No se encontró el repertorio de ejemplo");
+        activate(await r.json(),false);
+      }catch(e){showError(e);}
+    })();
+  </script>
+</body>
+</html>

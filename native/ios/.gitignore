@@ -1,0 +1,6 @@
+Web/*
+!Web/README.txt
+Config/Local.xcconfig
+build/
+*.xcuserstate
+xcuserdata/

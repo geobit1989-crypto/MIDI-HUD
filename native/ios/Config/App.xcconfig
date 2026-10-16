@@ -1,0 +1,12 @@
+PRODUCT_BUNDLE_IDENTIFIER = io.midihud.app
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
+IPHONEOS_DEPLOYMENT_TARGET = 16.0
+SWIFT_VERSION = 5.0
+TARGETED_DEVICE_FAMILY = 1,2
+// Identificadores públicos del cliente OAuth iOS, del mismo proyecto que la web.
+// Para configurar una instalación, crear Local.xcconfig con estos valores.
+GOOGLE_IOS_CLIENT_ID =
+GOOGLE_REVERSED_CLIENT_ID = io.midihud.unconfigured
+DEVELOPMENT_TEAM =
+#include? "Local.xcconfig"
