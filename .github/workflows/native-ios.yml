@@ -45,11 +45,18 @@ jobs:
         run: |
           xcodebuild build -project native/ios/MIDIHUD.xcodeproj -scheme MIDIHUD -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/ios-device CODE_SIGNING_ALLOWED=NO
           ditto -c -k --sequesterRsrc --keepParent build/ios-device/Build/Products/Release-iphoneos/MIDIHUD.app build/MIDIHUD-iOS-unsigned.zip
+          # Sideloadly/AltStore esperan un IPA con Payload/<Nombre>.app.
+          # Es un binario sin firma; la firma se aplica localmente en Windows.
+          mkdir -p build/ios-unsigned-ipa/Payload
+          ditto build/ios-device/Build/Products/Release-iphoneos/MIDIHUD.app build/ios-unsigned-ipa/Payload/MIDIHUD.app
+          (cd build/ios-unsigned-ipa && zip -qry ../MIDIHUD-iOS-unsigned.ipa Payload)
+          unzip -t build/MIDIHUD-iOS-unsigned.ipa
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: midi-hud-ios-build-and-tests
           path: |
             build/MIDIHUD-iOS-unsigned.zip
+            build/MIDIHUD-iOS-unsigned.ipa
             build/iOS-Tests.xcresult
           retention-days: 14
