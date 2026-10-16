@@ -70,6 +70,32 @@ test('se pueden construir todos los estados y guardarlos una sola vez al final',
  assert.deepEqual(saved.songs.find(s=>s.id===t.songId).displaySlots.map(s=>s.name),['Intro','Verso','Coro','Solo']);
  assert.equal(t.snapshot().hasDraft,false);assert.equal(engine.validateLibrary(saved),true);
 });
+test('referencias U01-1 y P50-5 se guardan y se recuperan como texto por estado',async()=>{
+ const t=setup(),ids=[],patches=['U01-1','P50-5','001'];
+ const html=readFileSync(new URL('../editor/v3.html',import.meta.url),'utf8');
+ assert.match(html,/<input\b[^>]*id="statePatch"[^>]*type="text"/);
+ for(const [i,patch] of patches.entries()){
+  if(i)t.elements.get('stateAdd').onclick();
+  ids.push(t.snapshot().activeState);
+  t.elements.get('statePatch').value=patch;t.elements.get('statePatch').oninput();
+ }
+ assert.equal(t.writes.length,0);
+ await t.context.api.save();
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY));
+ assert.deepEqual(ids.map(id=>saved.states.find(st=>st.id===id).gtPatch),patches);
+ vm.runInContext('working=JSON.parse(readLibrarySource(localStorage));committed=copy(working);hasDraft=false;',t.context);
+ for(const [i,id] of ids.entries()){
+  t.context.api.selectState(id);
+  assert.equal(t.elements.get('statePatch').value,patches[i]);
+  const live=engine.createEngine(saved).dispatch({type:'PREVIEW_STATE',stateId:id});
+  assert.equal(live.view.state.gtPatch,patches[i]);assert.deepEqual(live.intents,[]);
+ }
+ t.elements.get('statePatch').value='';t.elements.get('statePatch').oninput();
+ await t.context.api.save();
+ const cleared=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY));
+ assert.equal(cleared.states.find(st=>st.id===ids[2]).gtPatch,null);
+ assert.deepEqual(ids.slice(0,2).map(id=>cleared.states.find(st=>st.id===id).gtPatch),patches.slice(0,2));
+});
 test('elegir un módulo sin estado no permite editar por accidente el estado anterior',()=>{
  const t=setup(),initial=t.snapshot().activeState;
  t.elements.get('moduleGrid').children[1].onclick();

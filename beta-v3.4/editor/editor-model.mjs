@@ -2,7 +2,7 @@
  * MIDI HUD / Editor visual - operaciones puras sobre la biblioteca v2.
  * No altera hardware ni mezcla la configuracion de canal global con canciones.
  */
-import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs";
+import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch1";
 import {normalizeSlot} from "../core/module-visuals.mjs";
 
 const copy=x=>JSON.parse(JSON.stringify(x));

@@ -114,6 +114,19 @@ test("migracion de esquema antiguo: estados, sin intents ni reenvios fisicos",()
  assert.equal(db.bindings.length,0);
  assert.deepEqual(createEngine(db).dispatch({type:"PREVIEW_SONG",songId:"s"}).intents,[]);
 });
+test("referencias de patch alfanuméricas conservan guion, ceros y números anteriores",()=>{
+ for(const patch of [null,0,7,127,"U01-1","P50-5","001","128","abc-123","FX-2A","Solo-A3","Ñá-2","A\u0301-3","α-4"]){
+  const db=clone(fixture);db.states.find(st=>st.id==="q-clean").gtPatch=patch;
+  assert.equal(validateLibrary(db),true);
+  const e=createEngine(db);
+  assert.equal(e.getViewModel().state.gtPatch,patch);
+  assert.deepEqual(e.dispatch({type:"PREVIEW_STATE",stateId:"q-clean"}).intents,[]);
+ }
+ for(const patch of ["U01/1","U01 1","U01_1","",-1,128,{},[],true]){
+  const db=clone(fixture);db.states[0].gtPatch=patch;
+  assert.throws(()=>validateLibrary(db),/referencia de patch invalida/);
+ }
+});
 test("persistencia global del canal MIDI, fuera del repertorio",()=>{
  const memory=new Map();
  const store={getItem:key=>memory.get(key)||null,setItem:(key,value)=>memory.set(key,value)};

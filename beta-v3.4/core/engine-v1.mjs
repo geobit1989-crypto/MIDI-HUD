@@ -123,7 +123,11 @@ export function validateLibrary(raw) {
       (x.displayIndex == null || integer(x.displayIndex,0,255)))),
       "indicadores invalidos");
     insist(st.displayIndex == null || integer(st.displayIndex,0,255), "posicion visual invalida");
-    insist(st.gtPatch == null || integer(st.gtPatch,0,127), "referencia de patch invalida");
+    // Los números de bibliotecas anteriores siguen siendo válidos; las nuevas
+    // referencias son etiquetas del equipo (U01-1, P50-5), no mensajes MIDI.
+    insist(st.gtPatch == null || integer(st.gtPatch,0,127) ||
+      (typeof st.gtPatch === "string" && /^[\p{L}\p{M}\p{N}-]+$/u.test(st.gtPatch)),
+      "referencia de patch invalida: usa letras, numeros y guion (ej.: U01-1)");
   }
   insist(Array.isArray(db.bindings), "asignaciones invalidas");
   const seen = new Set();

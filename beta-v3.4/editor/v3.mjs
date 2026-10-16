@@ -1,16 +1,16 @@
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
-import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary} from "../core/library-storage.mjs";
-import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs";
+import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary} from "../core/library-storage.mjs?v=20261016-patch1";
+import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch1";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
-import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs";
+import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261016-patch1";
 import {
  newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
  chocolateMatrix,actionDescription,diagnostics,addModule,moveModule,removeModule,
  newStateWithModule,duplicateStateWithModule,assignStateModule
-} from "./editor-model.mjs?v=20261016-state-safety2";
+} from "./editor-model.mjs?v=20261016-patch1";
 
 /**
  * Editor MIDI HUD v3
@@ -667,7 +667,7 @@ function register(){
   if(pill)pill.textContent=$("stateName").value+(activeState===currentSong().initialStateId?' · Inicial':'');
  };
  $("statePatch").oninput=()=>changeStateField("gtPatch",
-  $("statePatch").value===""?null:Number($("statePatch").value));
+  $("statePatch").value.trim()||null);
  $("stateSlot").onchange=()=>{
   if(!currentState())return;
   const idx=$("stateSlot").value;

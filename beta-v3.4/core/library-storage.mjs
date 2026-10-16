@@ -1,4 +1,4 @@
-import {normalizeLibrary,validateLibrary} from './engine-v1.mjs';
+import {normalizeLibrary,validateLibrary} from './engine-v1.mjs?v=20261016-patch1';
 
 // La beta lee la biblioteca anterior como punto de partida; nunca la sobrescribe.
 export const LIBRARY_KEY='hudLibraryV34';
