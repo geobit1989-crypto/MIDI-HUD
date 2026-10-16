@@ -287,7 +287,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
             <select id="stateSlot"></select>
           </label>
           <label class="field">Referencia patch GT (solo informativa)
-            <input id="statePatch" type="text" inputmode="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" pattern="[\p{L}\p{M}\p{N}\-]*" placeholder="Ej.: U01-1 o P50-5">
+            <input id="statePatch" type="text" inputmode="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" pattern="[A-Za-z0-9\-]*" placeholder="Ej.: U01-1 o P50-5">
           </label>
         </div>
         <p class="help">Admite letras, números y guion: U01-1, P50-5. Es una referencia informativa; no aparece en LIVE ni envía MIDI desde el Editor.</p>
@@ -419,7 +419,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261016-patch1"></script>
+<script type="module" src="./v3.mjs?v=20261016-patch2"></script>
 </div>
 </body>
 </html>

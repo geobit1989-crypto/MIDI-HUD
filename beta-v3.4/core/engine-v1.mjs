@@ -126,7 +126,7 @@ export function validateLibrary(raw) {
     // Los números de bibliotecas anteriores siguen siendo válidos; las nuevas
     // referencias son etiquetas del equipo (U01-1, P50-5), no mensajes MIDI.
     insist(st.gtPatch == null || integer(st.gtPatch,0,127) ||
-      (typeof st.gtPatch === "string" && /^[\p{L}\p{M}\p{N}-]+$/u.test(st.gtPatch)),
+      (typeof st.gtPatch === "string" && /^[A-Za-z0-9-]+$/.test(st.gtPatch)),
       "referencia de patch invalida: usa letras, numeros y guion (ej.: U01-1)");
   }
   insist(Array.isArray(db.bindings), "asignaciones invalidas");

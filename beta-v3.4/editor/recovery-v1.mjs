@@ -1,5 +1,5 @@
 /** Recuperación conservadora de repertorios guardados en orígenes compatibles. */
-import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch1";
+import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch2";
 const clone=x=>JSON.parse(JSON.stringify(x));
 function newId(used,prefix){let n=1;while(used.has(`${prefix}-${n}`))n++;const id=`${prefix}-${n}`;used.add(id);return id;}
 export const LEGACY_KEYS=["hudLibrary", "hudEditorLibrary", "hudLibraryV1Backup", "hudLibraryBackup", "hudEditorLibraryBackup"];
