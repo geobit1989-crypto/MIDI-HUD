@@ -19,11 +19,14 @@ function tileFor(doc,source,index){
  icon.setAttribute('aria-hidden','true');
  if(expression){
   const head=node(doc,'div','exhead');
-  const label=node(doc,'div','exlabel');label.append(icon,title);
-  head.append(label,node(doc,'strong','value','—'));
+  const label=node(doc,'div','exlabel');
+  if(visual.glyph)label.append(icon);
+  label.append(title);
+  const value=node(doc,'strong','value','');value.hidden=true;
+  head.append(label,value);
   tile.append(head,sub);
   if(tag)tile.append(tag);
-  tile.append(node(doc,'div','exmeter'));
+  const meter=node(doc,'div','exmeter');meter.hidden=true;tile.append(meter);
  }else{
   const details=node(doc,'div','details');details.append(title,sub);
   if(tag)details.append(tag);
@@ -41,9 +44,15 @@ export function renderLiveModules(grid,vm){
  const signature=JSON.stringify([vm.song.id,slots,vm.song.moduleLayout]);
  if(rendered.get(grid)!==signature){
   const doc=grid.ownerDocument,rows=moduleRows(slots,{manual:vm.song.moduleLayout==='manual'});
+  grid.style.setProperty('--module-row-count',String(Math.max(1,rows.length)));
+  const maxColumns=Math.max(1,...rows.map(items=>items.length));
   const content=rows.map(items=>{
    const row=node(doc,'div','adaptive-module-row');
-   row.append(...items.map(({cfg,index})=>tileFor(doc,cfg,index)));
+   row.append(...items.map(({cfg,index})=>{
+    const tile=tileFor(doc,cfg,index);
+    tile.style.setProperty('--module-width-ratio',String(items.length/maxColumns));
+    return tile;
+   }));
    return row;
   });
   if(!rows.length)content.push(node(doc,'div','modules-empty','Sin módulos visibles · configura Estados en el Editor'));

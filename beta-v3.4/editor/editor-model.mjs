@@ -128,6 +128,44 @@ export function newState(db,songId,name="Nuevo estado"){
  song.stateIds.push(id);
  return id;
 }
+function freeControlModule(db,song,preferred=null,blankOnly=false){
+ const used=new Set(db.states.filter(st=>st.songId===song.id).flatMap(st=>[st.displayIndex,...(st.indicators||[]).map(ind=>ind.displayIndex)]).filter(Number.isInteger));
+ const available=i=>Number.isInteger(i)&&i>=0&&i<(song.displaySlots||[]).length&&!used.has(i)&&
+  song.displaySlots[i].kind!=='expression'&&!song.displaySlots[i].hidden&&
+  (!blankOnly||song.displaySlots[i].name==='—');
+ if(available(preferred))return preferred;
+ return (song.displaySlots||[]).findIndex((_,i)=>available(i));
+}
+export function newStateWithModule(db,songId,preferred=null){
+ const song=locate(db.songs,songId,'canción');
+ let index=freeControlModule(db,song,preferred);
+ if(index<0)index=addModule(db,songId);
+ const slot=normalizeSlot(song.displaySlots[index],index);
+ const name=slot.name==='—'?'Nuevo estado':slot.name;
+ const id=newState(db,songId,name);
+ db.states.find(st=>st.id===id).displayIndex=index;
+ song.displaySlots[index]={...song.displaySlots[index],...slot,name};
+ return id;
+}
+export function duplicateStateWithModule(db,stateId){
+ const source=locate(db.states,stateId,'estado'),song=locate(db.songs,source.songId,'canción');
+ const appearance=source.displayIndex==null?null:song.displaySlots?.[source.displayIndex];
+ let index=freeControlModule(db,song,null,true);
+ if(index<0)index=addModule(db,song.id);
+ const id=duplicateState(db,stateId),state=locate(db.states,id,'estado');
+ state.displayIndex=index;
+ song.displaySlots[index]={...normalizeSlot(appearance||song.displaySlots[index],source.displayIndex??index),name:state.name,kind:'control',rowBreakBefore:false};
+ return id;
+}
+export function assignStateModule(db,songId,stateId,index,{replace=false}={}){
+ const song=locate(db.songs,songId,'canción'),state=locate(db.states,stateId,'estado');
+ requireThat(state.songId===songId,'el estado no pertenece a la canción');
+ requireThat(index===null||(Number.isInteger(index)&&index>=0&&index<(song.displaySlots||[]).length),'módulo inexistente');
+ const occupant=index===null?null:db.states.find(st=>st.songId===songId&&st.displayIndex===index&&st.id!==stateId);
+ requireThat(!occupant||replace,'el módulo ya tiene un estado asociado');
+ if(occupant)occupant.displayIndex=null;
+ state.displayIndex=index;
+}
 export function duplicateState(db,stateId){
  const st=locate(db.states,stateId,"estado"),song=locate(db.songs,st.songId,"canción");
  const candidate=copy(st),id=nextId(db,"state");

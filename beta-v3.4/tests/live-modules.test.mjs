@@ -29,3 +29,15 @@ test('cambiar de canción reconstruye con los índices originales y sin huecos o
  vm.song.displaySlots=[];renderLiveModules(grid,vm);
  assert.equal(grid.children[0].className,'modules-empty');assert.equal(grid.querySelectorAll().length,0);
 });
+test('Morph sin telemetría no muestra guion ni barra vacía; conserva dos filas 3+2',()=>{
+ const grid=new Element(document),vm=view();
+ vm.song.displaySlots=Array.from({length:5},(_,i)=>({name:i===4?'Morph':'Estado '+i,sub:'Descripción',kind:i===4?'expression':'control',icon:'blank'}));
+ renderLiveModules(grid,vm);
+ assert.equal(grid.style['--module-row-count'],'2');
+ assert.deepEqual(grid.children.map(row=>row.children.length),[3,2]);
+ const morph=grid.querySelectorAll().find(tile=>tile.dataset.hudIndex==='4');
+ const head=morph.children[0],label=head.children[0],value=head.children[1],meter=morph.children.at(-1);
+ assert.equal(label.children.length,1);assert.equal(label.children[0].textContent,'Morph');
+ assert.equal(value.hidden,true);assert.equal(value.textContent,'');assert.equal(meter.hidden,true);
+ assert.equal(morph.style['--module-width-ratio'],String(2/3));
+});

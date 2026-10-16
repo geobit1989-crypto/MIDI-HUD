@@ -8,7 +8,8 @@ import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs";
 import {
  newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
- chocolateMatrix,actionDescription,diagnostics,addModule,moveModule,removeModule
+ chocolateMatrix,actionDescription,diagnostics,addModule,moveModule,removeModule,
+ newStateWithModule,duplicateStateWithModule,assignStateModule
 } from "./editor-model.mjs";
 
 /**
@@ -46,8 +47,12 @@ function entries(id,options,current){
 function currentRep(){return working.repertoires.find(x=>x.id===activeRep);}
 function currentSong(){return working.songs.find(x=>x.id===activeSong);}
 function currentState(){return working.states.find(x=>x.id===activeState);}
+function stateSelectionText(st=currentState()){
+ return st?('Editando estado: '+st.name+(st.displayIndex==null?' · Sin módulo asociado':' · Módulo '+(st.displayIndex+1))):'Este módulo no tiene estado asociado. Puedes usar + Estado o elegir uno en «Estado asociado a esta casilla».';
+}
 function currentSlot(i=activeModule){return currentSong().displaySlots?.[i]||{};}
 function linkedState(i=activeModule){
+ if(!Number.isInteger(i))return null;
  return working.states.find(x=>x.songId===activeSong&&x.displayIndex===i)||null;
 }
 function notice(message,error=false){
@@ -75,8 +80,9 @@ function dirty(){
 function selected(){
  if(!working.repertoires.some(x=>x.id===activeRep))activeRep=working.repertoires[0].id;
  if(!currentRep().songIds.includes(activeSong))activeSong=currentRep().songIds[0];
- if(!currentSong().stateIds.includes(activeState))activeState=currentSong().stateIds[0];
- if(!Number.isInteger(activeModule)||activeModule<0||activeModule>=Math.max(1,currentSong().displaySlots?.length||4))activeModule=0;
+ if(activeState!==null&&!currentSong().stateIds.includes(activeState))activeState=currentSong().stateIds[0];
+ if(currentState())activeModule=currentState().displayIndex??null;
+ else if(activeModule!==null&&(!Number.isInteger(activeModule)||activeModule<0||activeModule>=(currentSong().displaySlots?.length||0)))activeModule=null;
 }
 function discard(){
  working=copy(committed);hasDraft=false;
@@ -213,7 +219,7 @@ function renderSong(){
 function selectState(id){
  if(!currentSong().stateIds.includes(id))return;
  activeState=id;
- if(currentState().displayIndex!=null)activeModule=currentState().displayIndex;
+ activeModule=currentState().displayIndex??null;
  renderStates();
 }
 function ensureSlots(){
@@ -224,8 +230,8 @@ function normalSlot(index){return normalizeSlot(currentSlot(index),index);}
 function renderModules(){
  $("moduleLayout").value=currentSong().moduleLayout||"auto";
  const slots=currentSong().displaySlots||[];
- if(activeModule>=slots.length)activeModule=0;
- const hasModule=slots.length>0;
+ if(activeModule!==null&&activeModule>=slots.length)activeModule=null;
+ const hasModule=Number.isInteger(activeModule)&&!!slots[activeModule];
  $("moduleRemove").disabled=!hasModule;
  $("moduleUp").disabled=!hasModule||activeModule===0;
  $("moduleDown").disabled=!hasModule||activeModule===slots.length-1;
@@ -235,7 +241,7 @@ function renderModules(){
  if(!hasModule)area.append(make('p','Sin módulos. Pulsa + Módulo para añadir uno.','help'));
  for(let i=0;i<slots.length;i++){
   const slot=normalSlot(i),visual=resolveModuleVisual(slot,i),connected=linkedState(i);
-  const tile=button("",()=>{activeModule=i;if(connected)activeState=connected.id;renderStates();},
+  const tile=button("",()=>{activeModule=i;activeState=connected?.id??null;renderStates();},
     "module-select-tile"+(i===activeModule?" is-selected":""));
   tile.style.background="linear-gradient(160deg,"+visual.color+","+visual.dark+")";
   tile.title="Editar módulo "+(i+1)+" · "+slot.name;
@@ -281,20 +287,22 @@ function renderStates(){
   pill.setAttribute("aria-pressed",String(id===activeState));
   pills.append(pill);
  }
- const st=currentState(),index=states.indexOf(st.id);
- $("stateUp").disabled=index<=0;$("stateDown").disabled=index>=states.length-1;
- $("stateRemove").disabled=states.length<=1;
- $("stateName").value=st.name;
+ const st=currentState(),index=states.indexOf(st?.id);
+ $("stateUp").disabled=!st||index<=0;$("stateDown").disabled=!st||index>=states.length-1;
+ $("stateRemove").disabled=!st||states.length<=1;
+ for(const id of ['stateCopy','stateName','stateSlot','statePatch','indicatorId','indicatorLabel','indicatorSlot','indicatorActive','indicatorAdd'])$(id).disabled=!st;
+ $("stateSelectionNote").textContent=stateSelectionText(st);
+ $("stateName").value=st?.name||'';
  entries("stateSlot",[["","Sin módulo"]].concat(
   Array.from({length:currentSong().displaySlots.length},(_,i)=>[i,(i+1)+" · "+normalSlot(i).name])
- ),st.displayIndex??"");
- $("statePatch").value=st.gtPatch??"";
+ ),st?.displayIndex??"");
+ $("statePatch").value=st?.gtPatch??"";
  entries("indicatorSlot",[["","Sin módulo"]].concat(
   Array.from({length:currentSong().displaySlots.length},(_,i)=>[i,(i+1)+" · "+normalSlot(i).name])
  ),"");
  const list=$("indicatorList");list.replaceChildren();
- if(!st.indicators?.length)list.append(make("p","Sin indicadores.","help"));
- for(const indicator of st.indicators||[]){
+ if(!st?.indicators?.length)list.append(make("p",st?"Sin indicadores.":"Selecciona un estado para editar sus indicadores.","help"));
+ for(const indicator of st?.indicators||[]){
   const row=make("div",undefined,"action-row");
   row.append(make("span",(indicator.active?"● ":"○ ")+indicator.label+
    " ("+indicator.id+")"+(indicator.displayIndex==null?"":" · Módulo "+(indicator.displayIndex+1)),"name"));
@@ -335,25 +343,43 @@ function setSlotProperty(key,value){
  }
 }
 function linkState(id,index){
- const previous=working.states.find(s=>s.songId===activeSong&&s.displayIndex===index);
- if(previous&&previous.id!==id)previous.displayIndex=null;
+ if(!Number.isInteger(index))return;
+ const previous=linkedState(index);
  if(id){
   const target=working.states.find(st=>st.id===id);
   if(!target||target.songId!==activeSong)throw Error("Estado no pertenece a la canción.");
-  target.displayIndex=index;
+  if(!confirmModuleAssignment(id,index)){renderStates();return;}
+  assignStateModule(working,activeSong,id,index,{replace:true});
   activeState=id;
- }else if(previous)previous.displayIndex=null;
+ }else{if(previous)assignStateModule(working,activeSong,previous.id,null);activeState=null;}
  dirty();renderStates();
+}
+function confirmModuleAssignment(stateId,index){
+ const occupant=linkedState(index);
+ if(!occupant||occupant.id===stateId)return true;
+ const target=working.states.find(st=>st.id===stateId);
+ return window.confirm('El módulo '+(index+1)+' está asociado a «'+occupant.name+'». Si lo reasignas a «'+target.name+'», «'+occupant.name+'» quedará sin módulo. ¿Continuar?');
 }
 function changeStateField(key,value){
  const st=currentState();
+ if(!st)return;
  const oldName=st.name;
  st[key]=value;
  if(key==="name"&&st.displayIndex!=null){
   const sl=normalSlot(st.displayIndex);
-  if(sl.name===oldName){
+  if(sl.name===oldName||sl.name==='—'){
    ensureSlots();
    currentSong().displaySlots[st.displayIndex]={...currentSlot(st.displayIndex),...sl,name:value};
+  }
+ }
+ if(key==='name'){
+  $("stateSelectionNote").textContent=stateSelectionText(st);
+  for(const option of $("moduleLinkedState").options)if(option.value===st.id)option.textContent=value;
+  if(st.displayIndex!=null){
+   const slot=normalSlot(st.displayIndex),tile=$("moduleGrid").children[st.displayIndex];
+   if(tile)tile.querySelector('.tile-name').textContent=slot.name;
+   if(activeModule===st.displayIndex)$("moduleName").value=slot.name;
+   for(const option of $("stateSlot").options)if(option.value===String(st.displayIndex))option.textContent=(st.displayIndex+1)+' · '+slot.name;
   }
  }
  dirty();
@@ -605,7 +631,7 @@ function register(){
  };
  $("songSave").onclick=save;
  $("moduleAdd").onclick=()=>{
-  try{activeModule=addModule(working,activeSong);dirty();renderStates();}
+  try{activeModule=addModule(working,activeSong);activeState=null;dirty();renderStates();}
   catch(error){notice(error.message,true);}
  };
  for(const [id,delta] of [["moduleUp",-1],["moduleDown",1]])$(id).onclick=()=>{
@@ -615,27 +641,22 @@ function register(){
   if(!currentSong().displaySlots.length)return;
   const used=working.states.some(st=>st.songId===activeSong&&(st.displayIndex===activeModule||st.indicators?.some(ind=>ind.displayIndex===activeModule)));
   if(used&&!window.confirm("¿Quitar el módulo y su vinculación visual? Sus estados y asignaciones MIDI se conservarán."))return;
-  activeModule=removeModule(working,activeSong,activeModule);dirty();renderStates();
+  activeModule=removeModule(working,activeSong,activeModule);activeState=linkedState()?.id??null;dirty();renderStates();
  };
  $("stateAdd").onclick=()=>{
-  const id=newState(working,activeSong);
-  activeState=id;
-  const free=Array.from({length:currentSong().displaySlots.length},(_,i)=>i).find(i=>!linkedState(i));
-  if(free!==undefined){
-   currentState().displayIndex=free;
-   activeModule=free;ensureSlots();
-   const old=normalSlot(free);
-   if(old.name==="—")working.songs.find(s=>s.id===activeSong).displaySlots[free]={...old,name:"Nuevo estado"};
-  }
-  dirty();renderStates();renderSong();
+  try{activeState=newStateWithModule(working,activeSong,activeModule);activeModule=currentState().displayIndex;dirty();renderStates();renderSong();}
+  catch(error){notice(error.message,true);}
  };
  $("stateCopy").onclick=()=>{
-  activeState=duplicateState(working,activeState);
-  dirty();renderStates();renderSong();
+  if(!currentState())return;
+  try{activeState=duplicateStateWithModule(working,activeState);activeModule=currentState().displayIndex;dirty();renderStates();renderSong();}
+  catch(error){notice(error.message,true);}
  };
  $("stateRemove").onclick=()=>{
+  if(!currentState())return;
   if(!window.confirm("¿Eliminar este estado y las asociaciones MIDI que lo usen?"))return;
   deleteState(working,activeState);activeState=currentSong().stateIds[0];
+  activeModule=currentState().displayIndex??null;
   dirty();renderStates();renderSong();
  };
  $("stateUp").onclick=()=>{moveState(working,activeState,-1);dirty();renderStates();renderSong();};
@@ -643,20 +664,17 @@ function register(){
  $("stateName").oninput=()=>{
   changeStateField("name",$("stateName").value);
   const pill=$("stateList").querySelector("[aria-pressed=true]");
-  if(pill)pill.textContent=$("stateName").value;
+  if(pill)pill.textContent=$("stateName").value+(activeState===currentSong().initialStateId?' · Inicial':'');
  };
  $("statePatch").oninput=()=>changeStateField("gtPatch",
   $("statePatch").value===""?null:Number($("statePatch").value));
  $("stateSlot").onchange=()=>{
+  if(!currentState())return;
   const idx=$("stateSlot").value;
   const previous=currentState().displayIndex;
-  if(idx==="")currentState().displayIndex=null;
-  else{
-   const next=Number(idx);
-   const occupant=linkedState(next);
-   if(occupant&&occupant.id!==activeState)occupant.displayIndex=null;
-   currentState().displayIndex=next;activeModule=next;
-  }
+  const next=idx===''?null:Number(idx);
+  if(next!==null&&!confirmModuleAssignment(activeState,next)){renderStates();return;}
+  assignStateModule(working,activeSong,activeState,next,{replace:true});activeModule=next;
   if(previous!==currentState().displayIndex){dirty();renderStates();}
  };
  $("moduleName").oninput=()=>setSlotProperty("name",$("moduleName").value);
@@ -688,6 +706,7 @@ function register(){
  $("moduleIcon").onchange=()=>setSlotProperty("icon",$("moduleIcon").value);
  $("moduleLinkedState").onchange=()=>linkState($("moduleLinkedState").value,activeModule);
  $("indicatorAdd").onclick=()=>{
+  if(!currentState())return;
   const id=$("indicatorId").value.trim(),label=$("indicatorLabel").value.trim();
   if(!/^[A-Za-z][A-Za-z0-9_-]{0,49}$/.test(id)||!label){
    notice("Escribe un identificador válido y descripción del indicador.",true);return;

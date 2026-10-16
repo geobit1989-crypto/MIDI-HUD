@@ -20,7 +20,7 @@ Al abrir esta beta en el mismo navegador y origen, lee las canciones guardadas e
 
 El adaptador `core/midi-browser.mjs` es idéntico al publicado en el commit `946a123a7b0dd3553094e085d198987e8b3e980f`: mantiene puertos estándar, colecciones no iterables y listeners usados por navegadores con puente MIDI. LIVE y LAB conservan detección de puertos y diagnóstico de recepción CC. El canal sigue siendo global. Reordenar módulos conserva destinos de estados, indicadores y asociaciones MIDI.
 
-MIDI HUD representa estados visuales; no transmite MIDI al hardware. Las expresiones muestran «—» cuando no existe telemetría; esta versión no añade recepción de valores de expresión.
+MIDI HUD representa estados visuales; no transmite MIDI al hardware. Sin telemetría, los módulos de expresión ocultan el valor y la barra, conservando el texto centrado; esta versión no añade recepción de valores de expresión.
 
 ## Verificación
 
@@ -29,3 +29,7 @@ MIDI HUD representa estados visuales; no transmite MIDI al hardware. Las expresi
 La suite prueba parser y cifrado, cancelación, errores, persistencia, compatibilidad v1/v2, módulos/plantillas, referencias MIDI, adaptador de navegador y estabilidad de los nodos de LIVE. También se comprueban sintaxis e integridad de archivos referenciados.
 
 La comprobación física en iPhone/Chocolate y la geometría renderizada en Safari quedan pendientes. No se ha ejecutado un navegador real en este entorno.
+
+## Edición de varios estados antes de guardar
+
+Es válido crear y editar todos los estados de una canción en Estados y pulsar Guardar una sola vez al final. Antes de cambiar de pestaña o canción, guardar los cambios pendientes. Seleccionar un módulo sin estado desactiva los campos del estado anterior. Los estados nuevos y duplicados reciben un módulo de control disponible, respetando expresiones e indicadores; si hace falta, se añade uno nuevo. Reasignar una casilla ocupada requiere confirmación. Estas correcciones preservan los datos guardados existentes y no intentan inferir vínculos anteriores.
