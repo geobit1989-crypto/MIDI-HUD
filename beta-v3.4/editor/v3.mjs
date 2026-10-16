@@ -4,6 +4,7 @@ import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} fro
 import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch2";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261016-repertoires1";
 import {createLibraryTransferUrl} from "../core/library-transfer-v34.mjs?v=20261016-transfer1";
+import {installCloudSync} from "../core/sync-ui.mjs?v=20261016-native1";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261016-overlays1";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261016-patch2";
@@ -167,6 +168,7 @@ function persistLibrary(next,message){
  committed=written;working=copy(written);hasDraft=false;selected();
  leadSource=formatLeadSheetText(currentSong().leadSheet);
  render();notice(message);
+ window.dispatchEvent?.(new Event('hud-library-saved'));
 }
 function showMidiLink(link){
  const dialog=make('dialog');
@@ -226,7 +228,7 @@ async function save(){
   }
   persistLibrary(next,"Cambios guardados en «"+LABELS[activeTab]+"». Actualiza LIVE para verlos.");
  }catch(error){failed=true;notice("No se guardó: "+error.message,true);}
- finally{saving=false;syncStatus(failed);}
+ finally{saving=false;syncStatus(failed);if(!hasDraft&&!failed)window.dispatchEvent?.(new Event('hud-library-saved'));}
 }
 function immediate(action,message){
  if(!allowLeaving())return;
@@ -911,7 +913,7 @@ function register(){
    activeSong=currentRep().songIds[0];activeState=currentSong().initialStateId;
    activeModule=currentState().displayIndex??null;
    leadSource=formatLeadSheetText(currentSong().leadSheet);
-   activeTab="song";hasDraft=false;render();notice("Biblioteca importada.");
+   activeTab="song";hasDraft=false;render();notice("Biblioteca importada.");window.dispatchEvent?.(new Event('hud-library-saved'));
   }catch(e){notice("No se pudo importar: "+e.message,true);}
  };
  $("exportBtn").onclick=()=>{
@@ -937,7 +939,7 @@ function register(){
    const last=normalizeLibrary(JSON.parse(backup));validateLibrary(last);
    const written=replaceLibrary(localStorage,last,committed);
    committed=written;working=copy(written);hasDraft=false;selected();leadSource=formatLeadSheetText(currentSong().leadSheet);
-   render();notice("Se ha recuperado el guardado anterior.");
+   render();notice("Se ha recuperado el guardado anterior.");window.dispatchEvent?.(new Event('hud-library-saved'));
   }catch(e){notice("Error al deshacer: "+e.message,true);}
  };
  window.addEventListener("beforeunload",event=>{
@@ -1001,5 +1003,13 @@ async function boot(){
  activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;
  leadSource=formatLeadSheetText(currentSong().leadSheet);
  render();notice(saved?"Biblioteca local cargada. Pulsa Guardar tras editar una sección.":"Editor listo con datos de ejemplo. Busca guardados anteriores desde Biblioteca.");
+ window.MIDIHUD_EDITOR=Object.freeze({hasDraft:()=>hasDraft,getLibrary:()=>copy(committed)});
+ installCloudSync({host:$('cloudSync'),
+  canApply:()=>!hasDraft&&!saving,
+  onApplied:library=>{
+   committed=library;working=copy(library);hasDraft=false;selected();
+   activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;
+   leadSource=formatLeadSheetText(currentSong().leadSheet);render();notice('Repertorios actualizados desde Drive.');
+  }});
 }
 boot().catch(e=>notice("Error iniciando Editor: "+e.message,true));

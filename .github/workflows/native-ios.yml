@@ -1,0 +1,53 @@
+name: MIDI HUD iOS and synchronization
+on:
+  push:
+    branches: [gh-pages, 'feature/**']
+    paths: ['beta-v3.4/**', 'native/**', '.github/workflows/native-ios.yml']
+  pull_request:
+    paths: ['beta-v3.4/**', 'native/**', '.github/workflows/native-ios.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test beta-v3.4/tests/*.test.mjs
+      - run: node beta-v3.4/tests/check-site.mjs
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare identical offline web resources
+        run: python3 native/ios/prepare_web.py
+      - name: Find available iPhone simulator
+        run: |
+          xcrun simctl list devices available -j > /tmp/hud-simulators.json
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('/tmp/hud-simulators.json'))
+          devices = [d for items in data['devices'].values() for d in items if d.get('isAvailable') and d['name'].startswith('iPhone')]
+          assert devices, 'No iPhone simulator available'
+          with open(os.environ['GITHUB_ENV'], 'a') as out:
+              out.write('HUD_SIMULATOR=' + devices[0]['udid'] + '\n')
+          PY
+      - name: Compile and test native MIDI parser and offline Editor to LIVE
+        run: |
+          xcodebuild test -project native/ios/MIDIHUD.xcodeproj -scheme MIDIHUD -configuration Debug -destination "platform=iOS Simulator,id=$HUD_SIMULATOR" -derivedDataPath build/ios-simulator -resultBundlePath build/iOS-Tests.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Build device application without signing
+        run: |
+          xcodebuild build -project native/ios/MIDIHUD.xcodeproj -scheme MIDIHUD -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/ios-device CODE_SIGNING_ALLOWED=NO
+          ditto -c -k --sequesterRsrc --keepParent build/ios-device/Build/Products/Release-iphoneos/MIDIHUD.app build/MIDIHUD-iOS-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: midi-hud-ios-build-and-tests
+          path: |
+            build/MIDIHUD-iOS-unsigned.zip
+            build/iOS-Tests.xcresult
+          retention-days: 14

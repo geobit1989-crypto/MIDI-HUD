@@ -405,6 +405,8 @@ import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261016-rep
 import {resolveLiveSelection} from "./core/live-selection-v34.mjs?v=20261016-repertoires1";
 import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261016-repertoires1";
 import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261016-transfer1";
+import {installCloudSync} from "./core/sync-ui.mjs?v=20261016-native1";
+import {installNativeMidiControls} from "./core/native-controls.mjs?v=20261016-native1";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261016-overlays1";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
@@ -434,6 +436,11 @@ dialog.innerHTML=`
 </header>
 <div class="hud-config-content">
   <div class="hud-config-grid">
+    <section class="hud-config-group" aria-labelledby="hud-sync-heading">
+      <h3 id="hud-sync-heading">Repertorios compartidos</h3>
+      <div id="hud-sync-root" class="hud-config-actions"></div>
+      <p>Actualiza antes de tocar. LIVE conserva su sesión mientras interpretas.</p>
+    </section>
     <section class="hud-config-group" aria-labelledby="hud-library-heading">
       <h3 id="hud-library-heading">Repertorio en LIVE</h3>
       <label for="hud-repertoire">Repertorio activo
@@ -496,6 +503,7 @@ function prepare(){
    engine.dispatch({type:"RETURN_TO_ACTIVE"});popup(false);
  };
  dialog.querySelector("#hud-close-btn").onclick=()=>popup(false);
+ installNativeMidiControls(dialog.querySelector('[aria-labelledby="hud-midi-heading"]'));
  installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
    missingRequestedRepertoire:initialSelection.missingRequestedRepertoire,onUse:()=>popup(false)});
  dialog.querySelector("#hud-midi-btn").onclick=async()=>{
@@ -658,6 +666,11 @@ function render(){
    if(transferred.applied){data=transferred.library;usingSavedLibrary=true;}
    try{window.history.replaceState(null,'',window.location.pathname+window.location.search);}catch{}
   }
+  const cloud=installCloudSync({host:dialog.querySelector('#hud-sync-root'),mode:'live',
+   canApply:options=>!engine||!!options.explicit,
+   onApplied:next=>{if(engine)window.location.reload();else data=next;}});
+  // La conexión lenta nunca impide abrir el repertorio local para tocar.
+  await Promise.race([cloud.ready,new Promise(resolve=>setTimeout(resolve,3000))]);
   const saved=readLibrarySource(localStorage);
   if(!data&&saved){try{data=normalizeLibrary(JSON.parse(saved));usingSavedLibrary=true;}catch{}}
   if(!data){
