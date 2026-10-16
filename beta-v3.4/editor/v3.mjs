@@ -2,6 +2,8 @@ import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261016-editor-audit1";
 import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch2";
+import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261016-repertoires1";
+import {createLibraryTransferUrl} from "../core/library-transfer-v34.mjs?v=20261016-transfer1";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261016-overlays1";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261016-patch2";
@@ -166,6 +168,26 @@ function persistLibrary(next,message){
  leadSource=formatLeadSheetText(currentSong().leadSheet);
  render();notice(message);
 }
+function showMidiLink(link){
+ const dialog=make('dialog');
+ dialog.style.cssText='width:min(620px,calc(100vw - 24px));background:#112638;color:#fff;border:1px solid #5b879d;border-radius:12px;padding:20px';
+ const title=make('h2','Abrir en el navegador MIDI');
+ const help=make('p','Copia este enlace y pégalo en la barra de direcciones del navegador MIDI. Se cargarán tus repertorios y asignaciones, sin gestionar archivos JSON.');
+ const field=make('textarea');field.value=link;field.readOnly=true;field.setAttribute('aria-label','Enlace con una copia de la biblioteca');
+ const status=make('p','El enlace lleva una copia de lo guardado ahora. Después puedes editar y usar LIVE dentro del navegador MIDI.','help');status.setAttribute('role','status');
+ const actions=make('div',undefined,'ctrlrow');
+ actions.append(button('Copiar enlace',async()=>{
+  try{await navigator.clipboard.writeText(link);status.textContent='Enlace copiado. Pégalo en el navegador MIDI.';}
+  catch{field.focus();field.select();status.textContent='Selecciona y copia el enlace del campo.';}
+ },'primary'));
+ if(typeof navigator.share==='function')actions.append(button('Compartir enlace',async()=>{
+  try{await navigator.share({title:'MIDI HUD',url:link});}
+  catch(error){if(error.name!=='AbortError')status.textContent='Puedes usar Copiar enlace.';}
+ }));
+ actions.append(button('Cerrar',()=>dialog.close()));
+ dialog.append(title,help,field,status,actions);document.body.append(dialog);
+ dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
+}
 function awaitNotationChoice(){
  return new Promise(resolve=>{
   const dialog=document.createElement("dialog");
@@ -247,6 +269,7 @@ function sidebar(){
 }
 function renderSong(){
  const s=currentSong();
+ $("liveLink").href='../v03.html?v=20261016-repertoires1&repertoire='+encodeURIComponent(activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songTone").value=s.tono??"";
  $("songBpm").value=s.tempoBpm??"";
@@ -898,6 +921,15 @@ function register(){
   document.body.append(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),5000);
  };
+ $("midiLinkBtn").onclick=async()=>{
+  const action=$('midiLinkBtn');action.disabled=true;
+  try{
+   if(hasDraft){await save();if(hasDraft)return;}
+   const link=await createLibraryTransferUrl(committed,{repertoireId:activeRep,songId:activeSong},window.location.href);
+   showMidiLink(link);
+  }catch(error){notice('No se pudo preparar el enlace: '+error.message,true);}
+  finally{action.disabled=false;}
+ };
  $("undo").onclick=()=>{
   const backup=localStorage.getItem(BACKUP);if(!backup||!allowLeaving())return;
   if(!window.confirm("¿Recuperar la biblioteca guardada antes del último cambio?"))return;
@@ -964,7 +996,8 @@ async function boot(){
   library=normalizeLibrary(await response.json());validateLibrary(library);
  }
  committed=library;working=copy(library);
- activeRep=working.repertoires[0].id;activeSong=currentRep().songIds[0];
+ const start=resolveLiveSelection(working,localStorage,window.location?.search||'');
+ activeRep=start.repertoireId;activeSong=start.songId;
  activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;
  leadSource=formatLeadSheetText(currentSong().leadSheet);
  render();notice(saved?"Biblioteca local cargada. Pulsa Guardar tras editar una sección.":"Editor listo con datos de ejemplo. Busca guardados anteriores desde Biblioteca.");

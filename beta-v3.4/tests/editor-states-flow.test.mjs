@@ -10,6 +10,8 @@ import * as parser from '../editor/lead-sheet-text.mjs';
 import * as sheetSave from '../editor/sheet-save.mjs';
 import * as storageAPI from '../core/library-storage.mjs';
 import * as recovery from '../editor/recovery-v1.mjs';
+import * as selection from '../core/live-selection-v34.mjs';
+import * as transfer from '../core/library-transfer-v34.mjs';
 
 // Ejecuta los handlers reales del Editor con un DOM de prueba, sin simular layout.
 class Element{
@@ -25,6 +27,8 @@ class Element{
  focus(){}
  click(){this.onclick?.();}
  remove(){}
+ showModal(){this.open=true;}
+ close(){this.open=false;this.listeners.close?.();}
  querySelectorAll(selector){
   const matches=x=>selector.startsWith('.')?x.className.split(' ').includes(selector.slice(1)):selector==='[aria-pressed=true]'?x.attributes['aria-pressed']==='true':false;
   return this.children.flatMap(x=>x instanceof Element?[...(matches(x)?[x]:[]),...x.querySelectorAll(selector)]:[]);
@@ -48,11 +52,11 @@ function setup({prepare=()=>{},tab='states'}={}){
  initial.name='Intro';initial.displayIndex=0;song.displaySlots[0].name='Intro';
  prepare(fixture,song,initial);
  data.set(storageAPI.LIBRARY_KEY,JSON.stringify(fixture));
- const downloads=[];
- const context=vm.createContext({...model,...engine,...visuals,...notation,...parser,...sheetSave,...storageAPI,...recovery,
+ const downloads=[],copiedLinks=[];
+ const context=vm.createContext({...model,...engine,...visuals,...notation,...parser,...sheetSave,...storageAPI,...recovery,...selection,...transfer,
   document:{body:new Element('body'),getElementById:id=>elements.get(id),createElement:tag=>new Element(tag),querySelectorAll:()=>[],addEventListener(){}},
   Option:class extends Element{constructor(label,value){super('option');this.textContent=label;this.value=String(value);}},
-  localStorage:storage,window:{confirm:()=>context.confirmResult,prompt:()=>context.promptResult,addEventListener(){}},confirmResult:true,promptResult:null,
+  localStorage:storage,navigator:{clipboard:{writeText:async value=>copiedLinks.push(value)}},window:{location:{href:'https://geobit1989-crypto.github.io/MIDI-HUD/beta-v3.4/editor/v3.html',search:''},confirm:()=>context.confirmResult,prompt:()=>context.promptResult,addEventListener(){}},confirmResult:true,promptResult:null,
   confirm:()=>context.confirmResult,Blob,URL:{createObjectURL(blob){downloads.push(blob);return 'blob:test';},revokeObjectURL(){}},
   console,setTimeout(){},clearTimeout(){},seed:fixture,testSongId:songId,testTab:tab
  });
@@ -62,7 +66,7 @@ function setup({prepare=()=>{},tab='states'}={}){
  vm.runInContext(`committed=copy(seed);working=copy(seed);activeRep='worship';activeSong=testSongId;activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;activeTab=testTab;leadSource=formatLeadSheetText(currentSong().leadSheet);register();render();globalThis.api={selectState,save,render,updateTab,useSong,useRepertoire,snapshot:()=>JSON.parse(JSON.stringify({working,committed,activeState,activeModule,activeRep,activeSong,activeTab,hasDraft,leadSource}))};`,context);
  const snapshot=()=>JSON.parse(JSON.stringify(context.api.snapshot()));
  const currentSong=()=>snapshot().working.songs.find(s=>s.id===songId);
- return {context,elements,storage,writes,snapshot,currentSong,songId,downloads};
+ return {context,elements,storage,writes,snapshot,currentSong,songId,downloads,copiedLinks};
 }
 test('se pueden construir todos los estados y guardarlos una sola vez al final',async()=>{
  const t=setup(),ids=[t.snapshot().activeState];
@@ -580,4 +584,19 @@ test('crear Delay como efecto configura su encendido sin crear un estado musical
  assert.equal(state.indicators.find(ind=>ind.displayIndex===t.snapshot().activeModule).active,true);
  t.elements.get('moduleGrid').children[0].onclick();
  assert.equal(t.elements.get('moduleActivation').hidden,true);
+});
+test('el enlace MIDI guarda el borrador y traslada prueba 1 sin descargar archivos JSON',async()=>{
+ const t=setup({prepare(db,song){db.repertoires.push({id:'prueba-1',name:'prueba 1',songIds:[song.id]});}});
+ t.context.api.useRepertoire('prueba-1');t.context.api.updateTab('states');
+ t.elements.get('moduleName').value='Intro nueva';t.elements.get('moduleName').oninput();
+ await t.elements.get('midiLinkBtn').onclick();
+ assert.equal(t.snapshot().hasDraft,false);assert.equal(t.elements.get('midiLinkBtn').disabled,false);
+ assert.equal(t.downloads.length,0);
+ const dialog=t.context.document.body.children.at(-1);assert.equal(dialog.open,true);
+ await dialog.children.at(-1).children[0].onclick();
+ const url=new URL(t.copiedLinks[0]),packet=await transfer.decodeLibraryTransfer(url.hash);
+ assert.equal(url.searchParams.get('repertoire'),'prueba-1');assert.equal(packet.repertoireId,'prueba-1');
+ assert.deepEqual(packet.library,JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)));
+ assert.equal(packet.library.states.find(st=>st.id===t.snapshot().activeState).name,'Intro nueva');
+ assert.equal(new URL(t.elements.get('liveLink').href,t.context.window.location.href).searchParams.get('repertoire'),'prueba-1');
 });

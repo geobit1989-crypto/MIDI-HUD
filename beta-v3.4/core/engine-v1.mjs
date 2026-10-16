@@ -154,7 +154,7 @@ export function decodeMidiCC(data) {
  * El mensaje MIDI reconocido ejecuta sus acciones en orden configurado y vuelve
  * a mostrar la vista operativa. La GT nunca es controlada por este modulo.
  */
-export function createEngine(source, {midiChannel=1}={}) {
+export function createEngine(source, {midiChannel=1,repertoireId=null,songId=null}={}) {
   const db = normalizeLibrary(source);
   validateLibrary(db);
   insist(integer(midiChannel,1,16), "canal global fuera de 1..16");
@@ -162,11 +162,12 @@ export function createEngine(source, {midiChannel=1}={}) {
   const songs = new Map(db.songs.map(x=>[x.id,x]));
   const states = new Map(db.states.map(x=>[x.id,x]));
   const bindings = new Map(db.bindings.map(x=>[x.cc+":"+x.value,x.actions]));
-  const initialRep = db.repertoires[0];
-  const initialSong = songs.get(initialRep.songIds[0]);
+  const initialRep = reps.get(repertoireId) || db.repertoires[0];
+  const initialSong = songs.get(initialRep.songIds.includes(songId)?songId:initialRep.songIds[0]);
   const listeners = new Set();
   let session = {
     midiChannel,
+    activeRepertoireId:initialRep.id,
     activeSongId:initialSong.id,
     activeStateId:initialSong.initialStateId,
     previewSongId:null,
@@ -176,13 +177,15 @@ export function createEngine(source, {midiChannel=1}={}) {
     indicatorOverrides:{},
     sequence:0
   };
-  function repertoireFor(songId) {
-    return db.repertoires.find(x=>x.songIds.includes(songId)) || initialRep;
+  function repertoireFor(songId,preferred=session.activeRepertoireId) {
+    const selected=reps.get(preferred);
+    return selected?.songIds.includes(songId)?selected:db.repertoires.find(x=>x.songIds.includes(songId)) || initialRep;
   }
   function enterSong(next,songId) {
     const song=songs.get(songId);
     insist(song,"cancion desconocida: "+songId);
     next.activeSongId=songId;
+    next.activeRepertoireId=repertoireFor(songId,next.activeRepertoireId).id;
     next.activeStateId=next.rememberedStates[songId] || song.initialStateId;
     next.rememberedStates[songId]=next.activeStateId;
     next.indicatorOverrides={};
@@ -191,6 +194,7 @@ export function createEngine(source, {midiChannel=1}={}) {
     const st=states.get(stateId);
     insist(st,"estado desconocido: "+stateId);
     next.activeSongId=st.songId;
+    next.activeRepertoireId=repertoireFor(st.songId,next.activeRepertoireId).id;
     next.activeStateId=stateId;
     next.rememberedStates[st.songId]=stateId;
     next.indicatorOverrides={};
@@ -217,7 +221,7 @@ export function createEngine(source, {midiChannel=1}={}) {
       repertoire:{id:rep.id,name:rep.name},
       state:{id:st.id,name:st.name,gtPatch:st.gtPatch??null,
         displayIndex:st.displayIndex??null,indicators,position:song.stateIds.indexOf(st.id)+1,total:song.stateIds.length},
-      active:{songId:session.activeSongId,stateId:session.activeStateId},
+      active:{repertoireId:session.activeRepertoireId,songId:session.activeSongId,stateId:session.activeStateId},
       isPreview:!!session.previewSongId,
       previewModuleIndex:session.previewModuleIndex,
       midiChannel:session.midiChannel, sequence:session.sequence
@@ -232,6 +236,17 @@ export function createEngine(source, {midiChannel=1}={}) {
         next.midiChannel=event.channel;
         changed=next.midiChannel!==session.midiChannel;
         break;
+      case "SELECT_REPERTOIRE": {
+        const rep=reps.get(event.repertoireId);
+        insist(rep,"repertorio desconocido");
+        if(next.activeRepertoireId!==rep.id){
+          next.activeRepertoireId=rep.id;
+          enterSong(next,rep.songIds[0]);
+        }
+        next.previewSongId=null;next.previewStateId=null;next.previewModuleIndex=null;
+        changed=JSON.stringify(next)!==JSON.stringify(session);
+        break;
+      }
       case "PREVIEW_SONG":
         insist(songs.has(event.songId), "cancion de consulta desconocida");
         next.previewSongId=event.songId;

@@ -285,7 +285,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 }
 </style>
 <link rel="stylesheet" href="./live/responsive-v1.css?v=20261015-iphone2">
-<link rel="stylesheet" href="./live/config-menu-v2.css?v=20261015-iphone2">
+<link rel="stylesheet" href="./live/config-menu-v2.css?v=20261016-repertoires1">
 <link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261015-fit3">
 <link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261016-rows2">
 </head>
@@ -401,7 +401,10 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 
 <!-- Integracion funcional v1: el diseno de LIVE v0.3 permanece sin alteraciones estructurales. -->
 <script type="module">
-import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261016-patch2";
+import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261016-repertoires1";
+import {resolveLiveSelection} from "./core/live-selection-v34.mjs?v=20261016-repertoires1";
+import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261016-repertoires1";
+import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261016-transfer1";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261016-overlays1";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
@@ -409,7 +412,7 @@ import {openBrowserMidi} from "./core/midi-browser.mjs?v=20261015-ble1";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
 const SETTINGS=readSettings(localStorage);
 const $=s=>document.querySelector(s);
-let engine,library,midiPort;
+let engine,library,midiPort,initialSelection,usingSavedLibrary=false;
 const adaptiveSheet=installAdaptiveLeadSheet(document.querySelector(".lead-sheet"));
 const gear=$(".topbar .settings");
 gear.tabIndex=0;gear.setAttribute("role","button");
@@ -431,6 +434,14 @@ dialog.innerHTML=`
 </header>
 <div class="hud-config-content">
   <div class="hud-config-grid">
+    <section class="hud-config-group" aria-labelledby="hud-library-heading">
+      <h3 id="hud-library-heading">Repertorio en LIVE</h3>
+      <label for="hud-repertoire">Repertorio activo
+        <select id="hud-repertoire"></select>
+      </label>
+      <p id="hud-library-status" class="hud-config-readout" role="status"></p>
+      <p>La selección se recuerda en este navegador. Para traer tus guardados de otro navegador, usa allí «Enlace para navegador MIDI» en el Editor. Después puedes seguir editando desde aquí.</p>
+    </section>
     <section class="hud-config-group" aria-labelledby="hud-midi-heading">
       <h3 id="hud-midi-heading">Recepción MIDI</h3>
       <p>Canal global de entrada, compartido por todas las canciones.</p>
@@ -459,7 +470,7 @@ dialog.innerHTML=`
 <nav class="hud-config-tools" aria-label="Herramientas MIDI HUD">
   <h3>Ir a otra herramienta</h3>
   <div class="hud-config-links">
-    <a href="./editor/">✎ Editor<small>Modificar canciones, estados y lead sheets</small></a>
+    <a id="hud-editor-link" href="./editor/v3.html?v=20261016-repertoires1">✎ Editor<small>Modificar canciones, estados y lead sheets</small></a>
     <a href="./lab/">◇ LAB<small>Simular los mensajes CC y sus acciones</small></a>
     <a href="./">▦ Inicio<small>Panel de acceso a MIDI HUD</small></a>
   </div>
@@ -467,7 +478,7 @@ dialog.innerHTML=`
 <footer class="hud-config-foot">El HUD únicamente representa estados visuales. No transmite MIDI a la GT ni supervisa sus cambios físicos.</footer>
 `;
 overlay.append(dialog);document.body.append(overlay);
-function popup(open){overlay.hidden=!open;overlay.style.display=open?"flex":"none";if(open)dialog.querySelector("#hud-channel").focus();else gear.focus();}
+function popup(open){overlay.hidden=!open;overlay.style.display=open?"flex":"none";if(open)dialog.querySelector("#hud-repertoire").focus();else gear.focus();}
 function prepare(){
  const ch=dialog.querySelector("#hud-channel");
  for(let i=1;i<=16;i++)ch.add(new Option("Canal "+i,i));
@@ -478,7 +489,6 @@ function prepare(){
    engine.dispatch({type:"SET_CHANNEL",channel:midiChannel});
  };
  const selector=dialog.querySelector("#hud-preview");
- selector.replaceChildren(...library.songs.map(s=>new Option(s.title,s.id)));
  dialog.querySelector("#hud-preview-btn").onclick=()=>{
    engine.dispatch({type:"PREVIEW_SONG",songId:selector.value});popup(false);
  };
@@ -486,6 +496,8 @@ function prepare(){
    engine.dispatch({type:"RETURN_TO_ACTIVE"});popup(false);
  };
  dialog.querySelector("#hud-close-btn").onclick=()=>popup(false);
+ installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
+   missingRequestedRepertoire:initialSelection.missingRequestedRepertoire,onUse:()=>popup(false)});
  dialog.querySelector("#hud-midi-btn").onclick=async()=>{
    try{
      if(midiPort)midiPort.close();
@@ -522,7 +534,7 @@ gear.addEventListener("pointerdown",event=>{
   gearPressTimer=setTimeout(()=>{
     gearPressTimer=null;gearLongPress=true;
     gear.classList.remove("hud-holding");
-    window.location.assign("./editor/");
+    window.location.assign(dialog.querySelector("#hud-editor-link").href);
   },EDITOR_HOLD_MS);
 });
 gear.addEventListener("pointerup",cancelGearHold);
@@ -633,23 +645,33 @@ function render(){
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
  const currentInfo=dialog.querySelector("#hud-current-info");
  if(currentInfo)currentInfo.textContent=(vm.isPreview?"Vista de consulta: ":"Vista operativa: ")+
-  vm.song.title+" · "+vm.state.name;
+  vm.repertoire.name+" · "+vm.song.title+" · "+vm.state.name;
+ dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261016-repertoires1&repertoire='+
+  encodeURIComponent(vm.repertoire.id)+'&song='+encodeURIComponent(vm.song.id);
 }
 (async()=>{
  try{
   let data;
+  const transferred=await receiveLibraryTransfer(localStorage,window.location.hash,{confirmReplace:packet=>
+   window.confirm('El enlace contiene '+packet.library.repertoires.map(rep=>rep.name).join(', ')+'. ¿Usar esta biblioteca? La actual se conservará como copia anterior.')});
+  if(transferred){
+   if(transferred.applied){data=transferred.library;usingSavedLibrary=true;}
+   try{window.history.replaceState(null,'',window.location.pathname+window.location.search);}catch{}
+  }
   const saved=readLibrarySource(localStorage);
-  if(saved){try{data=normalizeLibrary(JSON.parse(saved));}catch{}}
+  if(!data&&saved){try{data=normalizeLibrary(JSON.parse(saved));usingSavedLibrary=true;}catch{}}
   if(!data){
    const response=await fetch("./config/midi-hud-data-v2.json");
    if(!response.ok)throw Error("No se encontró la biblioteca v2");
    data=await response.json();
   }
-  engine=createEngine(data,{midiChannel:SETTINGS.midiChannel});
+  initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
+  engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
   library=engine.getLibrary();prepare();
   window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
   engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
+  if(initialSelection.missingRequestedRepertoire)popup(true);
  }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);
   const boot=document.querySelector("#hud-boot-status");if(boot)boot.textContent="Error de inicialización: "+err.message;
  }

@@ -202,8 +202,9 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <button type="button" id="undo" title="Recuperar el último guardado anterior">Deshacer cambio</button>
     <button type="button" id="importBtn">Importar</button>
     <button type="button" id="exportBtn" class="primary">Exportar JSON</button>
+    <button type="button" id="midiLinkBtn" class="primary">Enlace para navegador MIDI</button>
     <a href="../lab/midi-v1.html">LAB</a>
-    <a href="../v03.html">LIVE</a>
+    <a id="liveLink" href="../v03.html?v=20261016-repertoires1">LIVE</a>
   </div>
 </header>
 <button type="button" id="libraryBackdrop" hidden aria-label="Cerrar biblioteca"></button>
@@ -425,7 +426,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261016-overlays1"></script>
+<script type="module" src="./v3.mjs?v=20261016-repertoires1"></script>
 </div>
 </body>
 </html>
