@@ -94,7 +94,11 @@ async function googleCallback(request,env){
  if(!flow||flow.expires_at<now())fail(400,"expired_state");
  const consumed=await env.DB.prepare("DELETE FROM oauth_flows WHERE state_hash = ?").bind(stateHash).run();
  if(consumed.meta?.changes!==1)fail(400,"replayed_state");
- if(!code||url.searchParams.has("error"))fail(400,"google_authorization_cancelled");
+ if(!code||url.searchParams.has("error")){
+  const back=new URL(APP_ORIGIN+flow.return_path);
+  back.searchParams.set("hud_auth_error","cancelled");
+  return new Response(null,{status:303,headers:{"Location":back.toString(),"Cache-Control":"no-store","Referrer-Policy":"no-referrer"}});
+ }
  const verifier=await unseal(flow.verifier_cipher,env.TOKEN_ENCRYPTION_KEY);
  const tokens=await googleToken({code,code_verifier:verifier,grant_type:"authorization_code",redirect_uri:SERVICE_URL+"/auth/callback"},env);
  if(!tokens.access_token)fail(502,"missing_google_access_token");
