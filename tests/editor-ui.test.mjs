@@ -47,3 +47,15 @@ test("el editor V3 importa el catálogo sin reemplazar JSON ni su configuración
  assert.match(script,/allowLeaving\(\)/);
  assert.match(page,/Importar canciones/);
 });
+
+test("crear y renombrar repertorio usa formulario integrado compatible con navegador embebido",()=>{
+ for(const id of ["repForm","repFormHeading","repNameInput","repFormSubmit","repFormCancel"]){
+  assert.ok(ids.has(id),"Falta control: "+id);
+ }
+ assert.match(script,/\$\("repAdd"\)\.onclick=\(\)=>openRepForm\("create"\)/);
+ assert.match(script,/\$\("repRename"\)\.onclick=\(\)=>openRepForm\("rename"\)/);
+ assert.match(script,/repForm\.addEventListener\("submit"/);
+ assert.doesNotMatch(script,/window\.prompt\("Nombre del repertorio"/);
+ assert.match(script,/const id=newRepertoire\(db,name\)/);
+ assert.match(script,/saved===true\)closeRepForm\(\)/);
+});
