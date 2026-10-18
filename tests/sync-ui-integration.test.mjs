@@ -34,3 +34,15 @@ test("Public Google OAuth ID can be configured without app secrets",()=>{
  assert.match(syncUI,/GoogleDriveAuth\(\{clientId:id\}\)/);
  assert.doesNotMatch(read("config/cloud-sync.json"),/client_secret/i);
 });
+
+test("iPhone sync dialog shows Connect and Sync before advanced OAuth settings",()=>{
+ const open=syncUI.indexOf("function open(){");
+ const actions=syncUI.indexOf("actions.append(connect,sync,disconnect",open);
+ const panel=syncUI.indexOf("panel.append(actions,setup)",open);
+ const settings=syncUI.indexOf("setup.append(make('summary'",open);
+ assert(open>=0&&actions>open&&panel>actions&&settings>open);
+ assert.match(syncUI,/const setup=make\('details'\)/);
+ assert.match(syncUI,/panel\.append\(actions,setup\)/);
+ assert.match(syncUI,/\.hud-sync-actions \[data-connect\],\.hud-sync-actions \[data-sync\]\{grid-column:1\/-1\}/);
+ assert.match(syncUI,/panel\.scrollTop=0/);
+});
