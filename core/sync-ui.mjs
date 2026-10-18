@@ -1,6 +1,7 @@
 import {DriveHistory,createSyncController} from './drive-sync.mjs';
 import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-autosync1';
 import {readLibrarySource} from './library-storage.mjs';
+import {PersistentDriveAuth} from './persistent-drive-auth.mjs?v=20261018-persistent1';
 
 const make=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
 const button=(text,callback)=>{const node=make('button',text);node.type='button';node.onclick=callback;return node;};
@@ -107,7 +108,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   panel=dialog('Sincronización de repertorios');
   panel.append(make('p','Sincronización automática: al guardar, al abrir o regresar al MIDI HUD y al recuperar internet. Se conserva una copia local para usar LIVE sin conexión.'));
   const accountLine=make('p');accountLine.dataset.account='';const readout=make('p');readout.dataset.status='';readout.className='hud-sync-status';readout.setAttribute('role','status');panel.append(accountLine,readout);
-  const setup=make('details');setup.className='hud-sync-recovery';
+  const setup=make('details');setup.className='hud-sync-recovery';setup.hidden=!!auth?.isPersistent;
   setup.append(make('summary','Configuración avanzada de Google (OAuth)'));
   const label=make('label','Identificador OAuth web de MIDI HUD (no introduzcas contraseñas)');
   const clientInput=make('input');clientInput.type='text';clientInput.autocomplete='off';
@@ -137,7 +138,32 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   });connect.dataset.connect='';
   const sync=button(mode==='live'?'Actualizar repertorios':'Sincronizar ahora',()=>synchronize({explicit:true}));sync.dataset.sync='';
   const disconnect=button('Desconectar',async()=>{if(busy)return;busy=true;try{await auth.disconnect();account=null;controller.setAccount(null);status({state:'local',message:'Cuenta desconectada. Los repertorios permanecen en este dispositivo.'});}catch(error){status({state:'error',message:error.message});}finally{busy=false;refresh();}});disconnect.dataset.disconnect='';
-  actions.append(connect,sync,disconnect,button('Versiones conservadas',recoveries),button('Cerrar',()=>panel.close()));
+  const manage=button('Dispositivos autorizados',async()=>{
+   if(!auth?.isPersistent)return;
+   const list=dialog('Dispositivos autorizados');
+   list.append(make('p','Cada navegador autorizado tiene su propia sesión. Puedes revocar cualquier dispositivo desde aquí.'));
+   const container=make('div');list.append(container);
+   list.append(button('Cerrar',()=>list.close()));list.showModal();
+   try{
+    const data=await auth.listDevices();
+    if(!data.devices?.length){container.append(make('p','No hay dispositivos activos.'));return;}
+    for(const d of data.devices){
+     const item=make('section');item.className='hud-sync-recovery';
+     const current=d.id===data.current;
+     item.append(make('p',(current?'Este dispositivo · ':'Dispositivo · ')+
+      'Última actividad: '+new Date(d.last_seen_at*1000).toLocaleString()));
+     const revoke=button('Revocar autorización',async()=>{
+      if(!window.confirm('¿Revocar la sesión de este dispositivo?'))return;
+      try{
+       await auth.revokeDevice(d.id);item.remove();
+       if(current){account=null;controller.setAccount(null);status({state:'reauth',message:'Dispositivo desconectado.'});}
+      }catch(error){container.prepend(make('p',error.message));}
+     });item.append(revoke);container.append(item);
+    }
+   }catch(error){container.append(make('p',error.message));}
+  });
+  manage.hidden=!auth?.isPersistent;
+  actions.append(connect,sync,disconnect,manage,button('Versiones conservadas',recoveries),button('Cerrar',()=>panel.close()));
   panel.append(actions,setup);panel.showModal();panel.scrollTop=0;refresh();
  }
  async function initialize(){
@@ -147,8 +173,20 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
    }else{
     const response=await globalThis.fetch(new URL('../config/cloud-sync.json',import.meta.url),{cache:'no-store'});
     if(!response.ok)throw Error('No se pudo leer la configuración de sincronización.');
-    const config=await response.json();auth=new GoogleDriveAuth({clientId:storage.getItem(CLIENT_STORAGE_KEY)||config.googleWebClientId||''});configured=auth.configured;
-    if(configured){void loadGoogleIdentity().then(()=>{identityReady=true;refresh();}).catch(error=>status({state:'offline',message:error.message+' Tus datos locales siguen disponibles.'}));}
+    const config=await response.json();
+    const persistent=new PersistentDriveAuth();
+    const callback=globalThis.location.search.includes('hud_auth_ticket=')||
+     globalThis.location.search.includes('hud_auth_error=');
+    if(callback||persistent.hasSession||await persistent.ready()){
+     auth=persistent;configured=true;identityReady=true;
+    }else{
+     // Preserve the existing Google Identity flow until the new Worker has its
+     // D1 database, Google OAuth secret and encryption key fully configured.
+     auth=new GoogleDriveAuth({clientId:storage.getItem(CLIENT_STORAGE_KEY)||config.googleWebClientId||''});
+     configured=auth.configured;
+     if(configured){void loadGoogleIdentity().then(()=>{identityReady=true;refresh();})
+       .catch(error=>status({state:'offline',message:error.message+' Tus datos locales siguen disponibles.'}));}
+    }
    }
    if(configured){
     account=await auth.restore();
