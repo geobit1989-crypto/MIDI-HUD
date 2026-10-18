@@ -3,7 +3,7 @@
   "schemaVersion": "1.0.0",
   "libraryId": "sig-main",
   "revision": 4,
-  "updatedAt": "2026-10-18T22:40:00+01:00",
+  "updatedAt": "2026-10-18T22:26:00+01:00",
   "midi": {
     "channel": 1,
     "programNumbering": "zero-based",
