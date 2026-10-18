@@ -1,48 +1,51 @@
-# MIDI HUD
+# MIDI HUD — SIG
 
-Prototipo del sistema SIG. Estructura consolidada el **14 de octubre de 2026**.
+Prototipo operativo para gestión de repertorios y comandos MIDI. Actualizado el 18 de octubre de 2026.
 
-## Arquitectura de desarrollo
+## Componentes
 
-1. **LIVE v0.3**: [v03.html](./v03.html). Maqueta visual de la futura aplicación. Se mantiene su diseño sin cambios y todavía no está conectada al motor.
-2. **LAB v0.2**: [lab/index.html](./lab/index.html). ÚNICO banco de pruebas operativo y autónomo. Usa el motor directamente, sin iframe ni dependencia del prototipo antiguo. Permite navegar repertorios, canciones y presets, modificar Morph y la posición simulada de Wah y observar las intenciones MIDI. No envía MIDI real.
-3. **Editor**: [editor/index.html](./editor/index.html). Edita repertorios, canciones y presets. Comparte las reglas de validación del motor. Los cambios se guardan en este navegador; para probarlos, copia la configuración a LAB.
-4. **Motor**: [core/engine.mjs](./core/engine.mjs). Máquina de estados independiente de la interfaz: valida datos, gestiona navegación y controles, produce intenciones MIDI y expone un modelo de visualización. No abre conexiones de hardware ni emite audio.
+1. **[LIVE v0.4](./v03.html)** (se conserva el nombre de archivo): lee la biblioteca del Editor guardada en el mismo origen y navegador; muestra canción, estados CC80, efectos CC81, controles y tempo BPM/TAP. Permite conectar una **entrada Web MIDI** cuando el navegador la admite. No envía mensajes MIDI ni controla el audio.
+2. **[Editor](./editor/index.html)**: gestiona repertorios, tempos por canción, CC80 y CC81, modo exclusivo Wah/Whammy y canales RX separados HUD/GT. Asignaciones CC0/PC de canciones proceden del repertorio maestro, no se inventan desde Editor.
+3. **[Motor v0.4](./core/engine.mjs)**: máquina de estados sin DOM ni red. Admite CC0+PC, CC80, CC81, CC7, CC91, CC11, F8 y pérdida de Clock, además de emitir intenciones de MIDI local (no transmisiones reales).
+4. **[Adaptador de recepción](./core/midi-input.mjs)**: interpreta mensajes entrantes CC/PC y mensajes de reloj sin canal F8. No transmite.
+5. **[LAB](./lab/index.html)**: banco aislado de simulación. Copiar Editor → LAB no cambia datos del Editor; no transmite MIDI.
 
-El antiguo `worship-demo/` redirige a LAB; `index.html` redirige a LIVE v0.3. El histórico de Git conserva el código anterior.
+## Mapa MIDI aprobado
 
-## Aislamiento de pruebas
+| Comando | Función |
+| --- | --- |
+| CC0=X → PC=Y | canción |
+| CC80=N | estado exclusivo en la canción activa |
+| CC81=N | efecto superpuesto, conmutación por pulsación |
+| CC7=0..127 | volumen 0..100 % |
+| CC91=0..127 | Morph 0..100 % |
+| CC11=0..127 | Wah o Whammy, único destino por canción |
+| F8 | reloj maestro recibido de GT (24 pulsos por negra), sin canal |
 
-- El editor utiliza la clave local `hudLibrary`; LAB usa `hudLabLibrary`.
-- Las pruebas de navegación, Morph y Wah no cambian el repertorio del editor.
-- Solo la acción **«Aplicar LAB al editor»**, previa confirmación, transfiere el JSON de LAB al editor y guarda un respaldo local en `hudLibraryBackup`.
-- LAB no gobierna los botones ni la apariencia de LIVE v0.3.
-- El pedal de **volumen queda fuera** de MIDI HUD y del LAB. Los CC y cambios de programa son **provisionales**.
-- Los mensajes de LAB son diagnósticos, **no comandos transmitidos a la GT-1000CORE**.
+Los números CC/PC pertenecen al canal RX del HUD, distinto del RX de GT; **F8 no lleva canal**. CC91 es un uso propio de HUD: en MIDI general suele ser nivel del efecto 1/reverb, sin conflicto entre equipos si los canales y el ruteo están correctamente configurados.
 
-## Cómo probar
+## Tempo en LIVE
 
-1. Abrir `editor/` y preparar una canción o un preset.
-2. Abrir `lab/` en el mismo navegador y origen.
-3. Pulsar «Copiar editor → LAB» para probar una copia sin alterar el editor.
-4. Cambiar canción, preset y Morph/Wah y revisar el registro de eventos.
-5. Abrir `v03.html` solo para revisar el diseño visual.
+- Cada canción contiene su BPM preprogramado; LIVE muestra inicialmente **BPM 120**, por ejemplo.
+- GT configurada con SYNC CLOCK INTERNAL y CLOCK OUT ON transmite continuamente F8 según su BPM.
+- Tras aprender la frecuencia inicial de F8, el HUD etiqueta **TAP 124** cuando detecta cambio sostenido >=2 BPM durante 2 negras (tolerancia inicial de ensayo).
+- No interpreta una discrepancia inicial entre GT y canción como Tap, y no sobrescribe el BPM guardado.
+- Tras cambio de canción, recalibra la referencia y vuelve a BPM. Ante una interrupción de Clock >1 s señala **SIN CLK** y conserva el tempo preestablecido.
+- La etiqueta TAP es una inferencia a partir del reloj, no un aviso explícito del pedal Tap.
 
-## Pendiente de definición conjunta
+## Pruebas
 
-Revisar las reglas operativas: persistencia y valor inicial de Morph, activación y posición del Wah, navegación entre canciones/presets, asignación de los controles y conexión MIDI real. Probar manualmente en Safari/iPhone. No se debe considerar MIDI verificado contra hardware hasta efectuar esas pruebas.
+- Tests Node: `node --test tests/midi-v04.test.mjs`.
+- Automatización CI: [.github/workflows/midi-hud-tests.yml](./.github/workflows/midi-hud-tests.yml).
+- Para comprobar en navegador, abrir **Editor** en el mismo origen de GitHub Pages, configurar canción y módulos, después abrir **LIVE** y conceder permiso Web MIDI mediante ⚙ → Conectar MIDI.
+- El Editor guarda en `localStorage.hudLibrary`; LAB guarda por separado en `localStorage.hudLabLibrary`. No existe todavía sincronización automática entre navegadores, equipos o cuentas.
+- **En iOS Safari no contamos con Web MIDI garantizado.** Para recibir MIDI real en iPhone hará falta verificar disponibilidad en la plataforma o una solución nativa/puente.
+- **Sin prueba física aún:** Clock F8 y Tap desde GT-1000CORE, conmutación real CC81 en GT, ruteo del puente y persistencia de efectos/expresión entre canciones. La lectura LIVE no constituye control de audio.
+- El lead sheet mostrado en la antigua maqueta era ilustrativo; LIVE señala que los cifrados reales todavía requieren integración, para no asociar acordes de ejemplo a canciones ajenas.
 
-## Formato de configuración
+## Documentación
 
-El esquema sigue siendo `1.0.0`. El motor es ahora `0.3.0`. El motor migra referencias heredadas de volumen y Program Change de presets sin usarlas.
-
-## Direcciones MIDI de canciones (18 de octubre de 2026)
-
-- Contrato documentado: [CC0 (banco) → PC (canción)](./config/SIG-MIDI-song-selection-v1.md).
-- Fuente única de direcciones: [repertorio maestro SIG en Google Sheets](https://docs.google.com/spreadsheets/d/1s8W76PE3IqGHv9uPbIZTRmvZswZ4LGVzhZr4W2fBrQs/edit) (columnas E/F).
-- [Instantánea de 133 canciones con CC0 y PC](./config/sig-midi-song-addresses-v1.json): registro sincronizado manualmente con el maestro en fecha indicada; no es una API en vivo.
-- Al abrir el editor actualizado en el mismo navegador/origen, se aplican automáticamente direcciones a las canciones guardadas que coincidan por título y autor. Se conservan los IDs y los estados. Al importar después un CSV del maestro, también se leen CC0 y PC.
-- El editor muestra CC0/PC en campos de solo lectura. El botón «Nueva canción» **no** asigna direcciones MIDI; esa asignación debe originarse en el maestro.
-- El motor admite `RECEIVE_CC` y `RECEIVE_PC` y emite intenciones CC0 → PC al seleccionar una canción. No hay puente MIDI físico integrado todavía y LIVE v0.3 sigue siendo una maqueta estática.
-- **Limitación actual:** al añadir canciones al Google Sheet no se actualiza el registro de GitHub por sí solo; hay que publicar la nueva instantánea o importar CSV actualizado desde el editor.
-
+- [Contrato de selección de canciones](./config/SIG-MIDI-song-selection-v1.md).
+- [Mapa CC y tempo BPM/TAP](./config/SIG-MIDI-control-map-v1.md).
+- [Catálogo de 133 direcciones MIDI](./config/sig-midi-song-addresses-v1.json), instantánea que requiere actualización manual.
+- [Repertorio maestro SIG — Google Sheets](https://docs.google.com/spreadsheets/d/1s8W76PE3IqGHv9uPbIZTRmvZswZ4LGVzhZr4W2fBrQs/edit).
