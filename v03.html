@@ -454,7 +454,7 @@ dialog.innerHTML=`
       <h3 id="hud-sync-heading">Repertorios entre dispositivos</h3>
       <p>Recibe en este dispositivo las configuraciones guardadas en Drive; LIVE no cambia de canción ni estado durante una interpretación.</p>
       <div id="hud-sync-root" class="hud-config-actions"></div>
-      <p id="hud-sync-notice" class="hud-config-readout" role="status">Repertorio operativo cargado localmente.</p>
+      <p id="hud-sync-notice" class="hud-config-readout" role="status">LIVE mantiene su repertorio operativo mientras recibe actualizaciones en segundo plano.</p>
       <button type="button" id="hud-sync-reload" hidden>Recargar LIVE con el repertorio recibido</button>
     </section>
     <section class="hud-config-group" aria-labelledby="hud-nav-heading">
@@ -705,7 +705,9 @@ function render(){
     const saved=localStorage.getItem(EDITOR_KEY);
     return saved?JSON.parse(saved):null;
    },
-   canApply:options=>!!options.explicit,
+   // LIVE descarga automáticamente, pero su motor operativo NO se modifica en caliente.
+   // Los cambios entran en vigor solamente la próxima vez que se abra LIVE.
+   canApply:()=>true,
    onApplied:()=>{
     dialog.querySelector("#hud-sync-notice").textContent="Cambios recibidos y guardados en este dispositivo. Recarga LIVE cuando termines de tocar para utilizarlos.";
     dialog.querySelector("#hud-sync-reload").hidden=false;
