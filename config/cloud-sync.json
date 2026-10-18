@@ -1,4 +1,4 @@
 {
-  "googleWebClientId": "",
+  "googleWebClientId": "904503234355-khv7o4hd4gvgs01tphl1r4negfs6nl16.apps.googleusercontent.com",
   "description": "OAuth web client ID for MIDI HUD Google Drive appData sync. Configure from Sync panel or update this public config; never add client secrets."
 }
