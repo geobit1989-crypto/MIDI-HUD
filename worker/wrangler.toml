@@ -1,0 +1,7 @@
+name = "midihudaut"
+main = "src/index.mjs"
+compatibility_date = "2026-10-18"
+workers_dev = true
+
+# Google OAuth, token encryption and D1 bindings will be configured later.
+# Never commit OAuth client secrets, Cloudflare API tokens or refresh tokens.
