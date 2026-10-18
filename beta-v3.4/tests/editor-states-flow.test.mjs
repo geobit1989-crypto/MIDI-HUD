@@ -624,3 +624,11 @@ test('crear lista vacía y añadir desde catálogo conserva el editor operativo'
  t.elements.get('catalogSearch').value='Prueba';t.elements.get('catalogSearch').oninput();const row=t.elements.get('catalogResults').children[0];row.children[1].onclick();
  assert.equal(t.snapshot().working.repertoires.find(rep=>rep.id===t.snapshot().activeRep).songIds[0],t.songId);assert.equal(t.snapshot().activeSong,t.songId);assert.equal(t.elements.get('emptyRepertoire').hidden,true);
 });
+
+test('abrir de nuevo una lista vacía no lee el estado de una canción inexistente',()=>{
+ let emptyId;
+ const t=setup({prepare(db){Object.assign(db,catalog.migrateCatalog(db));emptyId=catalog.createCatalogRepertoire(db,'Miércoles vacío');}});
+ t.context.api.useRepertoire(emptyId);assert.equal(t.snapshot().activeRep,emptyId);assert.equal(t.snapshot().activeSong,null);assert.equal(t.elements.get('emptyRepertoire').hidden,false);
+ t.context.api.useRepertoire('worship');assert.equal(t.snapshot().activeRep,'worship');assert.equal(t.elements.get('emptyRepertoire').hidden,true);
+ t.context.api.useRepertoire(emptyId);assert.equal(t.snapshot().activeSong,null);assert.equal(t.snapshot().activeState,null);
+});

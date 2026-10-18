@@ -63,4 +63,4 @@ node beta-v3.4/tests/check-site.mjs
 
 Las pruebas nuevas cubren migración 1.0/2.0 e idempotencia; conservación de campos adicionales; edición compartida y renombrado; copia completa e independencia de variantes y MIDI; orden, membresía y notas por repertorio; listas vacías; archivado; persistencia y copia previa a migración; recuperación y deshacer recuperación; fusión de Drive e historial en conflictos; grados manuales; y handlers reales del editor para buscar, guardar una variante y añadir desde una lista vacía.
 
-El entorno de trabajo local estuvo desconectado durante esta implementación. Las comprobaciones ejecutadas, sus resultados y cualquier limitación del simulador se documentarán en la revisión de GitHub. Las pruebas automatizadas no sustituyen una prueba con controlador físico ni la autorización real de Drive.
+El entorno de trabajo local estuvo desconectado durante esta implementación. Las comprobaciones se ejecutan en GitHub Actions; sus resultados y cualquier limitación del simulador se detallan en la revisión de GitHub. Las pruebas automatizadas no sustituyen una prueba con controlador físico ni la autorización real de Drive.

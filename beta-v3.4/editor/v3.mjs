@@ -76,7 +76,7 @@ function makeSelectionInitial(){
  try{
   const next=copy(working);
   const id=st?setInitialState(next,activeSong,st.id):useModuleAsInitialState(next,activeSong,activeModule);
-  working=next;activeState=id;activeModule=currentState().displayIndex??null;
+  working=next;activeState=id;activeModule=currentState()?.displayIndex??null;
   dirty();renderStates();renderSong();
   notice('«'+currentState().name+'» será el estado inicial. Pulsa Guardar en Estados.');
  }catch(error){notice(error.message,true);}
@@ -121,7 +121,7 @@ function selected(){
  if(catalogMode&&!currentSong())activeSong=working.songs[0]?.id||null;
  if(!currentSong()){activeState=null;activeModule=null;return;}
  if(activeState!==null&&!currentSong().stateIds.includes(activeState))activeState=currentSong()?.initialStateId??null;
- if(currentState())activeModule=currentState().displayIndex??null;
+ if(currentState())activeModule=currentState()?.displayIndex??null;
  else if(activeModule!==null&&(!Number.isInteger(activeModule)||activeModule<0||activeModule>=(currentSong().displaySlots?.length||0)))activeModule=null;
 }
 function discard(){
@@ -154,7 +154,7 @@ function toggleLibrary(force){
 function useSong(id){
  if(!currentRep().songIds.includes(id)||!allowLeaving())return;
  catalogMode=false;activeSong=id;activeState=currentSong()?.initialStateId??null;
- activeModule=currentState().displayIndex??null;
+ activeModule=currentState()?.displayIndex??null;
  leadSource=formatLeadSheetText(currentSong()?.leadSheet);toggleLibrary(false);render();
 }
 function useRepertoire(id){
@@ -163,7 +163,7 @@ function useRepertoire(id){
  }
  catalogMode=false;activeRep=id;activeSong=currentRep().songIds[0]||null;
  activeState=currentSong()?.initialStateId??null;
- activeModule=currentState().displayIndex??null;
+ activeModule=currentState()?.displayIndex??null;
  leadSource=formatLeadSheetText(currentSong()?.leadSheet);toggleLibrary(false);render();
 }
 function persistLibrary(next,message){
@@ -281,12 +281,12 @@ function renderCatalog(){
 }
 function useCatalogSong(id){
  if(!working.songs.some(song=>song.id===id)||!allowLeaving())return;
- catalogMode=true;activeSong=id;activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;
+ catalogMode=true;activeSong=id;activeState=currentSong().initialStateId;activeModule=currentState()?.displayIndex??null;
  leadSource=formatLeadSheetText(currentSong().leadSheet);toggleLibrary(false);render();
 }
 async function saveAsNewVariant(){
  if(!currentSong()||saving)return;
- const variant=window.prompt("Nombre de la nueva versión independiente (por ejemplo Grados o Sol mayor)",(currentSong().catalog?.variant||"Versión")+" (copia)");
+ const variant=window.prompt("Nombre de la nueva versión independiente (por ejemplo Grados o Sol mayor). Desde una lista, solo esta lista pasará a usar la nueva versión.",(currentSong().catalog?.variant||"Versión")+" (copia)");
  if(variant===null||!variant.trim())return;
  const previousSelection={activeSong,activeState,activeModule};
  saving=true;syncStatus();
@@ -326,7 +326,7 @@ function renderSong(){
 function selectState(id){
  if(!currentSong().stateIds.includes(id))return;
  activeState=id;
- activeModule=currentState().displayIndex??null;
+ activeModule=currentState()?.displayIndex??null;
  renderStates();
 }
 function ensureSlots(){
@@ -822,19 +822,19 @@ function register(){
   activeModule=removeModule(working,activeSong,activeModule);activeState=linkedState()?.id??null;dirty();renderStates();
  };
  $("stateAdd").onclick=()=>{
-  try{activeState=newStateWithModule(working,activeSong,activeModule);activeModule=currentState().displayIndex;dirty();renderStates();renderSong();}
+  try{activeState=newStateWithModule(working,activeSong,activeModule);activeModule=currentState()?.displayIndex;dirty();renderStates();renderSong();}
   catch(error){notice(error.message,true);}
  };
  $("stateCopy").onclick=()=>{
   if(!currentState())return;
-  try{activeState=duplicateStateWithModule(working,activeState);activeModule=currentState().displayIndex;dirty();renderStates();renderSong();}
+  try{activeState=duplicateStateWithModule(working,activeState);activeModule=currentState()?.displayIndex;dirty();renderStates();renderSong();}
   catch(error){notice(error.message,true);}
  };
  $("stateRemove").onclick=()=>{
   if(!currentState())return;
   if(!window.confirm("¿Eliminar este estado y las asociaciones MIDI que lo usen?"))return;
   deleteState(working,activeState);activeState=currentSong().stateIds[0];
-  activeModule=currentState().displayIndex??null;
+  activeModule=currentState()?.displayIndex??null;
   dirty();renderStates();renderSong();
  };
  $("stateUp").onclick=()=>{moveState(working,activeState,-1);dirty();renderStates();renderSong();};
@@ -844,11 +844,11 @@ function register(){
  $("stateSlot").onchange=()=>{
   if(!currentState())return;
   const idx=$("stateSlot").value;
-  const previous=currentState().displayIndex;
+  const previous=currentState()?.displayIndex;
   const next=idx===''?null:Number(idx);
   if(next!==null&&!confirmModuleAssignment(activeState,next)){renderStates();return;}
   assignStateModule(working,activeSong,activeState,next,{replace:true});activeModule=next;
-  if(previous!==currentState().displayIndex){dirty();renderStates();}
+  if(previous!==currentState()?.displayIndex){dirty();renderStates();}
  };
  $("moduleName").oninput=renameSelection;
  $("moduleSub").oninput=()=>setSlotProperty("sub",$("moduleSub").value);
@@ -965,8 +965,8 @@ function register(){
    if(!window.confirm("¿Importar y reemplazar la biblioteca actual? Se guarda una copia previa."))return;
    const written=replaceLibrary(localStorage,incoming,committed);
    committed=written;working=copy(written);activeRep=working.repertoires[0].id;
-   activeSong=currentRep().songIds[0];activeState=currentSong()?.initialStateId??null;
-   activeModule=currentState().displayIndex??null;
+   activeSong=currentRep().songIds[0]||null;activeState=currentSong()?.initialStateId??null;
+   activeModule=currentState()?.displayIndex??null;
    leadSource=formatLeadSheetText(currentSong()?.leadSheet);
    activeTab="song";hasDraft=false;render();notice("Biblioteca importada.");window.dispatchEvent?.(new Event('hud-library-saved'));
   }catch(e){notice("No se pudo importar: "+e.message,true);}
@@ -1055,7 +1055,7 @@ async function boot(){
  committed=migrateCatalog(library);working=copy(committed);
  const start=resolveLiveSelection(working,localStorage,window.location?.search||'');
  activeRep=start.repertoireId;activeSong=start.songId;
- activeState=currentSong()?.initialStateId??null;activeModule=currentState().displayIndex??null;
+ activeState=currentSong()?.initialStateId??null;activeModule=currentState()?.displayIndex??null;
  leadSource=formatLeadSheetText(currentSong()?.leadSheet);
  render();notice(saved?"Biblioteca local cargada. Pulsa Guardar tras editar una sección.":"Editor listo con datos de ejemplo. Busca guardados anteriores desde Biblioteca.");
  window.MIDIHUD_EDITOR=Object.freeze({hasDraft:()=>hasDraft,getLibrary:()=>copy(committed)});
@@ -1063,7 +1063,7 @@ async function boot(){
   canApply:()=>!hasDraft&&!saving,
   onApplied:library=>{
    committed=migrateCatalog(library);working=copy(committed);hasDraft=false;selected();
-   activeState=currentSong()?.initialStateId??null;activeModule=currentState().displayIndex??null;
+   activeState=currentSong()?.initialStateId??null;activeModule=currentState()?.displayIndex??null;
    leadSource=formatLeadSheetText(currentSong()?.leadSheet);render();notice('Repertorios actualizados desde Drive.');
   }});
 }
