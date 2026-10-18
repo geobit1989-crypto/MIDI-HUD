@@ -174,6 +174,13 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
  .workspace>.side.is-open{display:block}
  .workspace>.main{min-height:unset}
 }
+.catalog-import{margin-top:13px;border:1px solid var(--line);border-radius:10px;padding:11px;background:#122c3b}
+.catalog-import summary{cursor:pointer;font-weight:750;color:#a6e7fa}
+.catalog-import[open] summary{margin-bottom:10px}
+.catalog-import textarea{width:100%;min-height:115px;font-size:14px;white-space:pre;font-family:ui-monospace,monospace}
+.catalog-import .help{margin:8px 0}
+.catalog-import .ctrlrow button{flex:1}
+#catalogNotice{font-size:12px;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -187,7 +194,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <button type="button" id="libraryToggle" aria-expanded="false" aria-controls="editorSidebar">Biblioteca</button>
     <span class="status-chip" id="saveStatus">Sin cambios</span>
     <button type="button" id="undo" title="Recuperar el último guardado anterior">Deshacer cambio</button>
-    <button type="button" id="importBtn">Importar</button>
+    <button type="button" id="importBtn">Importar JSON</button>
     <button type="button" id="exportBtn" class="primary">Exportar JSON</button>
     <a href="../lab/midi-v1.html">LAB</a>
     <a href="../v03.html">LIVE</a>
@@ -215,6 +222,20 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <button id="songDown" class="small" title="Bajar canción">↓</button>
   </div>
   <hr>
+  <details class="catalog-import" id="catalogDetails">
+    <summary>Importar canciones · Sheets/CSV</summary>
+    <p class="help">En Google Sheets copia las columnas <b>Canción</b> y <b>Autor</b>, incluida la fila de encabezados. Pega la tabla aquí, o importa el CSV descargado.</p>
+    <label class="field" for="catalogPaste">Canciones y autores
+      <textarea id="catalogPaste" rows="5" placeholder="Canción&#9;Autor&#10;A BENÇÃO&#9;GABRIEL GUEDES - NIVEA SOARES"></textarea>
+    </label>
+    <div class="ctrlrow">
+      <button type="button" id="catalogClipboard" class="small">Leer portapapeles</button>
+      <button type="button" id="catalogFileBtn" class="small">Abrir CSV</button>
+    </div>
+    <button type="button" id="catalogImport" class="small primary">Importar al repertorio activo</button>
+    <p class="help" id="catalogNotice" role="status" aria-live="polite">Solo se importan los nombres y autores. Las canciones, estados y lead sheets existentes se conservan.</p>
+  </details>
+  <hr>
   <div class="help">Los cambios quedan en este navegador. Puedes exportar el repertorio para conservar una copia y abrirlo en otro dispositivo.</div>
 </aside>
 <main class="main">
@@ -232,6 +253,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <div class="panel-title"><h2>Datos de la canción</h2><p>Información común para todos sus estados musicales.</p></div>
     <div class="grid">
       <label class="field">Título de la canción<input id="songTitle" maxlength="120"></label>
+      <label class="field">Autor<input id="songAuthor" maxlength="160" placeholder="Artista, ministerio o compositor"></label>
       <label class="field">Tonalidad<input id="songTone" maxlength="20" placeholder="C, F#m, Bb…"></label>
       <label class="field">Tempo · BPM<input id="songBpm" type="number" min="30" max="300" step="1"></label>
       <label class="field">Banco mostrado en LIVE<input id="songBank" maxlength="24" placeholder="C1"></label>
@@ -395,11 +417,12 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <div class="section-footer"><span id="midiDirty" class="section-save-note">Sin cambios pendientes</span><button id="midiSave" class="primary">Guardar</button></div>
   </section>
   <div class="notice" role="status" aria-live="polite" id="editorNotice">Cargando biblioteca…</div>
-  <div class="foot">Motor v1 · Configuración local · Importación/exportación JSON · Sin transmisión MIDI</div>
+  <div class="foot">Motor v1 · Configuración local · Importación de canciones/autor y JSON · Sin transmisión MIDI</div>
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261015-inicio2"></script>
+<input id="catalogFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
+<script type="module" src="./v3.mjs?v=20261018-catalogo1"></script>
 </div>
 </body>
 </html>
