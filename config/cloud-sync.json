@@ -1,0 +1,4 @@
+{
+  "googleWebClientId": "",
+  "description": "OAuth web client ID for MIDI HUD Google Drive appData sync. Configure from Sync panel or update this public config; never add client secrets."
+}
