@@ -3,7 +3,7 @@
  * Pure state machine: no DOM, network, localStorage or MIDI device access.
  * Compatible with config/midi-hud-data-v1.json (schema 1.0.0).
  */
-export const ENGINE_VERSION = "0.2.0";
+export const ENGINE_VERSION = "0.3.0";
 
 function requireValid(ok, message) {
   if (!ok) throw new Error("MIDI HUD: " + message);
@@ -44,6 +44,18 @@ export function validateLibrary(data) {
   const reps = uniqueIds(data.repertoires, "repertorios");
   const songs = uniqueIds(data.songs, "canciones");
   const presets = uniqueIds(data.presets, "presets");
+  // La dirección de canción proviene del repertorio maestro, nunca de su posición.
+  // Canciones de ejemplo/legado pueden quedar sin dirección hasta sincronizar.
+  const midiAddresses = new Set();
+  for (const song of data.songs) {
+    if (song.midiAddress == null) continue;
+    requireValid(object(song.midiAddress) &&
+      uint(song.midiAddress.cc0, 0, 127) && uint(song.midiAddress.pc, 0, 127),
+      "dirección CC0/PC inválida en " + song.id);
+    const key = song.midiAddress.cc0 + ":" + song.midiAddress.pc;
+    requireValid(!midiAddresses.has(key), "dirección MIDI duplicada " + key);
+    midiAddresses.add(key);
+  }
   requireValid(object(data.controls) && object(data.controls.morph),
     "control Morph no definido");
   for (const rep of data.repertoires) {
@@ -104,7 +116,8 @@ export function normalizeLibrary(input) {
  * Events: SELECT_REPERTOIRE {repertoireId}, SELECT_SONG {songId},
  * NEXT_SONG, PREVIOUS_SONG, SELECT_PRESET {presetId},
  * NEXT_PRESET, PREVIOUS_PRESET, SET_MORPH {value:0..127},
- * SET_WAH {percent:0..100}.
+ * SET_WAH {percent:0..100}, RECEIVE_CC {controller,value,channel?},
+ * RECEIVE_PC {program,channel?}.
  *
  * dispatch returns {state, intents}. Intents describe MIDI messages for a future
  * hardware adapter. The engine NEVER transmits MIDI.
@@ -119,6 +132,7 @@ export function createEngine(input) {
   const firstRep = db.repertoires[0];
   const firstSong = songs.get(firstRep.songIds[0]);
   const firstPreset = presets.get(firstSong.presetIds[0]);
+  let selectedSongBank = 0; // CC0 Bank Select MSB, contexto de recepción.
   let state = {
     repertoireId: firstRep.id,
     songId: firstSong.id,
@@ -129,10 +143,14 @@ export function createEngine(input) {
     sequence: 0
   };
 
-  function pcIntent(preset) {
-    return { type: "midi-intent", message: {
-      kind: "program-change", channel: db.midi.channel, program: preset.programChange
-    }};
+  function songMidiIntents(song) {
+    if (!song.midiAddress) return []; // Sin asignación: nunca inventar un PC.
+    return [
+      {type: "midi-intent", message: {kind: "control-change",
+        channel: db.midi.channel, controller: 0, value: song.midiAddress.cc0}},
+      {type: "midi-intent", message: {kind: "program-change",
+        channel: db.midi.channel, program: song.midiAddress.pc}}
+    ];
   }
   function ccIntent(name, value) {
     return { type: "midi-intent", message: {
@@ -147,7 +165,8 @@ export function createEngine(input) {
     const s = songs.get(songId);
     const next = { ...state, songId: songId, presetId: id,
       tempoBpm: s.tempoBpm ?? null, morphValue: p.morph.onLoad };
-    const intents = [pcIntent(p), ccIntent("morph", p.morph.onLoad)];
+    // El PC identifica canciones; los CC para estados se definirán aparte.
+    const intents = [ccIntent("morph", p.morph.onLoad)];
     return { next, intents };
   }
   function selectSong(id, repId = state.repertoireId) {
@@ -156,6 +175,8 @@ export function createEngine(input) {
     const song = songs.get(id);
     const outcome = loadPreset(song.presetIds[0], id);
     outcome.next.repertoireId = repId;
+    if (song.midiAddress) selectedSongBank = song.midiAddress.cc0;
+    outcome.intents = [...songMidiIntents(song), ...outcome.intents];
     return outcome;
   }
   function move(ids, currentId, amount) {
@@ -179,6 +200,7 @@ export function createEngine(input) {
     return copy({
       repertoire: { id: rep.id, name: rep.name },
       song: { id: song.id, title: song.title, tempoBpm: state.tempoBpm,
+        midiAddress: song.midiAddress ?? null,
         position: rep.songIds.indexOf(song.id) + 1, total: rep.songIds.length },
       preset: { id: preset.id, name: preset.name, programChange: preset.programChange,
         position: song.presetIds.indexOf(preset.id) + 1, total: song.presetIds.length },
@@ -196,6 +218,28 @@ export function createEngine(input) {
     const song = songs.get(state.songId);
     const p = presets.get(state.presetId);
     switch (event.type) {
+      case "RECEIVE_CC": {
+        requireValid(uint(event.controller, 0, 127) && uint(event.value, 0, 127),
+          "CC recibido inválido");
+        if (event.channel != null && event.channel !== db.midi.channel) break;
+        if (event.controller === 0) selectedSongBank = event.value;
+        break; // Recibir CC0 solo prepara el banco; NO cambia canción.
+      }
+      case "RECEIVE_PC": {
+        requireValid(uint(event.program, 0, 127), "PC recibido inválido");
+        if (event.channel != null && event.channel !== db.midi.channel) break;
+        const target = db.songs.find(s => s.midiAddress &&
+          s.midiAddress.cc0 === selectedSongBank &&
+          s.midiAddress.pc === event.program);
+        if (!target || target.id === state.songId) break;
+        const selectedRep = reps.get(state.repertoireId).songIds.includes(target.id)
+          ? state.repertoireId
+          : db.repertoires.find(r => r.songIds.includes(target.id))?.id;
+        if (!selectedRep) break;
+        ({next} = selectSong(target.id, selectedRep));
+        intents = []; // Evento recibido: evitar reenvío/eco MIDI.
+        break;
+      }
       case "SELECT_REPERTOIRE": {
         requireValid(reps.has(event.repertoireId), "repertorio desconocido");
         if (event.repertoireId === state.repertoireId) break;
