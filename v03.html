@@ -300,7 +300,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
       <div class="sheet-section"><div class="section-label"><span class="section-letter">D</span><span>PONTE</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar repeat-start" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="Am   "><span class="beat">Am</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar repeat-end" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div></div></div>
     </section>
     <section class="hud-panel" aria-label="Información del banco y controles asignados">
-      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-left"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo" id="tempo-field" aria-live="polite"><span id="tempo-label">BPM</span>&nbsp;<span id="tempo-value">75</span></div></div><div class="brand">MIDI HUD <span>LIVE</span></div><div class="hud-right"><strong class="bank" id="bank">C1</strong><button class="settings" id="open-midi-settings" type="button" aria-label="Configuración MIDI">⚙</button></div></div><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1></header>
+      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-left"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo" id="tempo-field" aria-live="polite"><span id="tempo-label">BPM</span>&nbsp;<span id="tempo-value">75</span></div><span id="clock-warning" hidden style="font-size:10px;color:#ffb9a7" aria-label="MIDI Clock interrumpido">SIN CLK</span></div><div class="brand">MIDI HUD <span>LIVE</span></div><div class="hud-right"><strong class="bank" id="bank">C1</strong><button class="settings" id="open-midi-settings" type="button" aria-label="Configuración MIDI">⚙</button></div></div><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1></header>
       <div class="switch-grid" aria-label="Nueve funciones visualizadas">
         <div class="switch" style="--light:#075eff;--dark:#003088;--meter:#02ddf4;--fill:49%"><span class="number">1</span><span class="icon-wrap">✦</span><div class="details"><div class="name">CLEAN</div><div class="sub">Twin Clean</div></div><span class="arrow">›</span><div class="meter"></div></div>
         <div class="switch" style="--light:#08b7ae;--dark:#005251;--meter:#09ffff;--fill:50%"><span class="number">2</span><span class="icon-wrap">≋</span><div class="details"><div class="name">AMBIENT</div><div class="sub">Delay · Reverb</div></div><span class="arrow">›</span><div class="meter"></div></div>
@@ -323,7 +323,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
     <label for="midi-input-list">Entrada MIDI</label>
     <select id="midi-input-list" style="display:block;width:100%;padding:10px;margin:8px 0 18px;background:#071624;color:white;border:1px solid #61819a"></select>
     <p style="font-size:13px;line-height:1.4">Web MIDI está disponible solo en navegadores compatibles y con permiso. En iOS Safari este conector puede no estar disponible; el sistema puede probarse en LAB. MIDI Clock F8 no lleva canal.</p>
-    <button id="close-midi-settings" type="button">Cerrar</button>
+<p><a href="./editor/" style="color:#8bdfff">Abrir Editor</a></p><button id="close-midi-settings" type="button">Cerrar</button>
   </dialog>
   <script type="module">
   import {createEngine,normalizeLibrary,validateLibrary} from "./core/engine.mjs";
@@ -363,6 +363,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
     }
     $m("tempo-label").textContent=vm.tempo.label;
     $m("tempo-value").textContent=vm.tempo.displayBpm==null?"—":String(Math.round(vm.tempo.displayBpm));
+    $m("clock-warning").hidden=vm.tempo.clockStatus!=="lost";
     $m("tempo-field").title=vm.tempo.clockStatus==="lost"
       ?"No se recibe MIDI Clock; BPM guardado":vm.tempo.receivedBpm===null
       ?"BPM preestablecido; F8 pendiente de recepción"
@@ -430,12 +431,25 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
       populateMidiInputs();
     }catch(err){$m("midi-status").textContent="No fue posible abrir MIDI: "+err.message;}
   });
-  initialLibrary().then(library=>{
+  function startEngine(library) {
     engine=createEngine(library);
     engine.subscribe(()=>refreshLive());
+    if(selectedInput) selectedInput.onmidimessage=createMidiInputHandler(engine);
     refreshLive();
-    window.setInterval(()=>engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()}),250);
-  }).catch(err=>{console.error(err);$m("midi-status").textContent="Error: "+err.message;});
+  }
+  initialLibrary().then(startEngine)
+    .catch(err=>{console.error(err);$m("midi-status").textContent="Error: "+err.message;});
+  window.setInterval(()=>{
+    if(engine)engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});
+  },250);
+  window.addEventListener("storage",event=>{
+    if(event.key!=="hudLibrary"||!event.newValue)return;
+    try{
+      const data=normalizeLibrary(JSON.parse(event.newValue));
+      validateLibrary(data);
+      startEngine(data);  // El Editor actualizó el mismo origen/navegador.
+    }catch(err){console.warn("Biblioteca actualizada inválida",err);}
+  });
   // Los compases siguen siendo un ejemplo gráfico. No hay sincronización de compás.
   </script>
   <script>
