@@ -1,6 +1,7 @@
 import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
+import {parseSongCatalog,mergeSongCatalog} from "./catalog-import.mjs";
 import {
  newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
@@ -169,6 +170,7 @@ function sidebar(){
  $("repHeading").textContent=currentRep().name;
  $("songHeading").textContent=currentSong().title;
  $("songSummary").textContent=[
+  currentSong().author||"Autor pendiente",
   currentSong().tono||"Tonalidad pendiente",
   currentSong().tempoBpm?currentSong().tempoBpm+" BPM":"BPM pendiente",
   currentSong().stateIds.length+" estados",
@@ -178,6 +180,7 @@ function sidebar(){
 function renderSong(){
  const s=currentSong();
  $("songTitle").value=s.title;
+ $("songAuthor").value=s.author||"";
  $("songTone").value=s.tono??"";
  $("songBpm").value=s.tempoBpm??"";
  $("songBank").value=s.bank??"";
@@ -534,12 +537,12 @@ function register(){
  $("songUp").onclick=()=>immediate(db=>moveSong(db,activeRep,activeSong,-1),"Orden de canciones actualizado.");
  $("songDown").onclick=()=>immediate(db=>moveSong(db,activeRep,activeSong,1),"Orden de canciones actualizado.");
  for(const [id,key] of [
-  ["songTitle","title"],["songTone","tono"],["songBpm","tempoBpm"],["songBank","bank"]
+  ["songTitle","title"],["songAuthor","author"],["songTone","tono"],["songBpm","tempoBpm"],["songBank","bank"]
  ]){
   $(id).addEventListener("input",()=>{
    const raw=$(id).value;
    currentSong()[key]=key==="tempoBpm"?(raw===""?null:Number(raw)):
-    key==="title"?raw:raw.trim()||null;
+    key==="title"?raw:key==="author"?raw.trim():raw.trim()||null;
    dirty();
   });
  }
@@ -652,6 +655,59 @@ function register(){
   dirty();renderMidi();
  };
  $("midiSave").onclick=save;
+ // Importación aditiva del catálogo: jamás reemplaza estados, lead sheets ni asignaciones MIDI.
+ async function importCatalogText(text){
+  try{
+   if(!allowLeaving())return;
+   const entries=parseSongCatalog(text);
+   const {library,stats}=mergeSongCatalog(committed,activeRep,entries);
+   const changed=stats.added+stats.linked+stats.authorsCompleted;
+   if(!changed){
+    $("catalogNotice").textContent=stats.read+" canciones revisadas: todas estaban registradas.";
+    return;
+   }
+   const target=currentRep().name;
+   const confirmation="Importar "+stats.read+" canciones a «"+target+"»?"+
+    "\\nNuevas: "+stats.added+" · Vinculadas: "+stats.linked+
+    " · Autores completados: "+stats.authorsCompleted+
+    "\\nSe conservarán todos los estados, configuraciones MIDI y lead sheets actuales.";
+   if(!window.confirm(confirmation))return;
+   persistLibrary(library,"Catálogo importado: "+stats.added+" nuevas, "+stats.linked+
+     " vinculadas y "+stats.authorsCompleted+" autores completados.");
+   $("catalogNotice").textContent="Correcto: "+stats.read+" entradas leídas · "+
+     stats.added+" añadidas · "+stats.linked+" vinculadas · "+
+     stats.authorsCompleted+" autores actualizados. No se eliminaron canciones.";
+  }catch(error){
+   $("catalogNotice").textContent="No se importó: "+error.message;
+   notice("Importación de catálogo: "+error.message,true);
+  }
+ }
+ $("catalogImport").onclick=()=>importCatalogText($("catalogPaste").value);
+ $("catalogClipboard").onclick=async()=>{
+  try{
+   if(!navigator.clipboard?.readText)throw Error("Acceso al portapapeles no disponible.");
+   const content=await navigator.clipboard.readText();
+   if(!content.trim())throw Error("El portapapeles está vacío.");
+   $("catalogPaste").value=content;
+   $("catalogNotice").textContent="Tabla pegada. Pulsa «Importar al repertorio activo» para revisarla.";
+  }catch(error){
+   $("catalogPaste").focus();
+   $("catalogNotice").textContent="Pega con Ctrl+V (o pulsación larga en iPhone) y después pulsa Importar. "+error.message;
+  }
+ };
+ $("catalogFileBtn").onclick=()=>$("catalogFile").click();
+ $("catalogFile").onchange=async event=>{
+  const file=event.target.files?.[0];event.target.value="";
+  if(!file)return;
+  if(file.size>2000000){
+   $("catalogNotice").textContent="CSV demasiado grande (máximo 2 MB).";return;
+  }
+  try{
+   const content=await file.text();
+   $("catalogPaste").value=content;
+   await importCatalogText(content);
+  }catch(error){$("catalogNotice").textContent="Error leyendo CSV: "+error.message;}
+ };
  $("importBtn").onclick=()=>$("importFile").click();
  $("importFile").onchange=async event=>{
   const file=event.target.files?.[0];event.target.value="";
