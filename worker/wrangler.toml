@@ -2,6 +2,12 @@ name = "midihudaut"
 main = "src/index.mjs"
 compatibility_date = "2026-10-18"
 workers_dev = true
+preview_urls = false
 
-# Google OAuth, token encryption and D1 bindings will be configured later.
-# Never commit OAuth client secrets, Cloudflare API tokens or refresh tokens.
+[vars]
+GOOGLE_CLIENT_ID = "904503234355-khv7o4hd4gvgs01tphl1r4negfs6nl16.apps.googleusercontent.com"
+
+# Deployment activates OAuth only after these private Cloudflare settings exist:
+# D1 binding named DB, Google client secret and AES-256 encryption secret.
+# NEVER commit private OAuth credentials, device tokens or refresh tokens.
+# D1 binding is inserted when the real database ID is available.
