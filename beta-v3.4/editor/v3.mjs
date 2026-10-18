@@ -1,3 +1,4 @@
+import {migrateCatalog,versionLabel,versionUsage,searchCatalog,addCatalogVersion,createCatalogVariant,duplicateCatalogRepertoire,archiveCatalogVersion,restoreCatalogHistory} from "../core/catalog-v1.mjs?v=20261018-catalog1";
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261016-editor-audit1";
@@ -33,7 +34,7 @@ const LABELS={song:"Canción",states:"Estados",sheet:"Lead sheet",midi:"MIDI"};
 let committed=null,working=null,activeRep=null,activeSong=null,activeState=null;
 let activeModule=0,activeTab="song",hasDraft=false,cc=20,value=127;
 let leadSource="",leadParse=null;
-let saving=false;
+let saving=false,catalogMode=false;
 const make=(tag,text,klass)=>{
  const node=document.createElement(tag);
  if(text!==undefined)node.textContent=String(text);
@@ -50,7 +51,7 @@ function entries(id,options,current){
  if(options.some(([key])=>String(key)===String(current)))element.value=String(current);
 }
 function currentRep(){return working.repertoires.find(x=>x.id===activeRep);}
-function currentSong(){return working.songs.find(x=>x.id===activeSong);}
+function currentSong(){return working?.songs.find(x=>x.id===activeSong);}
 function currentState(){return working.states.find(x=>x.id===activeState);}
 function stateSelectionText(st=currentState()){
  if(Number.isInteger(activeModule)&&['effect','expression'].includes(modulePurpose(working,activeSong,activeModule)))
@@ -107,7 +108,7 @@ function syncStatus(error=false){
    label.textContent=hasDraft&&tab===activeTab?"Cambios pendientes":"Sin cambios pendientes";
    label.classList.toggle("pending",hasDraft&&tab===activeTab);
   }
-  if(btn)btn.disabled=saving||!(hasDraft&&tab===activeTab);
+  if(btn){btn.disabled=saving||!currentSong()||!(hasDraft&&tab===activeTab);btn.textContent=currentSong()?.catalog?"Guardar cambios compartidos":"Guardar";}
  }
 }
 function dirty(){
@@ -116,15 +117,17 @@ function dirty(){
 }
 function selected(){
  if(!working.repertoires.some(x=>x.id===activeRep))activeRep=working.repertoires[0].id;
- if(!currentRep().songIds.includes(activeSong))activeSong=currentRep().songIds[0];
- if(activeState!==null&&!currentSong().stateIds.includes(activeState))activeState=currentSong().initialStateId;
+ if(!catalogMode&&!currentRep().songIds.includes(activeSong))activeSong=currentRep().songIds[0]||null;
+ if(catalogMode&&!currentSong())activeSong=working.songs[0]?.id||null;
+ if(!currentSong()){activeState=null;activeModule=null;return;}
+ if(activeState!==null&&!currentSong().stateIds.includes(activeState))activeState=currentSong()?.initialStateId??null;
  if(currentState())activeModule=currentState().displayIndex??null;
  else if(activeModule!==null&&(!Number.isInteger(activeModule)||activeModule<0||activeModule>=(currentSong().displaySlots?.length||0)))activeModule=null;
 }
 function discard(){
  working=copy(committed);hasDraft=false;
  selected();
- leadSource=formatLeadSheetText(currentSong().leadSheet);
+ leadSource=formatLeadSheetText(currentSong()?.leadSheet);
 }
 function allowLeaving(){
  if(!hasDraft)return true;
@@ -150,23 +153,23 @@ function toggleLibrary(force){
 }
 function useSong(id){
  if(!currentRep().songIds.includes(id)||!allowLeaving())return;
- activeSong=id;activeState=currentSong().initialStateId;
+ catalogMode=false;activeSong=id;activeState=currentSong()?.initialStateId??null;
  activeModule=currentState().displayIndex??null;
- leadSource=formatLeadSheetText(currentSong().leadSheet);toggleLibrary(false);render();
+ leadSource=formatLeadSheetText(currentSong()?.leadSheet);toggleLibrary(false);render();
 }
 function useRepertoire(id){
  if(!working.repertoires.some(x=>x.id===id)||!allowLeaving()){
   $("repSelect").value=activeRep;return;
  }
- activeRep=id;activeSong=currentRep().songIds[0];
- activeState=currentSong().initialStateId;
+ catalogMode=false;activeRep=id;activeSong=currentRep().songIds[0]||null;
+ activeState=currentSong()?.initialStateId??null;
  activeModule=currentState().displayIndex??null;
- leadSource=formatLeadSheetText(currentSong().leadSheet);toggleLibrary(false);render();
+ leadSource=formatLeadSheetText(currentSong()?.leadSheet);toggleLibrary(false);render();
 }
 function persistLibrary(next,message){
  const written=saveLibrary(localStorage,next,committed);
  committed=written;working=copy(written);hasDraft=false;selected();
- leadSource=formatLeadSheetText(currentSong().leadSheet);
+ leadSource=formatLeadSheetText(currentSong()?.leadSheet);
  render();notice(message);
  window.dispatchEvent?.(new Event('hud-library-saved'));
 }
@@ -244,35 +247,77 @@ function immediate(action,message){
 }
 function sidebar(){
  entries("repSelect",working.repertoires.map(x=>[x.id,x.name]),activeRep);
- const root=$("songList");root.replaceChildren();
- const ids=currentRep().songIds;
+ const root=$("songList");root.replaceChildren();const ids=currentRep().songIds,song=currentSong();
  ids.forEach((id,index)=>{
-  const s=working.songs.find(x=>x.id===id);
-  const row=make("div",undefined,"song-row"+(id===activeSong?" current":""));
-  row.setAttribute("role","listitem");
-  row.append(make("span",index+1,"song-num"));
-  row.append(button(s.title,()=>useSong(id)));
-  row.append(make("small",s.tono||"—"));
-  root.append(row);
+  const item=working.songs.find(x=>x.id===id),row=make("div",undefined,"song-row"+(!catalogMode&&id===activeSong?" current":""));
+  row.setAttribute("role","listitem");row.append(make("span",index+1,"song-num"),button(versionLabel(item),()=>useSong(id)),make("small",item.tono||"—"));root.append(row);
  });
- $("songCounter").textContent=ids.length+" canción(es)";
+ $("songCounter").textContent=ids.length+" versión(es)";
  $("repRemove").disabled=working.repertoires.length<=1;
- $("songRemove").disabled=ids.length<=1;
  const index=ids.indexOf(activeSong);
- $("songUp").disabled=index===0;$("songDown").disabled=index===ids.length-1;
- $("repHeading").textContent=currentRep().name;
- $("songHeading").textContent=currentSong().title;
- $("songSummary").textContent=[
-  currentSong().tono||"Tonalidad pendiente",
-  currentSong().tempoBpm?currentSong().tempoBpm+" BPM":"BPM pendiente",
-  currentSong().stateIds.length+" estados",
-  currentSong().bank||"Banco pendiente"
- ].join(" · ");
+ $("songRemove").disabled=index<0||(!working.catalogVersion&&ids.length<=1);
+ $("songCopy").disabled=!song;$("songUp").disabled=index<=0;$("songDown").disabled=index<0||index===ids.length-1;
+ $("repHeading").textContent=catalogMode?"Catálogo maestro":currentRep().name;
+ $("songHeading").textContent=song?versionLabel(song):"Añade versiones del catálogo";
+ $("songSummary").textContent=song?[song.tono||"Tonalidad pendiente",song.tempoBpm?song.tempoBpm+" BPM":"BPM pendiente",song.stateIds.length+" estados",song.bank||"Banco pendiente"].join(" · "):"La lista está vacía; las versiones maestras siguen disponibles.";
+ renderCatalog();
+}
+function renderCatalog(){
+ const root=$("catalogResults");root.replaceChildren();
+ for(const item of searchCatalog(working,$("catalogSearch").value,{includeArchived:$("catalogShowArchived").checked})){
+  const row=make("div",undefined,"song-row"),included=currentRep().songIds.includes(item.id);
+  row.setAttribute("role","listitem");row.append(button(item.label+(item.archived?" · Archivada":""),()=>useCatalogSong(item.id)));
+  const add=button(included?"Ya incluida":"+ Añadir",()=>immediate(db=>{addCatalogVersion(db,activeRep,item.id);},"Versión vinculada al repertorio; su configuración se comparte."),"small");
+  add.disabled=included||item.archived;add.setAttribute("aria-label",(included?"Ya incluida: ":"Añadir ")+item.label);
+  row.append(add);root.append(row);
+ }
+ const song=currentSong(),usage=song?versionUsage(working,song.id):[];
+ $("catalogVersionTools").hidden=!song;$("saveAsVariant").disabled=!song;
+ $("catalogArchive").disabled=!song;$("catalogArchive").textContent=song?.catalog?.archived?"Restaurar versión archivada":"Archivar versión";
+ $("sharedVersionNotice").textContent=song?(song.catalog?.archived?"Versión archivada. ":"")+(catalogMode?"Editas la versión maestra. ":"Editas una versión compartida desde el repertorio. ")+(usage.length?"Guardar actualiza esta misma versión en: "+usage.map(rep=>rep.name).join(", ")+".":"Todavía no se usa en ningún repertorio.")+" Para conservar otra configuración, guarda una nueva versión independiente.":"";
+ const history=song?.catalog?.history||[];
+ entries("catalogHistory",history.length?[...history].reverse().map(entry=>[entry.id,new Date(entry.createdAt).toLocaleString()+" · "+entry.reason]):[["","Todavía no hay guardados anteriores"]],history.at(-1)?.id||"");
+ $("catalogRestore").disabled=!history.length;
+}
+function useCatalogSong(id){
+ if(!working.songs.some(song=>song.id===id)||!allowLeaving())return;
+ catalogMode=true;activeSong=id;activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;
+ leadSource=formatLeadSheetText(currentSong().leadSheet);toggleLibrary(false);render();
+}
+async function saveAsNewVariant(){
+ if(!currentSong()||saving)return;
+ const variant=window.prompt("Nombre de la nueva versión independiente (por ejemplo Grados o Sol mayor)",(currentSong().catalog?.variant||"Versión")+" (copia)");
+ if(variant===null||!variant.trim())return;
+ const previousSelection={activeSong,activeState,activeModule};
+ saving=true;syncStatus();
+ try{
+  const source=copy(working),song=source.songs.find(item=>item.id===activeSong);
+  if(activeTab==="sheet"){
+   const prepared=await prepareLeadSheetSave(leadSource,{preferredNotation:song.chordNotation,chooseNotation:awaitNotationChoice});
+   if(!prepared)return;Object.assign(song,prepared);
+  }
+  const next=copy(committed),id=createCatalogVariant(next,activeSong,{variant,sourceLibrary:source});
+  if(!catalogMode){
+   const rep=next.repertoires.find(item=>item.id===activeRep),index=rep.songIds.indexOf(activeSong);
+   if(index>=0){const note=rep.entryNotes?.[activeSong];rep.songIds[index]=id;if(note!=null){rep.entryNotes[id]=note;delete rep.entryNotes[activeSong];}}
+   else rep.songIds.push(id);
+  }
+  activeSong=id;activeState=next.songs.find(item=>item.id===id).initialStateId;
+  activeModule=next.states.find(item=>item.id===activeState).displayIndex??null;
+  persistLibrary(next,"Nueva versión independiente guardada. La versión original y los demás repertorios se conservan.");
+ }catch(error){activeSong=previousSelection.activeSong;activeState=previousSelection.activeState;activeModule=previousSelection.activeModule;render();notice("No se creó la versión: "+error.message,true);}
+ finally{saving=false;syncStatus();}
+}
+function currentMidiBindings(){
+ const map=new Map(working.bindings.map(binding=>[binding.cc+":"+binding.value,binding]));
+ for(const binding of currentSong()?.midiBindings||[])map.set(binding.cc+":"+binding.value,binding);
+ return [...map.values()].filter(binding=>binding.actions.length);
 }
 function renderSong(){
  const s=currentSong();
  $("liveLink").href='../v03.html?v=20261016-repertoires1&repertoire='+encodeURIComponent(activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
+ $("songVariant").value=s.catalog?.variant||"";
  $("songTone").value=s.tono??"";
  $("songBpm").value=s.tempoBpm??"";
  $("songBank").value=s.bank??"";
@@ -509,10 +554,11 @@ function paintLead(){
  $("sheetNotationDetected").textContent=notation.invalid.length?
   "Cifrado: revisa los símbolos no reconocidos":notation.mixed?
   "Cifrado mezclado · Guardar pedirá elegir un sistema":notation.families.length?
-  "Cifrado detectado: "+(notation.families[0]==="latino"?"Latino":"Americano"):
+  "Cifrado detectado: "+(notation.families[0]==="grados"?"Grados":notation.families[0]==="latino"?"Latino":"Americano"):
   "Cifrado: sin acordes todavía";
  if(notation.families.length===1&&!notation.invalid.length)$("sheetNotation").value=notation.families[0];
  const textarea=$("leadText");
+ $("sheetConvert").disabled=notation.families.includes("grados")||$("sheetNotation").value==="grados";
  leadParse=leadSource.trim()?parseLeadSheetText(leadSource):{sections:[],errors:[],totalBars:0};
  const lines=leadSource.split("\n"),bad=new Set(leadParse.errors.map(x=>x.line));
  const gutter=$("leadGutter");gutter.replaceChildren();
@@ -600,7 +646,7 @@ function renderMidiMatrix(){
  const area=$("midiMatrix");area.replaceChildren();
  let cells;
  try{cells=chocolateMatrix(working,{
-  startCC:midiNumber("matrixStart"),value:midiNumber("matrixValue")
+  startCC:midiNumber("matrixStart"),value:midiNumber("matrixValue"),songId:activeSong
  });}
  catch(e){area.append(make("p",e.message,"warning"));return;}
  area.append(make("span","","axis"));
@@ -620,17 +666,18 @@ function renderMidiMatrix(){
  }
 }
 function changeActions(action){
- const current=bindingFor(working,cc,value);
+ const source=bindingFor(working,cc,value,activeSong),current=source?copy(source):null;
  if(!current)return;
  action(current);
- if(!current.actions.length)deleteBinding(working,cc,value);
+ if(!current.actions.length)deleteBinding(working,cc,value,activeSong);
+ else setBindingActions(working,cc,value,current.actions,activeSong);
  dirty();renderMidi();
 }
 function renderMidi(){
  $("midiCC").value=String(cc);$("midiValue").value=String(value);
  renderMidiMatrix();
  midiTarget();
- const b=bindingFor(working,cc,value),root=$("midiActionList");
+ const b=bindingFor(working,cc,value,activeSong),root=$("midiActionList");
  root.replaceChildren();
  if(!b)root.append(make("p","Sin acciones asignadas a este mensaje.","help"));
  else{
@@ -651,11 +698,11 @@ function renderMidi(){
   });
   root.append(button("Eliminar mensaje MIDI",()=>{
    if(!window.confirm("¿Eliminar CC "+cc+" / valor "+value+"?"))return;
-   deleteBinding(working,cc,value);dirty();renderMidi();
+   deleteBinding(working,cc,value,activeSong);dirty();renderMidi();
   },"small danger"));
  }
  const table=$("bindingsTable");table.replaceChildren();
- const bindings=[...working.bindings].sort((a,b)=>a.cc-b.cc||a.value-b.value);
+ const bindings=currentMidiBindings().sort((a,b)=>a.cc-b.cc||a.value-b.value);
  $("bindingCount").textContent=bindings.length+" mensaje(s)";
  if(!bindings.length){
   const tr=make("tr");const td=make("td","Sin asignaciones.");
@@ -670,13 +717,16 @@ function renderMidi(){
   table.append(tr);
  }
  const problems=$("midiWarnings");problems.replaceChildren();
- const warnings=diagnostics(working);
+ const warnings=diagnostics({...working,bindings:currentMidiBindings()});
  if(!warnings.length)problems.append(make("p","No se detectan conflictos.","help"));
  else for(const w of warnings)problems.append(make("div",w.message,"warning"));
 }
 function render(){
  if(!working)return;
- selected();ensureSlots();sidebar();renderSong();renderStates();
+ selected();sidebar();
+ const empty=!currentSong();$("emptyRepertoire").hidden=!empty;$("editorTabs").hidden=empty;
+ if(empty){for(const node of document.querySelectorAll("[data-panel]"))node.hidden=true;syncStatus();return;}
+ ensureSlots();renderSong();renderStates();
  if(activeTab==="sheet")renderLead();
  else if(activeTab==="midi")renderMidi();
  for(const node of document.querySelectorAll("[data-tab]")){
@@ -690,6 +740,12 @@ function render(){
  syncStatus();
 }
 function register(){
+ $("catalogSearch").oninput=renderCatalog;$("catalogShowArchived").onchange=renderCatalog;
+ $("saveAsVariant").onclick=saveAsNewVariant;
+ $("repCopy").onclick=()=>{const name=window.prompt("Nombre de la lista duplicada",currentRep().name+" (copia)");if(name===null)return;immediate(db=>{activeRep=duplicateCatalogRepertoire(db,activeRep,name);catalogMode=false;activeSong=db.repertoires.find(rep=>rep.id===activeRep).songIds[0]||null;activeState=db.songs.find(song=>song.id===activeSong)?.initialStateId??null;},"Lista duplicada con referencias compartidas y orden independiente.");};
+ $("catalogArchive").onclick=()=>{if(!currentSong())return;const archived=!currentSong().catalog.archived;immediate(db=>archiveCatalogVersion(db,activeSong,archived),archived?"Versión archivada. Los repertorios que ya la usan se conservan.":"Versión disponible de nuevo en el catálogo.");};
+ $("catalogRestore").onclick=()=>{const historyId=$("catalogHistory").value;if(!historyId||!window.confirm("¿Recuperar este guardado compartido? Se actualizará esta versión en todos sus repertorios y se conservará el estado actual en el historial."))return;immediate(db=>restoreCatalogHistory(db,activeSong,historyId),"Guardado recuperado. El estado anterior permanece en el historial.");};
+ $("songVariant").oninput=()=>{const song=currentSong();song.catalog??={familyId:song.id,variant:"",archived:false,history:[]};song.catalog.variant=$("songVariant").value;dirty();};
  $("libraryToggle").onclick=()=>toggleLibrary();
  $("libraryClose").onclick=()=>toggleLibrary(false);
  $("libraryBackdrop").onclick=()=>toggleLibrary(false);
@@ -712,26 +768,26 @@ function register(){
   if(name!==null)immediate(db=>renameRepertoire(db,activeRep,name),"Repertorio renombrado.");
  };
  $("repRemove").onclick=()=>{
-  if(window.confirm("¿Eliminar este repertorio y sus canciones no compartidas?"))
+  if(window.confirm("¿Eliminar esta lista? Sus versiones se conservarán en el catálogo."))
    immediate(db=>deleteRepertoire(db,activeRep),"Repertorio eliminado.");
  };
  $("songAdd").onclick=immediate.bind(null,db=>{
-  const id=newSong(db,activeRep);
+  const id=newSong(db,catalogMode?null:activeRep);
   activeSong=id;activeState=db.songs.find(s=>s.id===id).stateIds[0];
   activeTab="song";
  },"Canción creada.");
  $("songAddSig").onclick=()=>immediate(db=>{
-  const id=newSong(db,activeRep,"Nueva canción SIG","sig");
+  const id=newSong(db,catalogMode?null:activeRep,"Nueva canción SIG","sig");
   activeSong=id;activeState=db.songs.find(s=>s.id===id).stateIds[0];activeModule=0;
   activeTab="song";
  },"Canción SIG creada con cuatro estados y módulos.");
- $("songCopy").onclick=()=>immediate(db=>{
+ $("songCopy").onclick=()=>{if(working.catalogVersion===1){void saveAsNewVariant();return;}immediate(db=>{
   const id=copySong(db,activeRep,activeSong);
   activeSong=id;activeState=db.songs.find(s=>s.id===id).stateIds[0];
   activeTab="song";
- },"Canción duplicada.");
+ },"Canción duplicada.");};
  $("songRemove").onclick=()=>{
-  if(window.confirm("¿Eliminar la canción de este repertorio?"))
+  if(window.confirm("¿Quitar esta versión de la lista? Seguirá en el catálogo y en los otros repertorios."))
    immediate(db=>deleteSong(db,activeRep,activeSong),"Canción eliminada.");
  };
  $("songUp").onclick=()=>immediate(db=>moveSong(db,activeRep,activeSong,-1),"Orden de canciones actualizado.");
@@ -891,9 +947,8 @@ function register(){
     type==="SELECT_SONG"?{type,songId:target}:
     {type,indicatorId:target,active:$("actionActive").value==="true"}];
   }catch(error){notice(error.message,true);return;}
-  const found=bindingFor(working,pair.cc,pair.value);
-  if(found)found.actions.push(...actions);
-  else setBindingActions(working,pair.cc,pair.value,actions);
+  const found=bindingFor(working,pair.cc,pair.value,activeSong);
+  setBindingActions(working,pair.cc,pair.value,[...(found?.actions||[]),...actions],activeSong);
   cc=pair.cc;value=pair.value;
   dirty();renderMidi();
  };
@@ -902,17 +957,17 @@ function register(){
  $("importFile").onchange=async event=>{
   const file=event.target.files?.[0];event.target.value="";
   if(!file)return;
-  if(file.size>500000){notice("Archivo demasiado grande.",true);return;}
+  if(file.size>2000000){notice("Archivo demasiado grande.",true);return;}
   if(!allowLeaving())return;
   try{
-   const incoming=normalizeLibrary(JSON.parse(await file.text()));
+   const incoming=working.catalogVersion===1?migrateCatalog(JSON.parse(await file.text())):normalizeLibrary(JSON.parse(await file.text()));
    validateLibrary(incoming);
    if(!window.confirm("¿Importar y reemplazar la biblioteca actual? Se guarda una copia previa."))return;
    const written=replaceLibrary(localStorage,incoming,committed);
    committed=written;working=copy(written);activeRep=working.repertoires[0].id;
-   activeSong=currentRep().songIds[0];activeState=currentSong().initialStateId;
+   activeSong=currentRep().songIds[0];activeState=currentSong()?.initialStateId??null;
    activeModule=currentState().displayIndex??null;
-   leadSource=formatLeadSheetText(currentSong().leadSheet);
+   leadSource=formatLeadSheetText(currentSong()?.leadSheet);
    activeTab="song";hasDraft=false;render();notice("Biblioteca importada.");window.dispatchEvent?.(new Event('hud-library-saved'));
   }catch(e){notice("No se pudo importar: "+e.message,true);}
  };
@@ -936,9 +991,9 @@ function register(){
   const backup=localStorage.getItem(BACKUP);if(!backup||!allowLeaving())return;
   if(!window.confirm("¿Recuperar la biblioteca guardada antes del último cambio?"))return;
   try{
-   const last=normalizeLibrary(JSON.parse(backup));validateLibrary(last);
+   const last=working.catalogVersion===1?migrateCatalog(JSON.parse(backup)):normalizeLibrary(JSON.parse(backup));validateLibrary(last);
    const written=replaceLibrary(localStorage,last,committed);
-   committed=written;working=copy(written);hasDraft=false;selected();leadSource=formatLeadSheetText(currentSong().leadSheet);
+   committed=written;working=copy(written);hasDraft=false;selected();leadSource=formatLeadSheetText(currentSong()?.leadSheet);
    render();notice("Se ha recuperado el guardado anterior.");window.dispatchEvent?.(new Event('hud-library-saved'));
   }catch(e){notice("Error al deshacer: "+e.message,true);}
  };
@@ -997,19 +1052,19 @@ async function boot(){
   if(!response.ok)throw Error("No es posible cargar la biblioteca de ejemplo.");
   library=normalizeLibrary(await response.json());validateLibrary(library);
  }
- committed=library;working=copy(library);
+ committed=migrateCatalog(library);working=copy(committed);
  const start=resolveLiveSelection(working,localStorage,window.location?.search||'');
  activeRep=start.repertoireId;activeSong=start.songId;
- activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;
- leadSource=formatLeadSheetText(currentSong().leadSheet);
+ activeState=currentSong()?.initialStateId??null;activeModule=currentState().displayIndex??null;
+ leadSource=formatLeadSheetText(currentSong()?.leadSheet);
  render();notice(saved?"Biblioteca local cargada. Pulsa Guardar tras editar una sección.":"Editor listo con datos de ejemplo. Busca guardados anteriores desde Biblioteca.");
  window.MIDIHUD_EDITOR=Object.freeze({hasDraft:()=>hasDraft,getLibrary:()=>copy(committed)});
  installCloudSync({host:$('cloudSync'),
   canApply:()=>!hasDraft&&!saving,
   onApplied:library=>{
-   committed=library;working=copy(library);hasDraft=false;selected();
-   activeState=currentSong().initialStateId;activeModule=currentState().displayIndex??null;
-   leadSource=formatLeadSheetText(currentSong().leadSheet);render();notice('Repertorios actualizados desde Drive.');
+   committed=migrateCatalog(library);working=copy(committed);hasDraft=false;selected();
+   activeState=currentSong()?.initialStateId??null;activeModule=currentState().displayIndex??null;
+   leadSource=formatLeadSheetText(currentSong()?.leadSheet);render();notice('Repertorios actualizados desde Drive.');
   }});
 }
 boot().catch(e=>notice("Error iniciando Editor: "+e.message,true));

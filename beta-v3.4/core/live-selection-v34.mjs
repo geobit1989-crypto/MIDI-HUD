@@ -7,11 +7,11 @@ export function resolveLiveSelection(library,storage,search=''){
  const selected=requested||saved.repertoireId;
  const repertoire=library.repertoires.find(rep=>rep.id===selected)||library.repertoires[0];
  const song=params.get('song')||(saved.repertoireId===repertoire.id?saved.songId:null);
- return {repertoireId:repertoire.id,songId:repertoire.songIds.includes(song)?song:repertoire.songIds[0],
+ return {repertoireId:repertoire.id,songId:repertoire.songIds.includes(song)?song:(repertoire.songIds[0]??null),
   missingRequestedRepertoire:!!requested&&!library.repertoires.some(rep=>rep.id===requested)};
 }
 export function saveLiveSelection(storage,{repertoireId,songId}){
- if(typeof repertoireId!=='string'||!repertoireId.trim()||typeof songId!=='string'||!songId.trim())
+ if(typeof repertoireId!=='string'||!repertoireId.trim()||(songId!==null&&(typeof songId!=='string'||!songId.trim())))
   throw Error('Selección de LIVE inválida');
  storage?.setItem(LIVE_SELECTION_KEY,JSON.stringify({repertoireId,songId}));
 }

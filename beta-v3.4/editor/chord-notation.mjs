@@ -4,7 +4,10 @@ const LAT=['La','Si','Do','Re','Mi','Fa','Sol'];
 const quality='(?:maj7|m7|sus2|sus4|m|7)?';
 const root='(?:Sol|Do|Re|Mi|Fa|La|Si|[A-G])';
 const re=new RegExp(`^(${root})([#b♯♭]?)(${quality})(?:/(${root})([#b♯♭]?))?$`);
+const degrees=/^([#b♯♭]?)(VII|VI|IV|III|II|V|I|vii|vi|iv|iii|ii|v|i|[1-7])((?:maj7|m7|sus2|sus4|m|7|°7?|ø7?)?)(?:\/([#b♯♭]?)(VII|VI|IV|III|II|V|I|vii|vi|iv|iii|ii|v|i|[1-7]))?$/;
 export function chordParts(token){
+ const degree=String(token).match(degrees);
+ if(degree)return {root:degree[2],acc:degree[1],quality:degree[3],bass:degree[5]||'',bassAcc:degree[4]||'',families:['grados']};
  const m=String(token).match(re);if(!m)return null;
  const family=x=>AM.includes(x)?'americano':LAT.includes(x)?'latino':null;
  return {root:m[1],acc:m[2],quality:m[3],bass:m[4]||'',bassAcc:m[5]||'',families:[family(m[1]),m[4]?family(m[4]):null].filter(Boolean)};
@@ -12,6 +15,7 @@ export function chordParts(token){
 export function convertChord(token,to){
  if(!['latino','americano'].includes(to))throw Error('Sistema de cifrado desconocido.');
  const p=chordParts(token);if(!p)throw Error('Acorde no reconocido: '+token);
+ if(p.families.includes('grados'))throw Error('Los grados se escriben manualmente; no se convierten a notas automáticamente.');
  const transform=x=>{const i=AM.indexOf(x)>=0?AM.indexOf(x):LAT.indexOf(x);return (to==='latino'?LAT:AM)[i];};
  return transform(p.root)+p.acc+p.quality+(p.bass?'/'+transform(p.bass)+p.bassAcc:'');
 }

@@ -218,6 +218,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
   </label>
   <div class="ctrlrow">
     <button id="repAdd" class="small" title="Nuevo repertorio">+ Repertorio</button>
+    <button id="repCopy" class="small" type="button">Duplicar lista</button>
     <button id="repRename" class="small" title="Renombrar repertorio">Renombrar</button>
     <button id="repRemove" class="small danger" title="Eliminar repertorio">Eliminar</button>
   </div>
@@ -228,10 +229,17 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <button id="songAdd" class="small primary">+ Canción</button>
     <button id="songAddSig" class="small" title="Crear canción con Clean, Ambient, Drive y Solo">+ Plantilla SIG</button>
     <button id="songCopy" class="small">Duplicar</button>
-    <button id="songRemove" class="small danger">Eliminar</button>
+    <button id="songRemove" class="small danger">Quitar de la lista</button>
     <button id="songUp" class="small" title="Subir canción">↑</button>
     <button id="songDown" class="small" title="Bajar canción">↓</button>
   </div>
+  <hr>
+  <section aria-label="Catálogo maestro">
+    <h3>Catálogo maestro</h3>
+    <label class="field">Buscar título o variante<input id="catalogSearch" type="search" placeholder="Canción, Grados, Sol mayor…"></label>
+    <label><input id="catalogShowArchived" type="checkbox"> Mostrar archivadas</label>
+    <div id="catalogResults" class="song-list" role="list"></div>
+  </section>
   <hr>
   <div class="help">Los cambios quedan en este navegador y en esta dirección web. Exporta JSON para conservar una copia.</div>
   <section class="recovery-card" aria-label="Recuperación de repertorios anteriores">
@@ -246,7 +254,9 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <div><span class="heading" id="repHeading">Repertorio</span><h2 id="songHeading">Selecciona una canción</h2>
       <p id="songSummary"></p></div>
   </div>
-  <nav class="tabs" aria-label="Secciones del editor">
+  <section id="emptyRepertoire" class="section-card" hidden><h3>Este repertorio está vacío</h3><p>Añade una versión del catálogo con + o crea una canción. El catálogo se conserva aunque quites todas las canciones de una lista.</p></section>
+  <section class="section-card" id="catalogVersionTools"><p id="sharedVersionNotice" role="status"></p><div class="ctrlrow"><button type="button" id="saveAsVariant">Guardar como nueva versión independiente</button><button type="button" id="catalogArchive">Archivar versión</button></div><label class="field">Historial de esta versión<select id="catalogHistory"></select></label><button type="button" id="catalogRestore">Recuperar guardado</button></section>
+  <nav id="editorTabs" class="tabs" aria-label="Secciones del editor">
     <button type="button" data-tab="song" aria-selected="true" class="active">Canción</button>
     <button type="button" data-tab="states" aria-selected="false">Estados</button>
     <button type="button" data-tab="sheet" aria-selected="false">Lead sheet</button>
@@ -256,6 +266,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <div class="panel-title"><h2>Datos de la canción</h2><p>Información común para todos sus estados musicales.</p></div>
     <div class="grid">
       <label class="field">Título de la canción<input id="songTitle" maxlength="120"></label>
+      <label class="field">Nombre de la variante<input id="songVariant" maxlength="120" placeholder="Original, Grados, Sol mayor…"></label>
       <label class="field">Tonalidad<input id="songTone" maxlength="20" placeholder="C, F#m, Bb…"></label>
       <label class="field">Tempo · BPM<input id="songBpm" type="number" min="30" max="300" step="1"></label>
       <label class="field">Banco mostrado en LIVE<input id="songBank" maxlength="24" placeholder="C1"></label>
@@ -352,7 +363,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
         <h3>Escribe los acordes</h3>
         <div class="formrow sheet-notation-row">
           <label class="field">Cifrado de la canción
-            <select id="sheetNotation"><option value="americano">Americano (C, D, E)</option><option value="latino">Latino (Do, Re, Mi)</option></select>
+            <select id="sheetNotation"><option value="americano">Americano (C, D, E)</option><option value="latino">Latino (Do, Re, Mi)</option><option value="grados">Grados (I, ii, V o 1, 2, 5)</option></select>
           </label>
           <button id="sheetConvert" class="nonflex" type="button">Convertir toda la canción</button>
         </div>
@@ -361,7 +372,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
           <div class="sheet-gutter" aria-hidden="true"><div id="leadGutter" class="sheet-gutter-lines"></div></div>
           <textarea class="sheet-text" id="leadText" wrap="off" spellcheck="false" aria-describedby="leadHelp" placeholder="A - Intro&#10;| C | F |&#10;&#10;B - Verso&#10;| C | / | F Am | G |"></textarea>
         </div>
-        <p class="sheet-helper" id="leadHelp"><strong>Ejemplo:</strong> <code>A - Intro</code> abre la sección; <code>| C | F Am | / |</code> crea tres compases; <code>|: C | G :|</code> indica repetición. Acordes mayores, menores, sus2, sus4, 7, m7, maj7 y bajos alternativos (C/E). También acepta Do, Re, Mi, Fa, Sol, La y Si; máximo dos acordes por compás.</p>
+        <p class="sheet-helper" id="leadHelp"><strong>Ejemplo:</strong> <code>A - Intro</code> abre la sección; <code>| C | F Am | / |</code> crea tres compases; <code>|: C | G :|</code> indica repetición. Acordes mayores, menores, sus2, sus4, 7, m7, maj7 y bajos alternativos (C/E). También acepta Do, Re, Mi, Fa, Sol, La y Si y grados escritos manualmente (I, ii, V, 1, 2, 5). Los grados no se convierten ni se transportan automáticamente; máximo dos acordes por compás.</p>
         <p id="leadStatus" class="sheet-editor-status" role="status"></p>
         <div id="leadErrors" class="sheet-errors" aria-live="polite"></div>
         <p id="leadDraftWarning" class="sheet-draft-warning" hidden>Este texto contiene errores. Se conserva como borrador local y LIVE mantiene el último lead sheet válido.</p>
@@ -427,7 +438,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261016-native1"></script>
+<script type="module" src="./v3.mjs?v=20261018-catalog1"></script>
 </div>
 </body>
 </html>

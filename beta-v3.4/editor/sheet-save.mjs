@@ -11,6 +11,7 @@ export async function prepareLeadSheetSave(source, {preferredNotation=null,choos
   throw Error('Línea '+first.line+': '+first.message);
  }
  const notation=scanNotation(original);
+ if(notation.mixed&&notation.families.includes('grados'))throw Error('No mezcles grados con notas en la misma versión. Crea una versión independiente y escribe sus acordes.');
  let target=notation.families[0]||preferredNotation;
  let text=original;
  if(notation.mixed){

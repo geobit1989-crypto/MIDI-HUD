@@ -1,4 +1,5 @@
 import {normalizeLibrary,validateLibrary} from './engine-v1.mjs';
+import {migrateCatalog} from './catalog-v1.mjs';
 
 export const clone=value=>value===undefined?undefined:JSON.parse(JSON.stringify(value));
 export function canonical(value){
@@ -22,7 +23,12 @@ function units(library){
  result.set('repertoireOrder',repertoires.map(r=>r.id));
  result.set('songOrder',songs.map(s=>s.id));
  for(const rep of repertoires)result.set('repertoire:'+rep.id,rep);
- for(const song of songs)result.set('song:'+song.id,{song,states:states.filter(state=>state.songId===song.id)});
+ for(const song of songs){
+  const item=clone(song);
+  for(const entry of item.catalog?.history||[])result.set('history:'+JSON.stringify([song.id,entry.id]),{songId:song.id,entry});
+  if(item.catalog)item.catalog.history=[];
+  result.set('song:'+song.id,{song:item,states:states.filter(state=>state.songId===song.id)});
+ }
  return result;
 }
 const equal=(a,b)=>canonical(a)===canonical(b);
@@ -38,6 +44,7 @@ function compose(values,local,remote){
  };
  db.repertoires=ordered('repertoire:','repertoireOrder');
  const bundles=ordered('song:','songOrder');db.songs=bundles.map(x=>x.song);db.states=bundles.flatMap(x=>x.states);
+ for(const song of db.songs)if(song.catalog)song.catalog.history=[...values].filter(([key,value])=>key.startsWith('history:')&&value?.songId===song.id).map(([,value])=>clone(value.entry));
  db.bindings=clone(values.get('bindings')||[]);
  db.revision=Math.max(local?.revision||0,remote?.revision||0)+1;db.updatedAt=new Date().toISOString();
  return checkedLibrary(db);
@@ -45,16 +52,30 @@ function compose(values,local,remote){
 /** Conservador: canciones distintas se unen; una canción editada en ambos lados
  * requiere elección explícita. Si la mezcla rompe referencias, se conservan las
  * bibliotecas completas para que el usuario decida, sin reparar MIDI por inferencia. */
+function preserveHistory(target,sources){
+ if(!target)return target;
+ for(const song of target.songs)if(song.catalog){
+  const entries=new Map(song.catalog.history.map(entry=>[entry.id,entry]));
+  for(const source of sources)for(const entry of source?.songs.find(item=>item.id===song.id)?.catalog?.history||[])if(!entries.has(entry.id))entries.set(entry.id,clone(entry));
+  song.catalog.history=[...entries.values()];
+ }
+ return target;
+}
 export function mergeLibraries(base,local,remote,choice=null){
- if(!local)return {library:checkedLibrary(remote),conflicts:[]};
- if(!remote)return {library:checkedLibrary(local),conflicts:[]};
- if(sameLibrary(local,remote))return {library:checkedLibrary(local),conflicts:[]};
- if(base&&sameLibrary(local,base))return {library:checkedLibrary(remote),conflicts:[]};
- if(base&&sameLibrary(remote,base))return {library:checkedLibrary(local),conflicts:[]};
+ if([base,local,remote].some(item=>item?.catalogVersion===1)){
+  base=base?migrateCatalog(base):null;local=local?migrateCatalog(local):null;remote=remote?migrateCatalog(remote):null;
+ }
+ const finish=library=>preserveHistory(checkedLibrary(library),[base,local,remote]);
+ if(!local)return {library:finish(remote),conflicts:[]};
+ if(!remote)return {library:finish(local),conflicts:[]};
+ if(sameLibrary(local,remote))return {library:finish(local),conflicts:[]};
+ if(base&&sameLibrary(local,base))return {library:finish(remote),conflicts:[]};
+ if(base&&sameLibrary(remote,base))return {library:finish(local),conflicts:[]};
  const b=units(base),l=units(local),r=units(remote),values=new Map(),conflicts=[];
  for(const key of new Set([...b.keys(),...l.keys(),...r.keys()])){
   const bv=b.get(key),lv=l.get(key),rv=r.get(key);
-  if(equal(lv,rv))values.set(key,lv);
+  if(key.startsWith('history:')&&(!lv||!rv))values.set(key,lv||rv||bv);
+  else if(equal(lv,rv))values.set(key,lv);
   else if(equal(lv,bv))values.set(key,rv);
   else if(equal(rv,bv))values.set(key,lv);
   // El orden de listas puede completarse sin cambiar el orden ya elegido.
@@ -67,7 +88,7 @@ export function mergeLibraries(base,local,remote,choice=null){
  let library;
  try{library=compose(values,local,remote);}
  catch(error){
-  return {library:choice?checkedLibrary(choice==='remote'?remote:local):null,
+  return {library:choice?finish(choice==='remote'?remote:local):null,
    conflicts:[{key:'library',label:'Biblioteca y referencias entre canciones',reason:error.message}]};
  }
  return {library:conflicts.length&&!choice?null:library,conflicts};

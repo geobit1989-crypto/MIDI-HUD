@@ -68,12 +68,14 @@ function validAction(a, states, songs) {
 export function validateLibrary(raw) {
   const db = normalizeLibrary(raw);
   insist(db.format === "midi-hud-repertoire", "formato incorrecto");
+  insist(db.catalogVersion==null||db.catalogVersion===1,"versión de catálogo desconocida");
   const reps = unique(db.repertoires, "repertorios");
   const songs = unique(db.songs, "canciones");
   const states = unique(db.states, "estados");
   insist(reps.size > 0 && songs.size > 0 && states.size > 0, "biblioteca vacia");
   for (const r of reps.values()) {
-    insist(Array.isArray(r.songIds) && r.songIds.length > 0, "repertorio sin canciones");
+    insist(Array.isArray(r.songIds) && (r.songIds.length > 0 || db.catalogVersion===1), "repertorio sin canciones");
+    insist(r.entryNotes==null || (isObject(r.entryNotes)&&Object.entries(r.entryNotes).every(([id,note])=>r.songIds.includes(id)&&typeof note==="string"&&note.length<=4000)), "notas de repertorio inválidas");
     insist(new Set(r.songIds).size === r.songIds.length, "cancion repetida en repertorio");
     for (const id of r.songIds) insist(songs.has(id), "cancion inexistente: " + id);
   }
@@ -105,13 +107,32 @@ export function validateLibrary(raw) {
       (slot.rowBreakBefore==null||typeof slot.rowBreakBefore==="boolean") &&
       (slot.deviceTag==null||(typeof slot.deviceTag==="string"&&slot.deviceTag.length<=16)))),
       "matriz visual invalida");
-    insist(s.chordNotation==null || ["latino","americano"].includes(s.chordNotation),"cifrado invalido");
+    insist(s.chordNotation==null || ["latino","americano","grados"].includes(s.chordNotation),"cifrado invalido");
     insist(s.moduleLayout==null || ["auto","manual"].includes(s.moduleLayout),"distribución de módulos inválida");
     insist(Array.isArray(s.stateIds) && s.stateIds.length > 0, "cancion sin estados");
     insist(new Set(s.stateIds).size === s.stateIds.length, "estados duplicados");
     insist(s.stateIds.includes(s.initialStateId), "estado inicial no pertenece a la cancion");
     for (const id of s.stateIds) {
       insist(states.has(id) && states.get(id).songId === s.id, "estado ajeno/inexistente: " + id);
+    }
+  }
+  for(const song of songs.values()){
+    if(song.catalog!=null){
+      const item=song.catalog;
+      insist(isObject(item)&&typeof item.familyId==="string"&&!!item.familyId.trim()&&typeof item.variant==="string"&&item.variant.length<=120&&typeof item.archived==="boolean"&&Array.isArray(item.history),"metadatos de catálogo inválidos");
+      const historyIds=new Set();
+      for(const entry of item.history){
+        insist(isObject(entry)&&typeof entry.id==="string"&&!historyIds.has(entry.id)&&typeof entry.createdAt==="string"&&typeof entry.reason==="string"&&isObject(entry.snapshot)&&entry.snapshot.song?.id===song.id&&Array.isArray(entry.snapshot.states),"historial de catálogo inválido");
+        historyIds.add(entry.id);
+      }
+    }
+    if(song.midiBindings!==undefined){
+      insist(Array.isArray(song.midiBindings),"asignaciones MIDI de versión inválidas");const keys=new Set();
+      for(const binding of song.midiBindings){
+        const key=binding.cc+":"+binding.value;
+        insist(integer(binding.cc,0,127)&&integer(binding.value,0,127)&&!keys.has(key)&&Array.isArray(binding.actions),"mensaje MIDI de versión inválido");
+        keys.add(key);for(const action of binding.actions)validAction(action,states,songs);
+      }
     }
   }
   for (const st of states.values()) {
@@ -164,21 +185,23 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
   const bindings = new Map(db.bindings.map(x=>[x.cc+":"+x.value,x.actions]));
   const initialRep = reps.get(repertoireId) || db.repertoires[0];
   const initialSong = songs.get(initialRep.songIds.includes(songId)?songId:initialRep.songIds[0]);
+  const versionBindings=new Map(db.songs.filter(song=>Array.isArray(song.midiBindings)).map(song=>[song.id,new Map(song.midiBindings.map(binding=>[binding.cc+":"+binding.value,binding.actions]))]));
   const listeners = new Set();
   let session = {
     midiChannel,
     activeRepertoireId:initialRep.id,
-    activeSongId:initialSong.id,
-    activeStateId:initialSong.initialStateId,
+    activeSongId:initialSong?.id??null,
+    activeStateId:initialSong?.initialStateId??null,
     previewSongId:null,
     previewStateId:null,
     previewModuleIndex:null,
-    rememberedStates:{[initialSong.id]:initialSong.initialStateId},
+    rememberedStates:initialSong?{[initialSong.id]:initialSong.initialStateId}:{},
     indicatorOverrides:{},
     sequence:0
   };
   function repertoireFor(songId,preferred=session.activeRepertoireId) {
     const selected=reps.get(preferred);
+    if(!songId)return selected||initialRep;
     return selected?.songIds.includes(songId)?selected:db.repertoires.find(x=>x.songIds.includes(songId)) || initialRep;
   }
   function enterSong(next,songId) {
@@ -204,6 +227,12 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
   function getViewModel() {
     const songId=session.previewSongId||session.activeSongId;
     const song=songs.get(songId);
+    if(!song){
+      const rep=reps.get(session.activeRepertoireId)||initialRep;
+      return duplicate({empty:true,song:{id:null,title:"Repertorio vacío",tono:null,tempoBpm:null,leadSheet:null,bank:null,displaySlots:[],moduleLayout:"auto",position:0,total:0},
+        state:{id:null,name:"Añade canciones desde el catálogo",gtPatch:null,displayIndex:null,indicators:[],position:0,total:0},
+        repertoire:{id:rep.id,name:rep.name},active:{repertoireId:rep.id,songId:null,stateId:null},isPreview:false,previewModuleIndex:null,midiChannel:session.midiChannel,sequence:session.sequence});
+    }
     const stateId=session.previewStateId || (session.previewSongId
       ? session.rememberedStates[songId] || song.initialStateId
       : session.activeStateId);
@@ -215,7 +244,7 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
     }));
     const rep=repertoireFor(songId);
     return duplicate({
-      song:{id:song.id,title:song.title,tono:song.tono,tempoBpm:song.tempoBpm,
+      song:{id:song.id,title:song.title+(song.catalog?.variant?" — "+song.catalog.variant:""),tono:song.tono,tempoBpm:song.tempoBpm,
         leadSheet:song.leadSheet,bank:song.bank,displaySlots:song.displaySlots||[],moduleLayout:song.moduleLayout||"auto",
         position:rep.songIds.indexOf(song.id)+1,total:rep.songIds.length},
       repertoire:{id:rep.id,name:rep.name},
@@ -241,7 +270,8 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
         insist(rep,"repertorio desconocido");
         if(next.activeRepertoireId!==rep.id){
           next.activeRepertoireId=rep.id;
-          enterSong(next,rep.songIds[0]);
+          if(rep.songIds.length)enterSong(next,rep.songIds[0]);
+          else{next.activeSongId=null;next.activeStateId=null;next.indicatorOverrides={};}
         }
         next.previewSongId=null;next.previewStateId=null;next.previewModuleIndex=null;
         changed=JSON.stringify(next)!==JSON.stringify(session);
@@ -277,8 +307,9 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
         insist(integer(event.channel,1,16) && integer(event.cc,0,127) &&
           integer(event.value,0,127), "mensaje CC invalido");
         if(event.channel!==session.midiChannel) break;
-        const instructions=bindings.get(event.cc+":"+event.value);
-        if(!instructions) break;
+        const key=event.cc+":"+event.value,scoped=versionBindings.get(session.activeSongId);
+        const instructions=scoped?.has(key)?scoped.get(key):bindings.get(key);
+        if(!instructions?.length) break;
         matched=true;
         actions=duplicate(instructions);
         for(const a of instructions) {

@@ -1,9 +1,12 @@
 import {normalizeLibrary,validateLibrary} from './engine-v1.mjs?v=20261016-patch2';
 
+import {recordCatalogChanges} from "./catalog-v1.mjs";
+
 // La beta lee la biblioteca anterior como punto de partida; nunca la sobrescribe.
 export const LIBRARY_KEY='hudLibraryV34';
 export const BACKUP_KEY='hudLibraryV34Backup';
 export const LEGACY_KEY='hudLibraryV1';
+export const CATALOG_MIGRATION_KEY='midiHudCatalogMigrationV1';
 export function readLibrarySource(storage){
  return storage.getItem(LIBRARY_KEY)??storage.getItem(LEGACY_KEY);
 }
@@ -26,6 +29,9 @@ export function replaceLibrary(storage,next,previous){
 }
 export function saveLibrary(storage,next,previous){
  const written=normalizeLibrary(next);
+ const actual=readLibrarySource(storage);
+ if(written.catalogVersion===1&&actual&&!JSON.parse(actual).catalogVersion&&!storage.getItem(CATALOG_MIGRATION_KEY))storage.setItem(CATALOG_MIGRATION_KEY,actual);
+ if(written.catalogVersion===1)recordCatalogChanges(previous,written);
  written.revision=(Number.isInteger(written.revision)?written.revision:0)+1;
  written.updatedAt=new Date().toISOString();
  return replaceLibrary(storage,written,previous);

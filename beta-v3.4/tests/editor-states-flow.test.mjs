@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import * as catalog from '../core/catalog-v1.mjs';
 import * as model from '../editor/editor-model.mjs';
 import * as engine from '../core/engine-v1.mjs';
 import * as visuals from '../core/module-visuals.mjs';
@@ -53,7 +54,7 @@ function setup({prepare=()=>{},tab='states'}={}){
  prepare(fixture,song,initial);
  data.set(storageAPI.LIBRARY_KEY,JSON.stringify(fixture));
  const downloads=[],copiedLinks=[];
- const context=vm.createContext({...model,...engine,...visuals,...notation,...parser,...sheetSave,...storageAPI,...recovery,...selection,...transfer,
+ const context=vm.createContext({...model,...engine,...visuals,...notation,...parser,...sheetSave,...storageAPI,...recovery,...selection,...transfer,...catalog,
   document:{body:new Element('body'),getElementById:id=>elements.get(id),createElement:tag=>new Element(tag),querySelectorAll:()=>[],addEventListener(){}},
   Option:class extends Element{constructor(label,value){super('option');this.textContent=label;this.value=String(value);}},
   localStorage:storage,navigator:{clipboard:{writeText:async value=>copiedLinks.push(value)}},window:{location:{href:'https://geobit1989-crypto.github.io/MIDI-HUD/beta-v3.4/editor/v3.html',search:''},confirm:()=>context.confirmResult,prompt:()=>context.promptResult,addEventListener(){}},confirmResult:true,promptResult:null,
@@ -599,4 +600,27 @@ test('el enlace MIDI guarda el borrador y traslada prueba 1 sin descargar archiv
  assert.deepEqual(packet.library,JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)));
  assert.equal(packet.library.states.find(st=>st.id===t.snapshot().activeState).name,'Intro nueva');
  assert.equal(new URL(t.elements.get('liveLink').href,t.context.window.location.href).searchParams.get('repertoire'),'prueba-1');
+});
+
+test('catálogo en la UI: añadir reutiliza el ID y muestra Ya incluida',()=>{
+ const t=setup({prepare(db){Object.assign(db,catalog.migrateCatalog(db));const rep=catalog.createCatalogRepertoire(db,'Miércoles');db.repertoires.find(item=>item.id===rep).songIds.push(db.songs[0].id);}});
+ t.elements.get('catalogSearch').value='Prueba';t.elements.get('catalogSearch').oninput();
+ const row=t.elements.get('catalogResults').children[0];assert(row);assert.equal(row.children[1].textContent,'Ya incluida');assert.equal(row.children[1].disabled,true);
+ assert.match(t.elements.get('sharedVersionNotice').textContent,/versión compartida/);
+ assert.equal(t.elements.get('statesSave').textContent,'Guardar cambios compartidos');
+});
+test('guardar nueva versión desde un borrador cambia solo la referencia de la lista actual',async()=>{
+ const t=setup({prepare(db){Object.assign(db,catalog.migrateCatalog(db));const rep=catalog.duplicateCatalogRepertoire(db,'worship','Miércoles');db.otherRepForTest=rep;}});
+ const before=t.snapshot(),other=before.working.otherRepForTest;
+ t.elements.get('moduleSub').value='Nuevo sonido';t.elements.get('moduleSub').oninput();t.context.promptResult='Sol mayor';
+ await t.elements.get('saveAsVariant').onclick();const after=t.snapshot(),id=after.activeSong;
+ assert.notEqual(id,t.songId);assert(after.committed.repertoires.find(rep=>rep.id==='worship').songIds.includes(id));assert(after.committed.repertoires.find(rep=>rep.id===other).songIds.includes(t.songId));
+ assert.equal(after.committed.songs.find(song=>song.id===t.songId).displaySlots[0].sub,before.committed.songs.find(song=>song.id===t.songId).displaySlots[0].sub);
+ assert.equal(after.committed.songs.find(song=>song.id===id).displaySlots[0].sub,'Nuevo sonido');assert.equal(after.hasDraft,false);
+});
+test('crear lista vacía y añadir desde catálogo conserva el editor operativo',()=>{
+ const t=setup({prepare(db){Object.assign(db,catalog.migrateCatalog(db));}});
+ t.context.promptResult='Lista vacía';t.elements.get('repAdd').onclick();assert.equal(t.snapshot().activeSong,null);assert.equal(t.elements.get('emptyRepertoire').hidden,false);
+ t.elements.get('catalogSearch').value='Prueba';t.elements.get('catalogSearch').oninput();const row=t.elements.get('catalogResults').children[0];row.children[1].onclick();
+ assert.equal(t.snapshot().working.repertoires.find(rep=>rep.id===t.snapshot().activeRep).songIds[0],t.songId);assert.equal(t.snapshot().activeSong,t.songId);assert.equal(t.elements.get('emptyRepertoire').hidden,true);
 });

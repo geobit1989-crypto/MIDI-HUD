@@ -648,7 +648,7 @@ function render(){
  $("#bank").textContent=vm.song.bank||"—";
  sheet(vm.song.leadSheet);
  document.querySelector("#hud-return").hidden=!vm.isPreview;
- const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
+ const boot=document.querySelector("#hud-boot-status");if(boot){boot.hidden=!vm.empty;if(vm.empty)boot.textContent="Este repertorio está vacío. Añade versiones desde el catálogo del Editor."; }
  renderLiveModules(document.querySelector(".switch-grid"),vm);
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
  const currentInfo=dialog.querySelector("#hud-current-info");
