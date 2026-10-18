@@ -30,11 +30,11 @@ jobs:
           node --check core/google-drive-auth.mjs
           node --check core/library-storage.mjs
       - name: Execute automatic tests
-        run: node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs tests/catalog-import.test.mjs tests/drive-sync.test.mjs tests/sync-ui-integration.test.mjs
+        run: node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs tests/catalog-import.test.mjs tests/drive-sync.test.mjs tests/sync-ui-integration.test.mjs tests/legal-pages.test.mjs
       - name: Assemble standalone static website
         run: |
           mkdir -p build/MIDI-HUD-BETA/{core,editor,lab,config}
-          cp index.html v03.html README.md build/MIDI-HUD-BETA/
+          cp index.html v03.html README.md privacy.html privacy-en.html terms.html terms-en.html build/MIDI-HUD-BETA/
           cp core/engine.mjs core/engine-v1.mjs core/settings-v1.mjs core/midi-browser.mjs build/MIDI-HUD-BETA/core/
           cp editor/index.html editor/v1.html editor/v2.html editor/v2.mjs editor/editor-model.mjs editor/legacy.html build/MIDI-HUD-BETA/editor/
           cp lab/index.html lab/midi-v1.html lab/legacy.html build/MIDI-HUD-BETA/lab/
