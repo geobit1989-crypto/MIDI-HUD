@@ -21,7 +21,15 @@ class ApiError extends Error{
 const fail=(status,code,message)=>{throw new ApiError(status,code,message);};
 const now=()=>Math.floor(Date.now()/1000);
 const response=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{...JSON_HEADERS,...headers}});
-const isReady=env=>!!(env.DB&&env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET&&env.TOKEN_ENCRYPTION_KEY);
+const isReady=env=>!!(env.DB&&env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET&&
+ env.TOKEN_ENCRYPTION_KEY&&/^[A-Za-z0-9_-]{43}$/.test(env.TOKEN_ENCRYPTION_KEY));
+async function publicReady(env){
+ if(!isReady(env))return false;
+ try{
+  const table=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='google_accounts'").first();
+  return table?.name==="google_accounts";
+ }catch{return false;}
+}
 const assertReady=env=>{if(!isReady(env))fail(503,"service_not_configured","La autenticación persistente está pendiente de configurar.");};
 const getOriginHeaders=request=>request.headers.get("Origin")===APP_ORIGIN?{
  "Access-Control-Allow-Origin":APP_ORIGIN,
@@ -212,9 +220,11 @@ async function api(request,env,path){
 export default {
  async fetch(request,env={}){
   const path=new URL(request.url).pathname;
-  if(request.method==="GET"&&(path==="/"||path==="/health"))
-   return response({service:"midi-hud-auth",status:isReady(env)?"ok":"pending_configuration",
-    stage:"persistent-oauth",oauthEnabled:isReady(env)},200,getOriginHeaders(request));
+  if(request.method==="GET"&&(path==="/"||path==="/health")){
+   const available=await publicReady(env);
+   return response({service:"midi-hud-auth",status:available?"ok":"pending_configuration",
+    stage:"persistent-oauth",oauthEnabled:available},200,getOriginHeaders(request));
+  }
   if(path==="/auth/callback"&&request.method==="GET"){
    try{assertReady(env);return await googleCallback(request,env);}
    catch(error){return response({error:"oauth_callback_failed",message:"No se completó Google OAuth. Regresa a MIDI HUD e inténtalo de nuevo."},
