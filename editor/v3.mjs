@@ -2,7 +2,7 @@ import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {parseSongCatalog,mergeSongCatalog} from "./catalog-import.mjs";
-import {installCloudSync} from "../core/sync-ui.mjs";
+import {installCloudSync} from "../core/sync-ui.mjs?v=20261018-drive1";
 import {
  newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
@@ -813,7 +813,11 @@ async function boot(){
  render();notice(saved?"Biblioteca local cargada. Pulsa Guardar tras editar una sección.":"Editor listo con datos de ejemplo.");
  installCloudSync({
   host:$("cloudSync"),storage:localStorage,mode:"editor",
-  getLocal:()=>committed,
+  // Nunca publicar el repertorio de demostración como si fuera una biblioteca guardada.
+  getLocal:()=>{
+   const saved=localStorage.getItem(STORAGE);
+   return saved?normalizeLibrary(JSON.parse(saved)):null;
+  },
   canApply:()=>!hasDraft,
   onApplied:next=>{
    // No persistir de nuevo: el controlador ya guardó y respaldó la versión recibida.
