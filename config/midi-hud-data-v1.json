@@ -2,8 +2,8 @@
   "format": "midi-hud-repertoire",
   "schemaVersion": "1.0.0",
   "libraryId": "sig-main",
-  "revision": 2,
-  "updatedAt": "2026-10-14T16:20:00+01:00",
+  "revision": 3,
+  "updatedAt": "2026-10-18T21:25:00+01:00",
   "midi": {
     "channel": 1,
     "programNumbering": "zero-based",
@@ -42,7 +42,6 @@
       "id": "preset-clean",
       "name": "Crystal Clean",
       "songId": "song-demo",
-      "programChange": 0,
       "morph": {
         "onLoad": 0,
         "min": 0,
@@ -64,7 +63,6 @@
       "id": "preset-drive",
       "name": "Worship Overdrive",
       "songId": "song-demo",
-      "programChange": 1,
       "morph": {
         "onLoad": 0,
         "min": 0,
@@ -77,7 +75,6 @@
       "id": "preset-solo",
       "name": "Worship Solo",
       "songId": "song-demo",
-      "programChange": 2,
       "morph": {
         "onLoad": 0,
         "min": 0,
