@@ -2,7 +2,7 @@ import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {parseSongCatalog,mergeSongCatalog} from "./catalog-import.mjs";
-import {installCloudSync} from "../core/sync-ui.mjs?v=20261018-autosync1";
+import {installCloudSync} from "../core/sync-ui.mjs?v=20261018-persistent1";
 import {
  newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
