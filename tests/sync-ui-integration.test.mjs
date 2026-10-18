@@ -1,0 +1,36 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
+const editorPage=read("editor/v3.html");
+const editorScript=read("editor/v3.mjs");
+const livePage=read("v03.html");
+const syncUI=read("core/sync-ui.mjs");
+const storage=read("core/library-storage.mjs");
+
+test("V3 editor connects saved repertoire changes to private Drive sync",()=>{
+ assert.match(editorPage,/id="cloudSync"/);
+ assert.match(editorScript,/installCloudSync\(/);
+ assert.match(editorScript,/getLocal:\(\)=>\{/);
+ assert.match(editorScript,/getItem\(STORAGE\)/);
+ assert.match(editorScript,/onApplied:next=>/);
+ assert.match(editorScript,/new Event\("hud-library-saved"\)/);
+ assert.match(editorScript,/canApply:\(\)=>!hasDraft/);
+});
+test("LIVE receives shared repertoires without interrupting the current song",()=>{
+ assert.match(livePage,/id="hud-sync-root"/);
+ assert.match(livePage,/mode:"live"/);
+ assert.match(livePage,/canApply:options=>!!options\.explicit/);
+ assert.match(livePage,/id="hud-sync-reload"/);
+ assert.match(livePage,/window\.location\.reload\(\)/);
+});
+test("Cloud sync uses existing browser V3 key, not another beta browser database",()=>{
+ assert.match(storage,/LIBRARY_KEY='hudLibraryV1'/);
+ assert.match(storage,/BACKUP_KEY='hudLibraryV1Backup'/);
+});
+test("Public Google OAuth ID can be configured without app secrets",()=>{
+ assert.match(syncUI,/CLIENT_STORAGE_KEY='midiHudGoogleWebClientId'/);
+ assert.match(syncUI,/loadGoogleIdentity\(\)/);
+ assert.match(syncUI,/GoogleDriveAuth\(\{clientId:id\}\)/);
+ assert.doesNotMatch(read("config/cloud-sync.json"),/client_secret/i);
+});
