@@ -22,7 +22,7 @@ test("LIVE receives shared repertoires without interrupting the current song",()
  assert.match(livePage,/mode:"live"/);
  assert.match(livePage,/canApply:\(\)=>true/);
  assert.match(livePage,/motor musical ya iniciado/);
- assert.match(livePage,/Promise\\.race\\(\\[cloud\\.ready/);
+ assert.match(livePage,/Promise\.race\(\[cloud\.ready/);
  assert.ok(livePage.indexOf("await Promise.race([cloud.ready")<livePage.indexOf("engine=createEngine(data"),"LIVE must check Drive before starting engine");
  assert.match(livePage,/id="hud-sync-reload"/);
  assert.match(livePage,/window\.location\.reload\(\)/);
