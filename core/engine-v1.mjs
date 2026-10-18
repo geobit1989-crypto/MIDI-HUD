@@ -39,7 +39,7 @@ export function normalizeLibrary(raw) {
     libraryId: data.libraryId || "migrated", revision: data.revision || 0,
     repertoires: data.repertoires,
     songs: (data.songs || []).map(s => ({
-      id:s.id, title:s.title, tono:s.tono || null,
+      id:s.id, title:s.title, author:s.author || "", tono:s.tono || null,
       tempoBpm:s.tempoBpm ?? null, leadSheet:s.leadSheet || null,
       bank:s.bank || null, displaySlots:s.displaySlots || [], stateIds:s.presetIds || [],
       initialStateId:s.initialStateId || (s.presetIds || [])[0]
@@ -79,6 +79,7 @@ export function validateLibrary(raw) {
   }
   for (const s of songs.values()) {
     insist(typeof s.title === "string" && !!s.title.trim(), "titulo de cancion vacio");
+    insist(s.author===undefined || (typeof s.author==="string" && s.author.length<=160), "autor invalido");
     insist(s.tono == null || (typeof s.tono === "string" && s.tono.length <= 20), "tono invalido");
     insist(s.tempoBpm == null || (Number.isFinite(s.tempoBpm) && s.tempoBpm>=30 && s.tempoBpm<=300), "BPM invalido");
     insist(s.leadSheet == null || isObject(s.leadSheet), "lead sheet invalido");
@@ -201,7 +202,7 @@ export function createEngine(source, {midiChannel=1}={}) {
     }));
     const rep=repertoireFor(songId);
     return duplicate({
-      song:{id:song.id,title:song.title,tono:song.tono,tempoBpm:song.tempoBpm,
+      song:{id:song.id,title:song.title,author:song.author||"",tono:song.tono,tempoBpm:song.tempoBpm,
         leadSheet:song.leadSheet,bank:song.bank,displaySlots:song.displaySlots||[],
         position:rep.songIds.indexOf(song.id)+1,total:rep.songIds.length},
       repertoire:{id:rep.id,name:rep.name},
