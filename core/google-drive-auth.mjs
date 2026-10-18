@@ -15,7 +15,7 @@ function requestError(status,body){
  return Error(status===401?'Vuelve a conectar tu cuenta de Google.':status===403?'Drive no autorizó la sincronización. Revisa el permiso de MIDI HUD.':'No se pudo sincronizar con Drive ('+status+').'+(detail?' '+detail:''));
 }
 export class GoogleDriveAuth{
- constructor({clientId='',native=globalThis.MidiHudNative,fetcher=globalThis.fetch,google=()=>globalThis.google}={}){
+ constructor({clientId='',native=globalThis.MidiHudNative,fetcher=(...args)=>globalThis.fetch(...args),google=()=>globalThis.google}={}){
   this.clientId=clientId;this.native=native;this.fetcher=fetcher;this.google=google;this.token=null;this.account=null;
  }
  get configured(){return !!this.native||CLIENT_ID.test(this.clientId);}
