@@ -49,3 +49,10 @@ Los números CC/PC pertenecen al canal RX del HUD, distinto del RX de GT; **F8 n
 - [Mapa CC y tempo BPM/TAP](./config/SIG-MIDI-control-map-v1.md).
 - [Catálogo de 133 direcciones MIDI](./config/sig-midi-song-addresses-v1.json), instantánea que requiere actualización manual.
 - [Repertorio maestro SIG — Google Sheets](https://docs.google.com/spreadsheets/d/1s8W76PE3IqGHv9uPbIZTRmvZswZ4LGVzhZr4W2fBrQs/edit).
+
+## Cierre de decisiones y próxima ronda de pruebas (18 de octubre)
+
+- [Registro de avances, pendientes y matriz de pruebas del 19 al 25 de octubre](./docs/2026-10-18-cierre-midi-hud-y-plan-pruebas.md).
+- El afinador queda **fuera de MIDI HUD**: se opera directamente en GT-1000CORE. No asignar CC/módulo de afinador en HUD v1.
+- Para Web MIDI real, priorizar Windows + Chrome + Chocolate Plus USB (ya disponible). Android + Chrome es la ruta móvil preferida cuando exista dispositivo, inicialmente USB/OTG; BLE debe comprobarse por separado. La vía iPhone requiere app nativa/Core MIDI u otro transporte compatible.
+- Las tareas de integración y validación mantienen el plazo ya acordado en ClickUp del **31/10/2026**; no adelantarlo por la planificación exploratoria semanal.
