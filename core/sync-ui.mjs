@@ -12,8 +12,8 @@ function dialog(title){
 function installStyle(){
  if(document.getElementById('hud-sync-style'))return;
  const style=make('style');style.id='hud-sync-style';style.textContent=`
- .hud-sync-dialog{color:#f3f8fc;background:#112638;border:1px solid #62869b;border-radius:14px;padding:20px;width:min(620px,calc(100vw - 32px));max-height:85dvh;overflow:auto;font:16px/1.5 system-ui,sans-serif}
- .hud-sync-dialog::backdrop{background:#000b}.hud-sync-dialog h2{font-size:22px;margin-top:0}.hud-sync-dialog p{overflow-wrap:anywhere}.hud-sync-dialog button,.hud-sync-dialog select{font:inherit;min-height:44px;background:#193b50;color:#fff;border:1px solid #64869a;border-radius:8px;padding:9px 13px}.hud-sync-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}.hud-sync-status{font-size:16px;line-height:1.4;color:#c1e2ef}.hud-sync-dialog input{box-sizing:border-box;width:100%;font:inherit;min-height:44px;background:#0b2232;color:#fff;border:1px solid #64869a;border-radius:8px;padding:9px 13px}.hud-sync-dialog button:disabled{opacity:.55}.hud-sync-recovery{border-top:1px solid #456174;padding-top:12px;margin-top:16px}`;
+ .hud-sync-dialog{box-sizing:border-box;color:#f3f8fc;background:#112638;border:1px solid #62869b;border-radius:14px;padding:20px;width:min(620px,calc(100vw - 24px));max-height:calc(100dvh - 28px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;font:16px/1.5 system-ui,sans-serif}
+ .hud-sync-dialog::backdrop{background:#000b}.hud-sync-dialog h2{font-size:22px;margin-top:0}.hud-sync-dialog p{overflow-wrap:anywhere}.hud-sync-dialog button,.hud-sync-dialog select{font:inherit;min-height:44px;background:#193b50;color:#fff;border:1px solid #64869a;border-radius:8px;padding:9px 13px}.hud-sync-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;padding:8px 0;background:#112638;position:sticky;top:0;z-index:2}.hud-sync-status{font-size:16px;line-height:1.4;color:#c1e2ef}.hud-sync-dialog input{box-sizing:border-box;width:100%;font:inherit;min-height:44px;background:#0b2232;color:#fff;border:1px solid #64869a;border-radius:8px;padding:9px 13px}.hud-sync-dialog button:disabled{opacity:.55}.hud-sync-recovery{border-top:1px solid #456174;padding-top:12px;margin-top:16px}.hud-sync-recovery summary{cursor:pointer;font-weight:650;color:#b7e7f7;padding:8px 0}.hud-sync-dialog [data-account]{font-weight:600}.hud-sync-dialog [data-status]{margin:5px 0 9px}.hud-sync-dialog [data-connect],.hud-sync-dialog [data-sync]{background:#15506d;border-color:#62b3d3;font-weight:700}@media(max-width:600px){.hud-sync-dialog{width:calc(100vw - 18px);padding:14px;max-height:calc(100dvh - 18px);font-size:15px}.hud-sync-dialog h2{font-size:20px;margin-bottom:7px}.hud-sync-dialog p{margin:8px 0}.hud-sync-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.hud-sync-actions button{min-width:0;padding:9px 6px;font-size:14px}.hud-sync-actions [data-connect],.hud-sync-actions [data-sync]{grid-column:1/-1}.hud-sync-dialog .hud-sync-recovery{margin-top:12px}}`;
  document.head.append(style);
 }
 function chooseConflict(info){
@@ -81,7 +81,8 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   panel=dialog('Sincronización de repertorios');
   panel.append(make('p','Tus repertorios se guardan en este dispositivo y se sincronizan mediante tu Google Drive. Puedes usar LIVE sin internet después de recibirlos.'));
   const accountLine=make('p');accountLine.dataset.account='';const readout=make('p');readout.dataset.status='';readout.className='hud-sync-status';readout.setAttribute('role','status');panel.append(accountLine,readout);
-  const setup=make('section');setup.className='hud-sync-recovery';
+  const setup=make('details');setup.className='hud-sync-recovery';
+  setup.append(make('summary','Configuración avanzada de Google (OAuth)'));
   const label=make('label','Identificador OAuth web de MIDI HUD (no introduzcas contraseñas)');
   const clientInput=make('input');clientInput.type='text';clientInput.autocomplete='off';
   clientInput.placeholder='123456789-abc.apps.googleusercontent.com';
@@ -102,7 +103,6 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
      .catch(error=>status({state:'error',message:error.message}));
   });
   setup.append(saveClient,make('p','Requiere un cliente OAuth web de Google Cloud con origen autorizado https://geobit1989-crypto.github.io. El permiso solicitado es solo el almacenamiento privado de MIDI HUD.'));
-  panel.append(setup);
   const actions=make('div');actions.className='hud-sync-actions';
   const connect=button('Conectar con Google',()=>{
    // connect() abre Google inmediatamente, dentro de esta pulsación.
@@ -111,7 +111,8 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   });connect.dataset.connect='';
   const sync=button(mode==='live'?'Actualizar repertorios':'Sincronizar ahora',()=>synchronize({explicit:true}));sync.dataset.sync='';
   const disconnect=button('Desconectar',async()=>{if(busy)return;busy=true;try{await auth.disconnect();account=null;controller.setAccount(null);status({state:'local',message:'Cuenta desconectada. Los repertorios permanecen en este dispositivo.'});}catch(error){status({state:'error',message:error.message});}finally{busy=false;refresh();}});disconnect.dataset.disconnect='';
-  actions.append(connect,sync,disconnect,button('Versiones conservadas',recoveries),button('Cerrar',()=>panel.close()));panel.append(actions);panel.showModal();refresh();
+  actions.append(connect,sync,disconnect,button('Versiones conservadas',recoveries),button('Cerrar',()=>panel.close()));
+  panel.append(actions,setup);panel.showModal();panel.scrollTop=0;refresh();
  }
  async function initialize(){
   try{
