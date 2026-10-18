@@ -50,8 +50,8 @@ test('sin guardados no publica la biblioteca de ejemplo ni reemplaza una cuenta 
 test('cambios en canciones distintas se unen sin mezclar estados, módulos ni MIDI',async()=>{
  const cloud=new MemoryHistory(),a=device(cloud,fixture()),b=device(cloud);
  await a.sync();await b.sync();
- const first=change(a,db=>{db.songs[0].title='Intro editada en PC';db.states.find(st=>st.songId===db.songs[0].id).gtPatch='U01-1';});
- const second=change(b,db=>{db.songs[1].title='Solo editado en iPhone';db.states.find(st=>st.songId===db.songs[1].id).gtPatch='P50-5';});
+ const first=change(a,db=>{db.songs[0].title='Intro editada en PC';db.states.find(st=>st.songId===db.songs[0].id).gtPatch=7;});
+ const second=change(b,db=>{db.songs[1].title='Solo editado en iPhone';db.states.find(st=>st.songId===db.songs[1].id).gtPatch=82;});
  await a.sync();await b.sync();await a.sync();
  assert(sameLibrary(a.get(),b.get()));assert.equal(a.get().songs[0].title,first.songs[0].title);assert.equal(a.get().songs[1].title,second.songs[1].title);
  assert.deepEqual(a.get().bindings,fixture().bindings);assert.equal(a.conflicts.length+b.conflicts.length,0);assert(validateLibrary(a.get()));
