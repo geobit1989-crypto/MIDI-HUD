@@ -41,3 +41,10 @@ Umbral y duración son valores de partida, sujetos a ajuste con pruebas físicas
 - v03.html LIVE v0.4: biblioteca localStorage del mismo origen, interfaz actualizada, entrada Web MIDI opcional, indicador de pérdida de Clock.
 - tests/midi-v04.test.mjs: pruebas para ejecutar con node --test tests/midi-v04.test.mjs.
 - Aún pendiente: recepción GT real, envío GT→HUD (CC81), canal/rutas físicas, soporte MIDI nativo para iOS sin Web MIDI.
+
+## Exclusiones y ruta de pruebas (18/10/2026)
+- **HUD-010 — Afinador fuera del HUD (aprobado).** La GT-1000CORE gestiona el afinador directamente. No reservar CC de afinador para MIDI HUD v1 ni mostrarlo en LIVE.
+- Pruebas Web MIDI: comenzar en Windows + Chrome con Chocolate Plus por USB en modo dispositivo; repetir en Android + Chrome cuando exista dispositivo compatible, preferentemente USB/OTG. Soporte Web MIDI del navegador y disponibilidad de entrada MIDI física son verificaciones distintas; BLE no está garantizado por sí solo.
+- iPhone Safari: no asumir Web MIDI. La implementación iOS/Core MIDI/BLE sigue como trabajo independiente.
+- El protocolo CC81 y la interpretación F8 están implementados en software, pero **no** se han validado en GT-1000CORE física.
+- [Registro de hitos, pruebas y pendientes](../docs/2026-10-18-cierre-midi-hud-y-plan-pruebas.md); [mapa oficial en Google Sheets](https://docs.google.com/spreadsheets/d/1Y0gb0GekjhQMOCsU7AzV5AqVHtHSrw4nTFFU38J3nHE/edit).
