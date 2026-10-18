@@ -1,5 +1,5 @@
 import {DriveHistory,createSyncController} from './drive-sync.mjs';
-import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-fetchfix1';
+import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-autosync1';
 import {readLibrarySource} from './library-storage.mjs';
 
 const make=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
@@ -105,7 +105,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
  function open(){
   if(panel?.open){panel.focus();return;}
   panel=dialog('Sincronización de repertorios');
-  panel.append(make('p','Tus repertorios se guardan en este dispositivo y se sincronizan mediante tu Google Drive. Puedes usar LIVE sin internet después de recibirlos.'));
+  panel.append(make('p','Sincronización automática: al guardar, al abrir o regresar al MIDI HUD y al recuperar internet. Se conserva una copia local para usar LIVE sin conexión.'));
   const accountLine=make('p');accountLine.dataset.account='';const readout=make('p');readout.dataset.status='';readout.className='hud-sync-status';readout.setAttribute('role','status');panel.append(accountLine,readout);
   const setup=make('details');setup.className='hud-sync-recovery';
   setup.append(make('summary','Configuración avanzada de Google (OAuth)'));
