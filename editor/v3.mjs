@@ -2,6 +2,7 @@ import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {parseSongCatalog,mergeSongCatalog} from "./catalog-import.mjs";
+import {installCloudSync} from "../core/sync-ui.mjs";
 import {
  newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
@@ -120,6 +121,7 @@ function persistLibrary(next,message){
  committed=written;working=copy(written);hasDraft=false;selected();
  leadSource=formatLeadSheetText(currentSong().leadSheet);
  render();notice(message);
+ window.dispatchEvent(new Event("hud-library-saved"));
 }
 function save(){
  if(!hasDraft)return;
@@ -809,5 +811,17 @@ async function boot(){
  activeState=currentSong().stateIds[0];activeModule=currentState().displayIndex??0;
  leadSource=formatLeadSheetText(currentSong().leadSheet);
  render();notice(saved?"Biblioteca local cargada. Pulsa Guardar tras editar una sección.":"Editor listo con datos de ejemplo.");
+ installCloudSync({
+  host:$("cloudSync"),storage:localStorage,mode:"editor",
+  getLocal:()=>committed,
+  canApply:()=>!hasDraft,
+  onApplied:next=>{
+   // No persistir de nuevo: el controlador ya guardó y respaldó la versión recibida.
+   committed=normalizeLibrary(next);validateLibrary(committed);
+   working=copy(committed);hasDraft=false;
+   selected();leadSource=formatLeadSheetText(currentSong().leadSheet);
+   render();notice("Repertorios y configuraciones recibidos desde Google Drive.");
+  }
+ });
 }
 boot().catch(e=>notice("Error iniciando Editor: "+e.message,true));
