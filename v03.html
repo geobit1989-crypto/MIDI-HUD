@@ -413,6 +413,7 @@ import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs";
 import {resolveModuleVisual} from "./core/module-visuals.mjs";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {openBrowserMidi} from "./core/midi-browser.mjs?v=20261015-ble1";
+import {installCloudSync} from "./core/sync-ui.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
 const SETTINGS=readSettings(localStorage),EDITOR_KEY="hudLibraryV1";
 const $=s=>document.querySelector(s);
@@ -448,6 +449,13 @@ dialog.innerHTML=`
         <button id="hud-midi-btn" type="button" class="hud-primary">Autorizar entrada MIDI</button>
       </div>
       <p id="hud-midi-status" role="status" class="hud-config-readout">Entrada MIDI no solicitada. La simulación manual funciona sin hardware.</p>
+    </section>
+    <section class="hud-config-group" aria-labelledby="hud-sync-heading">
+      <h3 id="hud-sync-heading">Repertorios entre dispositivos</h3>
+      <p>Recibe en este dispositivo las configuraciones guardadas en Drive; LIVE no cambia de canción ni estado durante una interpretación.</p>
+      <div id="hud-sync-root" class="hud-config-actions"></div>
+      <p id="hud-sync-notice" class="hud-config-readout" role="status">Repertorio operativo cargado localmente.</p>
+      <button type="button" id="hud-sync-reload" hidden>Recargar LIVE con el repertorio recibido</button>
     </section>
     <section class="hud-config-group" aria-labelledby="hud-nav-heading">
       <h3 id="hud-nav-heading">Consulta de canciones</h3>
@@ -688,6 +696,21 @@ function render(){
   window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
   engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
+  dialog.querySelector("#hud-sync-reload").onclick=()=>{
+   if(window.confirm("¿Recargar LIVE ahora? Se reiniciará la sesión visual actual."))window.location.reload();
+  };
+  installCloudSync({
+   host:dialog.querySelector("#hud-sync-root"),storage:localStorage,mode:"live",
+   getLocal:()=>{
+    const saved=localStorage.getItem(EDITOR_KEY);
+    return saved?JSON.parse(saved):null;
+   },
+   canApply:options=>!!options.explicit,
+   onApplied:()=>{
+    dialog.querySelector("#hud-sync-notice").textContent="Cambios recibidos y guardados en este dispositivo. Recarga LIVE cuando termines de tocar para utilizarlos.";
+    dialog.querySelector("#hud-sync-reload").hidden=false;
+   }
+  });
  }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);
   const boot=document.querySelector("#hud-boot-status");if(boot)boot.textContent="Error de inicialización: "+err.message;
  }
