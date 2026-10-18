@@ -66,7 +66,8 @@ export class PersistentDriveAuth {
   return value;
  }
  async redeem(){
-  const url=new URL(this.location().href);
+  const current=this.location();if(!current?.href)return false;
+  const url=new URL(current.href);
   const ticket=url.searchParams.get("hud_auth_ticket"),error=url.searchParams.get("hud_auth_error");
   if(!ticket&&!error)return false;
   url.searchParams.delete("hud_auth_ticket");
