@@ -33,6 +33,9 @@ export function validateLibrary(data) {
   requireValid(data.schemaVersion === "1.0.0", "versión del esquema no compatible");
   requireValid(object(data.midi) && uint(data.midi.channel, 1, 16),
     "canal MIDI fuera de 1..16");
+  requireValid(data.midi.gtChannel == null ||
+      (uint(data.midi.gtChannel,1,16) && data.midi.gtChannel !== data.midi.channel),
+    "el canal de la GT debe ser distinto del canal HUD");
   requireValid(data.midi.programNumbering === "zero-based",
     "solo se admiten programas MIDI de 0 a 127");
   requireValid(object(data.midi.cc), "faltan los CC MIDI");
