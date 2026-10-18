@@ -683,6 +683,28 @@ function render(){
 }
 (async()=>{
  try{
+  // Antes de iniciar el motor, intentar recibir la versión más reciente de Drive.
+  // Espera limitada: sin Internet, LIVE inicia con el repertorio local.
+  const reload=dialog.querySelector("#hud-sync-reload");
+  reload.onclick=()=>{
+   if(window.confirm("¿Recargar LIVE ahora? Se reiniciará la sesión visual actual."))window.location.reload();
+  };
+  const cloud=installCloudSync({
+   host:dialog.querySelector("#hud-sync-root"),storage:localStorage,mode:"live",
+   getLocal:()=>{
+    const stored=localStorage.getItem(EDITOR_KEY);
+    return stored?JSON.parse(stored):null;
+   },
+   // Actualizar los datos guardados nunca altera el motor musical ya iniciado.
+   canApply:()=>true,
+   onApplied:()=>{
+    const label=dialog.querySelector("#hud-sync-notice");
+    if(!engine){label.textContent="Repertorio actualizado desde Drive antes de iniciar LIVE.";return;}
+    label.textContent="Cambios recibidos automáticamente. Se aplicarán al abrir LIVE de nuevo; no se interrumpirá la canción actual.";
+    reload.hidden=false;
+   }
+  });
+  await Promise.race([cloud.ready,new Promise(resolve=>setTimeout(resolve,2500))]);
   let data;
   const saved=localStorage.getItem(EDITOR_KEY);
   if(saved){try{data=normalizeLibrary(JSON.parse(saved));}catch{}}
@@ -696,23 +718,6 @@ function render(){
   window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
   engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
-  dialog.querySelector("#hud-sync-reload").onclick=()=>{
-   if(window.confirm("¿Recargar LIVE ahora? Se reiniciará la sesión visual actual."))window.location.reload();
-  };
-  installCloudSync({
-   host:dialog.querySelector("#hud-sync-root"),storage:localStorage,mode:"live",
-   getLocal:()=>{
-    const saved=localStorage.getItem(EDITOR_KEY);
-    return saved?JSON.parse(saved):null;
-   },
-   // LIVE descarga automáticamente, pero su motor operativo NO se modifica en caliente.
-   // Los cambios entran en vigor solamente la próxima vez que se abra LIVE.
-   canApply:()=>true,
-   onApplied:()=>{
-    dialog.querySelector("#hud-sync-notice").textContent="Cambios recibidos y guardados en este dispositivo. Recarga LIVE cuando termines de tocar para utilizarlos.";
-    dialog.querySelector("#hud-sync-reload").hidden=false;
-   }
-  });
  }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);
   const boot=document.querySelector("#hud-boot-status");if(boot)boot.textContent="Error de inicialización: "+err.message;
  }
