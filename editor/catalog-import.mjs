@@ -42,7 +42,7 @@ export function parseSongCatalog(text){
  if(!rows.length)throw Error("El catálogo está vacío.");
  const header=rows[0].map(normalized);
  const titleIndex=header.findIndex(x=>["cancion","canciones","musica","titulo","title"].includes(x));
- const authorIndex=header.findIndex(x=>["autor","author","artista","version","interprete"].includes(x));
+ const authorIndex=header.findIndex(x=>["autor","author","artista","version","versao","interprete"].includes(x));
  if(titleIndex<0||authorIndex<0)throw Error("Selecciona las columnas «Canción» y «Autor», incluyendo la cabecera.");
  rows.shift();
  const seen=new Set(),result=[];
