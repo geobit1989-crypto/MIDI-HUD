@@ -82,6 +82,19 @@ export function compileLeadSheetText(input){
     sections:result.sections
   }};
 }
+/** A name/key-only edit or a new view must not recompile an existing score.
+ * Older scores may contain empty bars or metadata not represented by this editor.
+ * Edited text still goes through the existing parser and its error reporting. */
+export function prepareLeadSheetText(existing,input){
+ const source=String(input??'');
+ if(source===formatLeadSheetText(existing)){
+  const leadSheet=existing==null?null:JSON.parse(JSON.stringify(existing));
+  const sections=leadSheet?.sections||[];
+  return {leadSheet,sections,errors:[],sourceText:source,totalBars:sections.reduce((n,s)=>n+s.bars.length,0)};
+ }
+ const result=source.trim()?parseLeadSheetText(source):{sections:[],errors:[],totalBars:0,sourceText:source};
+ return {...result,leadSheet:source.trim()?{...(existing||{}),sourceText:source,sections:result.sections}:null};
+}
 function compactBar(bar){
   if(!Array.isArray(bar))return "";
   if(bar[0]==="/"&&bar.slice(1).every(x=>!x))return "/";

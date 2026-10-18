@@ -1,4 +1,5 @@
 import {normalizeLibrary,validateLibrary} from './engine-v1.mjs';
+import {migrateLeadSheets} from './lead-sheet-variants.mjs';
 const copy=x=>JSON.parse(JSON.stringify(x));
 const insist=(ok,message)=>{if(!ok)throw Error('Catálogo MIDI HUD: '+message);};
 const key=value=>Array.isArray(value)?'['+value.map(key).join(',')+']':value&&typeof value==='object'?'{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+key(value[k])).join(',')+'}':JSON.stringify(value);
@@ -20,13 +21,13 @@ export function migrateCatalog(raw){
   song.catalog.history??=[];
   song.midiBindings??=ownedBindings(db,song);
  }
- validateLibrary(db);return db;
+ migrateLeadSheets(db);validateLibrary(db);return db;
 }
 export function versionLabel(song){return song.title+(song.catalog?.variant?' — '+song.catalog.variant:'');}
 export function versionUsage(db,id){return db.repertoires.filter(rep=>rep.songIds.includes(id)).map(rep=>({id:rep.id,name:rep.name}));}
 export function searchCatalog(db,query='',{includeArchived=false}={}){
  const term=String(query).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
- return db.songs.filter(song=>(includeArchived||!song.catalog?.archived)&&versionLabel(song).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(term)).map(song=>({id:song.id,label:versionLabel(song),archived:!!song.catalog?.archived,usage:versionUsage(db,song.id)}));
+ return db.songs.filter(song=>(includeArchived||!song.catalog?.archived)&&[versionLabel(song),...(song.leadSheets||[]).flatMap(sheet=>[sheet.name,sheet.tono||''])].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(term)).map(song=>({id:song.id,label:versionLabel(song),archived:!!song.catalog?.archived,usage:versionUsage(db,song.id)}));
 }
 export function addCatalogVersion(db,repertoireId,versionId){
  const rep=repertoire(db,repertoireId),song=version(db,versionId);
@@ -38,6 +39,7 @@ export function removeCatalogVersion(db,repertoireId,versionId){
  const rep=repertoire(db,repertoireId);insist(rep.songIds.includes(versionId),'esta versión no pertenece al repertorio');
  rep.songIds=rep.songIds.filter(id=>id!==versionId);
  if(rep.entryNotes)delete rep.entryNotes[versionId];
+ if(rep.leadSheetIds)delete rep.leadSheetIds[versionId];
 }
 export function createCatalogRepertoire(db,name){
  insist(typeof name==='string'&&name.trim(),'escribe un nombre');
@@ -115,6 +117,14 @@ function restoreHistoryInPlace(db,id,historyId){
  const current=version(db,id),entry=current.catalog?.history?.find(item=>item.id===historyId);
  insist(entry?.snapshot?.song?.id===id&&Array.isArray(entry.snapshot.states),'guardado histórico inválido');
  const nextSong=copy(entry.snapshot.song),states=copy(entry.snapshot.states),map=new Map();
+ // Recovery must not orphan the sheets chosen by playlists after that snapshot.
+ if(current.leadSheets){
+  const sheets=new Map(current.leadSheets.map(sheet=>[sheet.id,copy(sheet)]));
+  const prior=nextSong.leadSheets||[{...copy(current.leadSheets.find(sheet=>sheet.id===current.defaultLeadSheetId)),leadSheet:copy(nextSong.leadSheet??null),tono:nextSong.tono??null}];
+  for(const sheet of prior)sheets.set(sheet.id,sheet);
+  nextSong.leadSheets=[...sheets.values()];
+  nextSong.defaultLeadSheetId??=current.defaultLeadSheetId;
+ }
  for(const state of states){
   const collision=db.states.some(other=>other.id===state.id&&other.songId!==id);
   map.set(state.id,collision?catalogId('state'):state.id);

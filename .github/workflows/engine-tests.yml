@@ -18,6 +18,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check core/catalog-v1.mjs
+          node --check core/lead-sheet-variants.mjs
           node --check core/engine-v1.mjs
           node --check core/settings-v1.mjs
           node --check core/midi-browser.mjs

@@ -1,3 +1,4 @@
+import * as sheets from "../core/lead-sheet-variants.mjs";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -53,7 +54,7 @@ function setup({prepare=()=>{},tab='states'}={}){
  prepare(fixture,song,initial);
  data.set(storageAPI.LIBRARY_KEY,JSON.stringify(fixture));
  const downloads=[],copiedLinks=[];
- const context=vm.createContext({...model,...engine,...visuals,...parser,...storageAPI,...catalog,...imports,installCloudSync:()=>{},Event:class{},
+ const context=vm.createContext({...model,...engine,...visuals,...parser,...storageAPI,...catalog,...sheets,...imports,installCloudSync:()=>{},Event:class{},
   document:{body:new Element('body'),getElementById:id=>elements.get(id),createElement:tag=>new Element(tag),querySelectorAll:()=>[],addEventListener(){},dispatchEvent(){}},
   Option:class extends Element{constructor(label,value){super('option');this.textContent=label;this.value=String(value);}},
   localStorage:storage,navigator:{clipboard:{writeText:async value=>copiedLinks.push(value)}},window:{location:{href:'https://geobit1989-crypto.github.io/MIDI-HUD/beta-v3.4/editor/v3.html',search:''},confirm:()=>context.confirmResult,prompt:()=>context.promptResult,addEventListener(){},dispatchEvent(){}},confirmResult:true,promptResult:null,
@@ -77,22 +78,11 @@ test('crear, reabrir y llenar una lista vacía ejecuta handlers reales sin borra
  const id=saved.activeRep;assert.deepEqual(saved.working.repertoires.find(r=>r.id===id).songIds,[]);
  assert.equal(t.elements.get('emptyPlaylist').hidden,false);
  t.context.api.useRepertoire('worship');t.context.api.useRepertoire(id);
- const row=t.elements.get('masterResults').children[0];row.children[1].onclick();
+ const row=t.elements.get('masterResults').children[0];row.children.at(-1).onclick();
  saved=t.snapshot();assert.equal(saved.committed.songs.length,count);
  assert.equal(saved.working.repertoires.find(r=>r.id===id).songIds.length,1);
  t.elements.get('songRemove').onclick();saved=t.snapshot();
  assert.equal(saved.committed.songs.length,count);assert.equal(saved.activeSong,null);
-});
-
-test('guardar una variante desde el borrador conserva original y cambia solo referencia de lista actual',()=>{
- const t=setup({tab:'song'}),before=t.snapshot(),id=before.activeSong;
- t.elements.get('songTitle').value='Borrador independiente';t.elements.get('songTitle').listeners.input();
- t.elements.get('newVariantName').value='Sol mayor';t.elements.get('versionNew').onclick();
- const after=t.snapshot();assert.equal(after.committed.songs.length,before.committed.songs.length+1);
- assert.deepEqual(after.committed.songs.find(s=>s.id===id),before.committed.songs.find(s=>s.id===id));
- assert.equal(after.committed.songs.find(s=>s.id===after.activeSong).title,'Borrador independiente');
- assert.equal(after.committed.songs.find(s=>s.id===after.activeSong).catalog.variant,'Sol mayor');
- assert.equal(after.committed.repertoires.find(r=>r.id===after.activeRep).songIds.includes(id),false);
 });
 
 test('editar una maestra sin lista, guardar, archivar y recuperar historial usa controles reales',()=>{
@@ -140,8 +130,50 @@ test('variante de grados guarda partitura literal y no realiza conversión autom
  t.elements.get('leadText').value='A - INTRO\n| I | IV | V | vi |';t.elements.get('leadText').oninput();
  t.elements.get('newVariantName').value='Grados';t.elements.get('versionNew').onclick();
  const saved=t.snapshot(),song=saved.committed.songs.find(s=>s.id===saved.activeSong);
- assert.equal(song.catalog.variant,'Grados');assert.equal(song.leadSheet.sourceText,'A - INTRO\n| I | IV | V | vi |');
+ const selected=sheets.resolveLeadSheet(song,saved.committed.repertoires.find(r=>r.id===saved.activeRep));assert.equal(selected.name,'Grados');assert.equal(selected.leadSheet.sourceText,'A - INTRO\n| I | IV | V | vi |');
 });
+
+test('crear lead sheet desde borrador conserva canción, controles y variante anterior',()=>{
+ const t=setup({tab:'sheet'}),before=t.snapshot(),source=before.committed.songs.find(s=>s.id===before.activeSong);
+ t.elements.get('leadText').value='A - Intro\n| I | IV |';t.elements.get('leadText').oninput();
+ t.elements.get('songTone').value='La mayor';t.elements.get('songTone').listeners.input();
+ t.elements.get('leadNotation').value='grados';t.elements.get('leadNotation').listeners.change();
+ t.elements.get('newVariantName').value='Grados — La';t.elements.get('versionNew').onclick();
+ const after=t.snapshot(),song=after.committed.songs.find(s=>s.id===after.activeSong),rep=after.committed.repertoires.find(r=>r.id===after.activeRep),sheet=sheets.resolveLeadSheet(song,rep);
+ assert.equal(after.activeSong,before.activeSong);assert.equal(after.committed.songs.length,before.committed.songs.length);
+ assert.deepEqual(after.committed.states,before.committed.states);assert.deepEqual(song.midiBindings,source.midiBindings);
+ assert.deepEqual(song.leadSheets[0],source.leadSheets[0]);assert.equal(sheet.name,'Grados — La');assert.equal(sheet.tono,'La mayor');
+ assert.equal(sheet.notation,'grados');assert.equal(sheet.leadSheet.sections[0].bars[0][0],'I');
+});
+
+test('puente añade la canción y el lead sheet elegido a una playlist ya creada',()=>{
+ const t=setup({tab:'sheet'});
+ t.elements.get('newVariantName').value='Alternativa';t.elements.get('versionNew').onclick();
+ const songId=t.snapshot().activeSong,source=t.snapshot().committed.songs.find(s=>s.id===songId),sheetId=source.leadSheets.at(-1).id;
+ t.elements.get('repAdd').onclick();t.elements.get('repNameInput').value='Nueva lista';t.elements.get('repForm').listeners.submit({preventDefault(){}});
+ const row=t.elements.get('masterResults').children.find(row=>row.children[0].textContent===source.title);
+ row.children[1].value=sheetId;row.children.at(-1).onclick();
+ const after=t.snapshot(),rep=after.committed.repertoires.find(r=>r.id===after.activeRep);
+ assert.deepEqual(rep.songIds,[songId]);assert.equal(rep.leadSheetIds[songId],sheetId);
+ assert.equal(after.committed.songs.length,t.snapshot().working.songs.length);
+});
+
+test('tonalidad aparece en lead sheets y conserva su ubicación en LIVE',()=>{
+ const page=readFileSync(new URL('../editor/v3.html',import.meta.url),'utf8');
+ const tone=page.indexOf('id="songTone"');assert(tone>page.indexOf('data-panel="sheet"'));assert(tone<page.indexOf('data-panel="midi"'));
+ const live=readFileSync(new URL('../v03.html',import.meta.url),'utf8');assert.match(live,/key\.textContent=vm\.song\.tono/);
+});
+
+test('guardar solo tonalidad conserva una partitura previa con compases vacíos y su configuración',()=>{
+ const t=setup({tab:'sheet',prepare(db,song){song.leadSheet={custom:{cue:'Puente'},sections:[{letter:'A',label:'Intro',bars:[['F','','',''],['','','','']]}]};}});
+ const before=t.snapshot(),songId=before.activeSong,score=copyScore(before.committed.songs.find(s=>s.id===songId).leadSheets[0].leadSheet);
+ t.elements.get('songTone').value='Sol mayor';t.elements.get('songTone').listeners.input();t.elements.get('sheetSave').onclick();
+ const after=t.snapshot(),song=after.committed.songs.find(s=>s.id===songId);
+ assert.deepEqual(song.leadSheets[0].leadSheet,score);assert.equal(song.leadSheets[0].tono,'Sol mayor');
+ assert.deepEqual(after.committed.states,before.committed.states);assert.equal(after.hasDraft,false);
+ assert.doesNotMatch(t.elements.get('editorNotice').textContent,/No se guardó/);
+});
+const copyScore=value=>JSON.parse(JSON.stringify(value));
 
 test('fallo al guardar nueva variante conserva selección, borrador y versión compartida',()=>{
  const t=setup({tab:'song'}),before=t.snapshot(),original=t.storage.getItem(storageAPI.LIBRARY_KEY);

@@ -1,9 +1,10 @@
 import {catalogId,createCatalogVariant,createCatalogRepertoire} from "../core/catalog-v1.mjs";
+import {migrateLeadSheets} from '../core/lead-sheet-variants.mjs';
 /**
  * MIDI HUD / Editor visual - operaciones puras sobre la biblioteca v2.
  * No altera hardware ni mezcla la configuracion de canal global con canciones.
  */
-import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261018-catalog2";
+import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261018-leadsheets1";
 
 const copy=x=>JSON.parse(JSON.stringify(x));
 function requireThat(ok,message){if(!ok)throw Error("Editor MIDI HUD: "+message);}
@@ -39,7 +40,7 @@ export function newSong(db,repertoireId,title="Nueva canción"){
    stateIds:[sid],initialStateId:sid
  });
  db.states.push({id:sid,songId:id,name:"Clean",gtPatch:null,displayIndex:0,indicators:[]});
- if(db.catalogVersion===1){const song=db.songs.find(s=>s.id===id);song.catalog={familyId:id,variant:"",archived:false,history:[]};song.midiBindings=[];}
+ if(db.catalogVersion===1){const song=db.songs.find(s=>s.id===id);song.catalog={familyId:id,variant:"",archived:false,history:[]};song.midiBindings=[];migrateLeadSheets(db);}
  if(rep)rep.songIds.push(id);
  return id;
 }
@@ -103,6 +104,7 @@ export function deleteSong(db,repertoireId,songId){
  rep.songIds=rep.songIds.filter(id=>id!==songId);
  if(db.catalogVersion!==1)removeOrphanSong(db,songId);
  if(rep.entryNotes)delete rep.entryNotes[songId];
+ if(rep.leadSheetIds)delete rep.leadSheetIds[songId];
 }
 export function deleteRepertoire(db,repertoireId){
  requireThat(db.repertoires.length>1,"debe existir al menos un repertorio");

@@ -1,15 +1,16 @@
-import {migrateCatalog,recordCatalogChanges,versionLabel,searchCatalog,versionUsage,addCatalogVersion,duplicateCatalogRepertoire,createCatalogVariant,archiveCatalogVersion,restoreCatalogHistory,setRepertoireNote} from "../core/catalog-v1.mjs";
+import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
+import {migrateCatalog,recordCatalogChanges,versionLabel,searchCatalog,versionUsage,duplicateCatalogRepertoire,archiveCatalogVersion,restoreCatalogHistory,setRepertoireNote} from "../core/catalog-v1.mjs";
 import {replaceLibrary} from "../core/library-storage.mjs";
-import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261018-catalog2";
+import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261018-leadsheets1";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs";
-import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
-import {parseSongCatalog,mergeSongCatalog} from "./catalog-import.mjs?v=20261018-catalog2";
+import {prepareLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs?v=20261018-leadsheets1";
+import {parseSongCatalog,mergeSongCatalog} from "./catalog-import.mjs?v=20261018-leadsheets1";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261018-persistent1";
 import {
- newSong,newRepertoire,renameRepertoire,copySong,deleteSong,deleteRepertoire,moveSong,
+ newSong,newRepertoire,renameRepertoire,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
  chocolateMatrix,actionDescription,diagnostics
-} from "./editor-model.mjs?v=20261018-catalog2";
+} from "./editor-model.mjs?v=20261018-leadsheets1";
 
 /**
  * Editor MIDI HUD v3
@@ -26,7 +27,7 @@ const SECTIONS=["song","states","sheet","midi"];
 const LABELS={song:"Canción",states:"Estados",sheet:"Lead sheet",midi:"MIDI"};
 let committed=null,working=null,activeRep=null,activeSong=null,activeState=null;
 let activeModule=0,activeTab="song",hasDraft=false,cc=20,value=127;
-let leadSource="",leadParse=null,catalogMode=false;
+let leadSource="",leadParse=null,catalogMode=false,masterSheetId=null;
 const make=(tag,text,klass)=>{
  const node=document.createElement(tag);
  if(text!==undefined)node.textContent=String(text);
@@ -44,6 +45,11 @@ function entries(id,options,current){
 }
 function currentRep(){return working.repertoires.find(x=>x.id===activeRep);}
 function currentSong(){return working.songs.find(x=>x.id===activeSong);}
+function currentSheet(){
+ const song=currentSong();
+ if(catalogMode)return song?.leadSheets?.find(sheet=>sheet.id===masterSheetId)||resolveLeadSheet(song);
+ return resolveLeadSheet(song,currentRep());
+}
 function currentState(){return working.states.find(x=>x.id===activeState);}
 function currentSlot(i=activeModule){return currentSong().displaySlots?.[i]||{};}
 function linkedState(i=activeModule){
@@ -81,7 +87,7 @@ function selected(){
 function discard(){
  working=copy(committed);hasDraft=false;
  selected();
- leadSource=formatLeadSheetText(currentSong()?.leadSheet);
+ leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
 }
 function allowLeaving(){
  if(!hasDraft)return true;
@@ -104,14 +110,14 @@ function useSong(id){
  if(!currentRep().songIds.includes(id)||!allowLeaving())return;
  catalogMode=false;activeSong=id;activeState=currentSong()?.stateIds[0]??null;
  activeModule=currentState()?.displayIndex??0;
- leadSource=formatLeadSheetText(currentSong()?.leadSheet);toggleLibrary(false);render();
+ leadSource=formatLeadSheetText(currentSheet()?.leadSheet);toggleLibrary(false);render();
 }
 function useRepertoire(id){
  if(!working.repertoires.some(x=>x.id===id)||!allowLeaving())return;
  catalogMode=false;activeRep=id;activeSong=currentRep().songIds[0];
  activeState=currentSong()?.stateIds[0]??null;
  activeModule=currentState()?.displayIndex??0;
- leadSource=formatLeadSheetText(currentSong()?.leadSheet);toggleLibrary(false);render();
+ leadSource=formatLeadSheetText(currentSheet()?.leadSheet);toggleLibrary(false);render();
 }
 function persistLibrary(next,message){
  validateLibrary(next);
@@ -122,9 +128,11 @@ function persistLibrary(next,message){
  const raw=localStorage.getItem(STORAGE);
  if(raw&&!JSON.parse(raw).catalogVersion&&!localStorage.getItem('midiHudCatalogMigrationV1'))
   localStorage.setItem('midiHudCatalogMigrationV1',raw);
+ if(raw&&JSON.parse(raw).songs?.some(song=>!song.leadSheets)&&!localStorage.getItem('midiHudLeadSheetsMigrationV1'))
+  localStorage.setItem('midiHudLeadSheetsMigrationV1',raw);
  replaceLibrary(localStorage,written,committed);
  committed=written;working=copy(written);hasDraft=false;selected();
- leadSource=formatLeadSheetText(currentSong()?.leadSheet);
+ leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
  render();notice(message);
  window.dispatchEvent(new Event("hud-library-saved"));
 }
@@ -132,15 +140,12 @@ function save(){
  if(!hasDraft||!currentSong())return;
  try{
   if(activeTab==="sheet"){
-   if(leadSource.trim()){
-    leadParse=parseLeadSheetText(leadSource);
-    if(leadParse.errors.length)throw Error("Corrige los errores de las líneas indicadas antes de guardar.");
-    currentSong().leadSheet={sourceText:leadSource,sections:leadParse.sections};
-   }else{
-    if(currentSong()?.leadSheet&&!window.confirm("¿Eliminar la partitura de esta canción?"))return;
-    currentSong().leadSheet=null;
-   }
+   const draft=prepareLeadSheetText(currentSheet().leadSheet,leadSource);
+   if(draft.errors.length)throw Error("Corrige los errores de las líneas indicadas antes de guardar.");
+   if(!draft.leadSheet&&currentSheet().leadSheet&&!window.confirm("¿Eliminar la partitura de este lead sheet?"))return;
+   currentSheet().leadSheet=draft.leadSheet;
   }
+  syncDefaultLeadSheet(currentSong());
   persistLibrary(working,"Cambios guardados en «"+LABELS[activeTab]+"». Actualiza LIVE para verlos.");
  }catch(error){notice("No se guardó: "+error.message,true);}
 }
@@ -166,7 +171,7 @@ function sidebar(){
   row.setAttribute("role","listitem");
   row.append(make("span",index+1,"song-num"));
   row.append(button(versionLabel(s),()=>useSong(id)));
-  row.append(make("small",s.tono||"—"));
+  row.append(make("small",resolveLeadSheet(s,currentRep())?.tono||"—"));
   root.append(row);
  });
  $("songCounter").textContent=ids.length+" canción(es)";
@@ -180,7 +185,7 @@ function sidebar(){
  $("songHeading").textContent=versionLabel(currentSong());
  $("songSummary").textContent=[
   currentSong().author||"Autor pendiente",
-  currentSong().tono||"Tonalidad pendiente",
+  currentSheet()?.tono||"Tonalidad pendiente",
   currentSong().tempoBpm?currentSong().tempoBpm+" BPM":"BPM pendiente",
   currentSong().stateIds.length+" estados",
   currentSong().bank||"Banco pendiente"
@@ -190,7 +195,7 @@ function renderSong(){
  const s=currentSong();
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
- $("songTone").value=s.tono??"";
+
  $("songBpm").value=s.tempoBpm??"";
  $("songBank").value=s.bank??"";
  entries("songInitial",s.stateIds.map(id=>[id,working.states.find(st=>st.id===id)?.name||id]),s.initialStateId);
@@ -337,7 +342,7 @@ function renderLead(){
 }
 function paintLead(){
  const textarea=$("leadText");
- leadParse=leadSource.trim()?parseLeadSheetText(leadSource):{sections:[],errors:[],totalBars:0};
+ leadParse=prepareLeadSheetText(currentSheet().leadSheet,leadSource);
  const lines=leadSource.split("\n"),bad=new Set(leadParse.errors.map(x=>x.line));
  const gutter=$("leadGutter");gutter.replaceChildren();
  lines.forEach((_,i)=>{
@@ -503,7 +508,7 @@ function render(){
  $("emptyPlaylist").hidden=!empty;
  for(const node of document.querySelectorAll("[data-tab]"))node.disabled=empty;
  if(!empty){renderSong();renderStates();}
- if(!empty&&activeTab==="sheet")renderLead();
+ if(!empty&&activeTab==="sheet"){renderLeadSheetFields();renderLead();}
  else if(!empty&&activeTab==="midi")renderMidi();
  for(const node of document.querySelectorAll("[data-tab]")){
   const on=node.dataset.tab===activeTab;
@@ -586,7 +591,7 @@ function register(){
   activeSong=id;activeState=db.songs.find(s=>s.id===id).stateIds[0];
   activeTab="song";
  },"Canción creada.");
- $("songCopy").onclick=()=>{notice("Escribe un nombre en «Nueva variante independiente» y pulsa Guardar como nueva versión.");$("newVariantName").focus();};
+ $("songCopy").onclick=()=>{updateTab("sheet");if(activeTab==="sheet")$("newVariantName").focus();};
  $("songRemove").onclick=()=>{
   if(window.confirm("¿Quitar esta versión de la lista? Se conserva en el catálogo maestro."))
    immediate(db=>deleteSong(db,activeRep,activeSong),"Canción eliminada.");
@@ -594,7 +599,7 @@ function register(){
  $("songUp").onclick=()=>immediate(db=>moveSong(db,activeRep,activeSong,-1),"Orden de canciones actualizado.");
  $("songDown").onclick=()=>immediate(db=>moveSong(db,activeRep,activeSong,1),"Orden de canciones actualizado.");
  for(const [id,key] of [
-  ["songTitle","title"],["songAuthor","author"],["songTone","tono"],["songBpm","tempoBpm"],["songBank","bank"]
+  ["songTitle","title"],["songAuthor","author"],["songBpm","tempoBpm"],["songBank","bank"]
  ]){
   $(id).addEventListener("input",()=>{
    const raw=$(id).value;
@@ -793,7 +798,7 @@ function register(){
    const current=JSON.stringify(committed);
    localStorage.setItem(STORAGE,JSON.stringify(last));
    localStorage.setItem(BACKUP,current);
-   committed=migrateCatalog(last);working=copy(committed);hasDraft=false;selected();leadSource=formatLeadSheetText(currentSong()?.leadSheet);
+   committed=migrateCatalog(last);working=copy(committed);hasDraft=false;selected();leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
    render();notice("Se ha recuperado el guardado anterior.");
   }catch(e){notice("Error al deshacer: "+e.message,true);}
  };
@@ -807,51 +812,63 @@ function renderCatalog(){
  for(const item of searchCatalog(working,$("masterSearch").value,{includeArchived:$("masterArchived").checked})){
   const row=make("div",undefined,"group");
   row.append(button(item.label+(item.archived?" · Archivada":""),()=>{
-   if(!allowLeaving())return;catalogMode=true;activeSong=item.id;activeState=currentSong().initialStateId;
-   activeModule=currentState().displayIndex??0;leadSource=formatLeadSheetText(currentSong()?.leadSheet);render();
+   if(!allowLeaving())return;catalogMode=true;masterSheetId=null;activeSong=item.id;activeState=currentSong().initialStateId;
+   activeModule=currentState().displayIndex??0;leadSource=formatLeadSheetText(currentSheet()?.leadSheet);render();
   },"small"));
-  const included=currentRep().songIds.includes(item.id);
-  const add=button(included?"Ya incluida":"+ Añadir",()=>immediate(db=>{
-   addCatalogVersion(db,activeRep,item.id);catalogMode=false;activeSong=item.id;
-  },"Versión vinculada a la lista."),"small");add.disabled=included||item.archived;row.append(add);root.append(row);
+  const song=working.songs.find(s=>s.id===item.id),included=currentRep().songIds.includes(item.id);
+  const choice=make("select");choice.setAttribute("aria-label","Lead sheet de "+song.title);
+  entries(choice,song.leadSheets.map(sheet=>[sheet.id,sheet.name+" · "+(sheet.tono||"Sin tonalidad")]),resolveLeadSheet(song,currentRep()).id);
+  row.append(choice);
+  if(included)row.append(make("small","Ya incluida en esta playlist"));
+  const add=button(included?"Aplicar lead sheet":"+ Añadir a playlist",()=>immediate(db=>{
+   addSongToPlaylist(db,activeRep,item.id,choice.value);catalogMode=false;activeSong=item.id;
+  },included?"Lead sheet actualizado en esta playlist.":"Canción vinculada con el lead sheet elegido."),"small");
+  add.disabled=item.archived;row.append(add);root.append(row);
  }
  const song=currentSong();$("sharedControls").hidden=!song;if(!song)return;
  const usage=versionUsage(working,song.id);
- $("sharedWarning").textContent="Versión compartida: guardar actualiza "+usage.length+" repertorio(s): "+usage.map(r=>r.name).join(", ")+". Las otras variantes permanecen independientes.";
- $("songVariant").value=song.catalog.variant;
+ $("sharedWarning").textContent="Canción maestra compartida por "+usage.length+" playlist(s): "+usage.map(r=>r.name).join(", ")+". Los estados, controles y expresiones son comunes; cada playlist conserva su elección de lead sheet y tonalidad.";
+ $("versionSave").textContent=activeTab==="sheet"?"Guardar este lead sheet":"Guardar cambios compartidos";
  $("versionArchive").textContent=song.catalog.archived?"Restaurar versión archivada":"Archivar versión";
  entries("versionHistory",song.catalog.history.map(h=>[h.id,h.createdAt+" · "+h.reason]),$("versionHistory").value);
  $("versionRestore").disabled=!song.catalog.history.length;
  $("occasionNoteWrap").hidden=catalogMode;$("occasionSave").hidden=catalogMode;
  $("occasionNote").value=currentRep().entryNotes?.[song.id]||"";
 }
+function renderLeadSheetFields(){
+ const sheet=currentSheet();if(!sheet)return;
+ entries("leadSheetSelect",currentSong().leadSheets.map(s=>[s.id,s.name+" · "+(s.tono||"Sin tonalidad")]),sheet.id);
+ $("leadSheetName").value=sheet.name;$("songTone").value=sheet.tono||"";$("leadNotation").value=sheet.notation;
+ $("leadSheetScope").textContent=catalogMode?"Editas un lead sheet del maestro. Las playlists que lo usan reciben sus correcciones.":"Esta elección pertenece solo a «"+currentRep().name+"». Guardar el contenido o la tonalidad actualiza las playlists que usan este mismo lead sheet.";
+}
 function registerCatalog(){
  $("masterSearch").oninput=renderCatalog;$("masterArchived").onchange=renderCatalog;
- $("songVariant").oninput=()=>{currentSong().catalog.variant=$("songVariant").value;dirty();};
  $("versionSave").onclick=save;
  $("masterNew").onclick=()=>immediate(db=>{
   activeSong=newSong(db,null);catalogMode=true;activeState=db.songs.find(s=>s.id===activeSong).initialStateId;
- },"Versión creada en el catálogo. Puedes prepararla y añadirla a una lista después.");
+ },"Canción creada en el maestro. Puedes prepararla y añadirla a una playlist después.");
+ $("leadSheetSelect").onchange=()=>{
+  const id=$("leadSheetSelect").value;
+  if(!allowLeaving()){renderLeadSheetFields();return;}
+  if(catalogMode){masterSheetId=id;leadSource=formatLeadSheetText(currentSheet()?.leadSheet);render();}
+  else immediate(db=>selectPlaylistLeadSheet(db,activeRep,activeSong,id),"Lead sheet seleccionado solo para esta playlist.");
+ };
+ for(const [id,key] of [["leadSheetName","name"],["songTone","tono"],["leadNotation","notation"]]){
+  const change=()=>{currentSheet()[key]=$(id).value.trim()||(key==="tono"?null:"");dirty();};
+  $(id).addEventListener(id==="leadNotation"?"change":"input",change);
+ }
  $("versionNew").onclick=()=>{
-  const priorSong=activeSong,priorState=activeState;
+  const previousMaster=masterSheetId;
   try{
-   const draft=copy(working);
-   if(activeTab==="sheet"){
-    const parsed=parseLeadSheetText(leadSource);
-    if(leadSource.trim()&&parsed.errors.length)throw Error("Corrige la partitura antes de crear la variante.");
-    draft.songs.find(s=>s.id===activeSong).leadSheet=leadSource.trim()?{sourceText:leadSource,sections:parsed.sections}:null;
-   }
-   const next=copy(committed),sourceId=activeSong;
-   const id=createCatalogVariant(next,sourceId,{variant:$("newVariantName").value,sourceLibrary:draft});
-   if(!catalogMode){const rep=next.repertoires.find(r=>r.id===activeRep);rep.songIds=rep.songIds.map(x=>x===sourceId?id:x);
-    if(rep.entryNotes?.[sourceId]){rep.entryNotes[id]=rep.entryNotes[sourceId];delete rep.entryNotes[sourceId];}}
-   activeSong=id;activeState=next.songs.find(s=>s.id===id).initialStateId;
-   persistLibrary(next,"Nueva versión independiente guardada; las demás listas conservan la original.");
+   const parsed=prepareLeadSheetText(currentSheet().leadSheet,leadSource);
+   if(leadSource.trim()&&parsed.errors.length)throw Error("Corrige la partitura antes de crear la variante.");
+   const next=copy(committed),song=next.songs.find(s=>s.id===activeSong),draft=currentSheet();
+   const id=createLeadSheetVariant(song,{name:$("newVariantName").value,sourceId:draft.id,
+    leadSheet:parsed.leadSheet,tono:draft.tono,notation:draft.notation});
+   if(catalogMode)masterSheetId=id;else selectPlaylistLeadSheet(next,activeRep,activeSong,id);
+   persistLibrary(next,"Nueva variante de lead sheet creada. La anterior y los controles se conservan.");
    $("newVariantName").value="";
-  }catch(error){
-   activeSong=priorSong;activeState=priorState;
-   notice("No se creó la versión: "+error.message,true);
-  }
+  }catch(error){masterSheetId=previousMaster;notice("No se creó el lead sheet: "+error.message,true);}
  };
  $("versionArchive").onclick=()=>immediate(db=>archiveCatalogVersion(db,activeSong,!currentSong().catalog.archived),"Estado de archivo actualizado. Las referencias se conservan.");
  $("versionRestore").onclick=()=>{
@@ -881,7 +898,7 @@ async function boot(){
  committed=migrateCatalog(library);working=copy(committed);
  activeRep=working.repertoires[0].id;activeSong=currentRep().songIds[0];
  activeState=currentSong()?.stateIds[0]??null;activeModule=currentState()?.displayIndex??0;
- leadSource=formatLeadSheetText(currentSong()?.leadSheet);
+ leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
  render();notice(saved?"Biblioteca local cargada. Pulsa Guardar tras editar una sección.":"Editor listo con datos de ejemplo.");
  installCloudSync({
   host:$("cloudSync"),storage:localStorage,mode:"editor",
@@ -895,7 +912,7 @@ async function boot(){
    // No persistir de nuevo: el controlador ya guardó y respaldó la versión recibida.
    committed=migrateCatalog(next);validateLibrary(committed);
    working=copy(committed);hasDraft=false;
-   selected();leadSource=formatLeadSheetText(currentSong()?.leadSheet);
+   selected();leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
    render();notice("Repertorios y configuraciones recibidos desde Google Drive.");
   }
  });

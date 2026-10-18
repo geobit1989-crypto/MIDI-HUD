@@ -1,4 +1,5 @@
 import {migrateCatalog,createCatalogVariant,createCatalogRepertoire,addCatalogVersion,removeCatalogVersion,recordCatalogChanges} from '../core/catalog-v1.mjs';
+import {createLeadSheetVariant,addSongToPlaylist,resolveLeadSheet} from '../core/lead-sheet-variants.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -33,6 +34,18 @@ function device(history,library=null,options={}){
  return {store,controller,statuses,applied,conflicts,get:()=>JSON.parse(store.getItem(LIBRARY_KEY)),save:library=>store.setItem(LIBRARY_KEY,JSON.stringify(library)),sync:opts=>controller.synchronize(opts)};
 }
 const change=(device,fn)=>{const db=device.get();fn(db);db.revision++;device.save(db);return db;};
+
+test('dos dispositivos conservan una canción con dos lead sheets y elecciones/tonalidades por playlist',async()=>{
+ const cloud=new MemoryHistory(),a=device(cloud,fixture()),b=device(cloud);await a.sync();await b.sync();
+ const next=a.get(),song=next.songs[0],sheet=createLeadSheetVariant(song,{name:'Grados — La',tono:'La mayor',notation:'grados'});
+ const list=createCatalogRepertoire(next,'Miércoles');addSongToPlaylist(next,list,song.id,sheet);a.save(next);
+ await a.sync();await b.sync();assert(sameLibrary(a.get(),b.get()));
+ const received=b.get(),receivedSong=received.songs.find(s=>s.id===song.id),rep=received.repertoires.find(r=>r.id===list);
+ assert.equal(received.songs.length,fixture().songs.length);assert.equal(resolveLeadSheet(receivedSong,rep).tono,'La mayor');
+ const edited=b.get();edited.states.find(s=>s.id===song.initialStateId).gtPatch=42;b.save(edited);
+ await b.sync();await a.sync();assert.equal(a.get().states.find(s=>s.id===song.initialStateId).gtPatch,42);
+ assert.equal(resolveLeadSheet(a.get().songs[0],a.get().repertoires.find(r=>r.id===list)).id,sheet);
+});
 
 test('Drive actual sincroniza catálogo, variantes, notas y lista vacía entre dos dispositivos',async()=>{
  const cloud=new MemoryHistory(),a=device(cloud,fixture()),b=device(cloud);

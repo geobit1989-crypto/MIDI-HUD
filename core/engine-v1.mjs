@@ -4,6 +4,7 @@
  * Los datos de cancion no contienen el canal de recepcion: es un ajuste global.
  */
 import {validModuleColor,validModuleIcon} from "./module-visuals.mjs";
+import {resolveLeadSheet} from './lead-sheet-variants.mjs';
 export const ENGINE_VERSION = "1.0.0-beta.1";
 export const SCHEMA_VERSION = "2.0.0";
 
@@ -78,6 +79,7 @@ export function validateLibrary(raw) {
     insist(r.entryNotes==null || (isObject(r.entryNotes)&&Object.entries(r.entryNotes).every(([id,note])=>r.songIds.includes(id)&&typeof note==="string"&&note.length<=4000)), "notas de repertorio inválidas");
     insist(new Set(r.songIds).size === r.songIds.length, "cancion repetida en repertorio");
     for (const id of r.songIds) insist(songs.has(id), "cancion inexistente: " + id);
+    insist(r.leadSheetIds==null||(isObject(r.leadSheetIds)&&Object.entries(r.leadSheetIds).every(([songId,sheetId])=>r.songIds.includes(songId)&&songs.get(songId)?.leadSheets?.some(sheet=>sheet.id===sheetId))),"selección de lead sheet inválida");
   }
   for (const s of songs.values()) {
     insist(typeof s.title === "string" && !!s.title.trim(), "titulo de cancion vacio");
@@ -112,6 +114,22 @@ export function validateLibrary(raw) {
     }
   }
   for(const song of songs.values()){
+    if(song.leadSheets!==undefined){
+      const sheets=unique(song.leadSheets,'lead sheets');
+      insist(sheets.size>0&&sheets.has(song.defaultLeadSheetId),'lead sheet predeterminado inválido');
+      for(const sheet of sheets.values()){
+        insist(typeof sheet.name==='string'&&sheet.name.trim()&&sheet.name.length<=120,'nombre de lead sheet inválido');
+        insist(sheet.tono==null||typeof sheet.tono==='string'&&sheet.tono.length<=20,'tonalidad de lead sheet inválida');
+        insist(['acordes','grados'].includes(sheet.notation),'notación de lead sheet inválida');
+        // Use the existing full lead-sheet validator for every variant.
+        insist(sheet.leadSheet===null||isObject(sheet.leadSheet),'lead sheet inválido');
+        if(sheet.leadSheet!==null){
+          const sections=sheet.leadSheet.sections;
+          insist(Array.isArray(sections)&&sections.length>0&&sections.length<=4,'secciones de lead sheet inválidas');
+          for(const section of sections)insist(isObject(section)&&typeof section.label==='string'&&typeof section.letter==='string'&&Array.isArray(section.bars)&&section.bars.length<=32&&section.bars.every(bar=>Array.isArray(bar)&&bar.length===4&&bar.every(v=>typeof v==='string'&&v.length<=30)),'compases de lead sheet inválidos');
+        }
+      }
+    }
     if(song.catalog!=null){
       const item=song.catalog;
       insist(isObject(item)&&typeof item.familyId==="string"&&!!item.familyId.trim()&&typeof item.variant==="string"&&item.variant.length<=120&&typeof item.archived==="boolean"&&Array.isArray(item.history),"metadatos de catálogo inválidos");
@@ -231,9 +249,10 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
         : (session.indicatorOverrides[x.id] ?? !!x.active)
     }));
     const rep=repertoireFor(songId);
+    const sheet=resolveLeadSheet(song,rep);
     return duplicate({
-      song:{id:song.id,title:song.title+(song.catalog?.variant?" — "+song.catalog.variant:""),author:song.author||"",tono:song.tono,tempoBpm:song.tempoBpm,
-        leadSheet:song.leadSheet,bank:song.bank,displaySlots:song.displaySlots||[],
+      song:{id:song.id,title:song.title,author:song.author||"",tono:sheet?sheet.tono:song.tono,tempoBpm:song.tempoBpm,
+        leadSheet:sheet?sheet.leadSheet:song.leadSheet,leadSheetId:sheet?.id??null,leadSheetName:sheet?.name??null,bank:song.bank,displaySlots:song.displaySlots||[],
         position:rep.songIds.indexOf(song.id)+1,total:rep.songIds.length},
       repertoire:{id:rep.id,name:rep.name},
       state:{id:st.id,name:st.name,gtPatch:st.gtPatch??null,
@@ -251,7 +270,7 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
       case "SELECT_REPERTOIRE": {
         const rep=reps.get(event.repertoireId);insist(rep,"repertorio desconocido");
         next.activeRepertoireId=rep.id;
-        if(rep.songIds.length)enterSong(next,rep.songIds[0]);
+        if(rep.songIds.length){if(next.activeSongId!==rep.songIds[0])enterSong(next,rep.songIds[0]);}
         else {next.activeSongId=null;next.activeStateId=null;next.indicatorOverrides={};}
         next.previewSongId=null;next.previewStateId=null;next.previewModuleIndex=null;
         changed=JSON.stringify(next)!==JSON.stringify(session);break;
