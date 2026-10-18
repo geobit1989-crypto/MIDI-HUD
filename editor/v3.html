@@ -268,14 +268,14 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
   </div>
   <div id="emptyPlaylist" class="empty" hidden>Esta lista está vacía. Busca una versión preparada en el catálogo y pulsa Añadir.</div>
   <section id="sharedControls" class="section-card" hidden>
-    <p id="sharedWarning" class="help"></p>
+    <p id="sharedWarning" class="help"></p><button id="versionSave" class="small primary">Guardar cambios compartidos</button><details><summary>Variantes, historial y notas</summary>
     <label class="field">Nombre de variante<input id="songVariant" maxlength="120" placeholder="Grados, Sol mayor…"></label>
     <label class="field">Nueva variante independiente<input id="newVariantName" maxlength="120" placeholder="Nombre de la nueva versión"></label>
-    <div class="ctrlrow"><button id="versionSave" class="small primary">Guardar cambios compartidos</button><button id="versionNew" class="small">Guardar como nueva versión</button><button id="versionArchive" class="small">Archivar</button></div>
+    <div class="ctrlrow"><button id="versionNew" class="small">Guardar como nueva versión</button><button id="versionArchive" class="small">Archivar</button></div>
     <label class="field">Historial recuperable<select id="versionHistory"></select></label>
     <button id="versionRestore" class="small">Recuperar guardado</button>
     <label id="occasionNoteWrap" class="field">Nota solo para este repertorio<textarea id="occasionNote" maxlength="4000"></textarea></label>
-    <button id="occasionSave" class="small">Guardar nota de ocasión</button>
+    <button id="occasionSave" class="small">Guardar nota de ocasión</button></details>
   </section>
   <nav class="tabs" aria-label="Secciones del editor">
     <button type="button" data-tab="song" aria-selected="true" class="active">Canción</button>

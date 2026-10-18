@@ -495,7 +495,7 @@ function prepare(){
  const label=document.createElement("label");label.textContent="Repertorio activo";
  const reps=document.createElement("select");reps.id="hud-repertoire";
  reps.replaceChildren(...library.repertoires.map(r=>new Option(r.name,r.id)));
- label.append(reps);dialog.querySelector("#hud-preview").before(label);
+ label.htmlFor="hud-repertoire";label.append(reps);dialog.querySelector("#hud-preview").parentElement.before(label);
  reps.onchange=()=>{engine.dispatch({type:"SELECT_REPERTOIRE",repertoireId:reps.value});fillSongs();};
  const selector=dialog.querySelector("#hud-preview");
  function fillSongs(){
