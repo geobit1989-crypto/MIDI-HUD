@@ -1,5 +1,5 @@
 import {DriveHistory,createSyncController} from './drive-sync.mjs';
-import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs';
+import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-fetchfix1';
 import {readLibrarySource} from './library-storage.mjs';
 
 const make=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
@@ -118,7 +118,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
    if(globalThis.MidiHudNative){
     auth=new GoogleDriveAuth();const config=await globalThis.MidiHudNative.call('cloud.config');configured=config.configured;identityReady=configured;
    }else{
-    const response=await fetch(new URL('../config/cloud-sync.json',import.meta.url),{cache:'no-store'});
+    const response=await globalThis.fetch(new URL('../config/cloud-sync.json',import.meta.url),{cache:'no-store'});
     if(!response.ok)throw Error('No se pudo leer la configuración de sincronización.');
     const config=await response.json();auth=new GoogleDriveAuth({clientId:storage.getItem(CLIENT_STORAGE_KEY)||config.googleWebClientId||''});configured=auth.configured;
     if(configured){void loadGoogleIdentity().then(()=>{identityReady=true;refresh();}).catch(error=>status({state:'offline',message:error.message+' Tus datos locales siguen disponibles.'}));}
