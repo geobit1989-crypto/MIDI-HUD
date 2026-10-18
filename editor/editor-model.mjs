@@ -32,7 +32,7 @@ export function newSong(db,repertoireId,title="Nueva canción"){
  const id=nextId(db,"song");
  const sid=nextId(db,"state");
  db.songs.push({
-   id,title,tono:null,tempoBpm:null,bank:null,leadSheet:null,
+   id,title,author:"",tono:null,tempoBpm:null,bank:null,leadSheet:null,
    displaySlots:Array.from({length:9},()=>({name:"—",sub:"Sin asignar"})),
    stateIds:[sid],initialStateId:sid
  });
