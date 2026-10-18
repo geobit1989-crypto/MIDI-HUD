@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MIDI HUD · Configuración</title>
 <style>:root{font-family:system-ui;color:#eaf4ff;background:#0b1019}body{max-width:850px;margin:auto;padding:20px}h1{margin-bottom:4px}small{color:#a5bdd3}.card{background:#192433;border-radius:14px;padding:16px;margin:16px 0}label{display:block;margin:12px 0 5px}input,select{box-sizing:border-box;width:100%;padding:12px;border-radius:8px;background:#101c2a;color:white;border:1px solid #718ba6;font:inherit}button{background:#24516a;border:1px solid #73a8c0;color:white;border-radius:9px;padding:11px;margin:5px 4px 5px 0;font:inherit}button:disabled{opacity:.5}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:145px}#notice{min-height:22px}a{color:#80d9f2}hr{border:0;border-top:1px solid #3c5369}.header{display:flex;align-items:center;justify-content:space-between;gap:10px}.liveBtn{display:inline-flex;align-items:center;gap:7px;background:#087c9a;border:1px solid #30c9e9;color:white;padding:12px 15px;border-radius:10px;text-decoration:none;font-weight:700;white-space:nowrap}.liveBtn svg{width:17px;height:17px;fill:currentColor}</style></head><body>
-<div class="header"><h1>MIDI HUD · Configuración</h1><a class="liveBtn" href="../v03.html" aria-label="Ver maqueta LIVE v0.3"><span aria-hidden="true" style="font-size:23px;line-height:1">♫</span> LIVE v0.3</a></div><small>Preparación de repertorios · motor compartido v0.2 · sin MIDI real</small><p><a href="../lab/">Abrir banco de pruebas LAB</a></p>
+<div class="header"><h1>MIDI HUD · Configuración</h1><a class="liveBtn" href="../v03.html" aria-label="Ver maqueta LIVE v0.3"><span aria-hidden="true" style="font-size:23px;line-height:1">♫</span> LIVE v0.3</a></div><small>Preparación de repertorios · motor compartido v0.3 · recepción MIDI todavía sin conexión física</small><p><a href="../lab/">Abrir banco de pruebas LAB</a></p>
 <div class="card"><label>Nombre del repertorio<input id="repName"></label><div class="row"><button id="newSong">+ Nueva canción</button><button id="removeSong">Eliminar canción</button></div><label>Canción seleccionada<select id="songSelect"></select></label><label>Título<input id="songTitle"></label><label>Tempo (BPM, opcional)<input id="tempo" type="number" min="30" max="300" step="1"></label>
 <div class="row"><label>Banco de canción · CC0<input id="songCc0" type="number" readonly placeholder="Sin asignar"></label><label>Programa de canción · PC<input id="songPc" type="number" readonly placeholder="Sin asignar"></label></div>
 <small>Dirección MIDI definida únicamente en el repertorio maestro de Google Sheets, no en los presets del HUD.</small></div>
@@ -29,7 +29,7 @@ edit($('#assignment'),()=>{const p=preset(),a=$('#assignment').value;p.morph.ass
 $('#songSelect').onchange=()=>{si=Number($('#songSelect').value);pi=0;render()};
 $('#presetSelect').onchange=()=>{pi=Number($('#presetSelect').value);render()};
 $('#newSong').onclick=()=>{const id=uid();db.songs.push({id,title:'Nueva canción',tempoBpm:null,notes:'',presetIds:[]});rep().songIds.push(id);si=songs().length-1;pi=0;addPreset();save();render()};
-function addPreset(){const id=uid();db.presets.push({id,name:'Nuevo preset',songId:song().id,programChange:0,morph:{onLoad:0,min:0,max:127,assignment:'none',parameters:{}}});song().presetIds.push(id);pi=presets().length-1}
+function addPreset(){const id=uid();db.presets.push({id,name:'Nuevo preset',songId:song().id,morph:{onLoad:0,min:0,max:127,assignment:'none',parameters:{}}});song().presetIds.push(id);pi=presets().length-1}
 $('#addPreset').onclick=()=>{addPreset();save();render()};
 $('#removePreset').onclick=()=>{if(presets().length<=1)return;const id=preset().id;song().presetIds=song().presetIds.filter(x=>x!==id);db.presets=db.presets.filter(x=>x.id!==id);pi=0;save();render()};
 $('#removeSong').onclick=()=>{if(songs().length<=1)return;const s=song();rep().songIds=rep().songIds.filter(x=>x!==s.id);db.presets=db.presets.filter(p=>!s.presetIds.includes(p.id));db.songs=db.songs.filter(x=>x.id!==s.id);si=0;pi=0;save();render()};
@@ -53,7 +53,7 @@ function importCatalog(text){
   if((ci<0)!==(pci<0))throw Error('CC0 y PC deben aparecer juntos');
   const hasMidi=ci>=0&&pci>=0;
   const entries=rows.map(r=>({title:(r[ti]||'').trim(),author:(r[ai]||'').trim(),
-    ...(hasMidi?{cc0:Number(r[ci]),pc:Number(r[pci])}:{})})).filter(r=>r.title);
+    ...(hasMidi?{cc0:(r[ci]==null||r[ci].trim()==='')?NaN:Number(r[ci]),pc:(r[pci]==null||r[pci].trim()==='')?NaN:Number(r[pci])}:{})})).filter(r=>r.title);
   if(!entries.length)throw Error('No hay canciones válidas');
   if(hasMidi){
     const addresses=new Set();
@@ -83,7 +83,7 @@ function importCatalog(text){
       }
       const id=uid(),pid=uid();s={id,title:entry.title,author:entry.author,tempoBpm:null,notes:'',presetIds:[pid]};
       if(hasMidi){s.midiAddress={cc0:entry.cc0,pc:entry.pc};addressed++}
-      db.songs.push(s);rep().songIds.push(id);db.presets.push({id:pid,name:'Inicial',songId:id,programChange:0,morph:{onLoad:0,min:0,max:127,assignment:'none',parameters:{}}});
+      db.songs.push(s);rep().songIds.push(id);db.presets.push({id:pid,name:'Inicial',songId:id,morph:{onLoad:0,min:0,max:127,assignment:'none',parameters:{}}});
       existing.set(k,s);added++;
     }
     save();render();$('#catalogNotice').textContent=unique.length+' canciones leídas · '+added+' añadidas · '+updated+' autores completados · '+addressed+' direcciones MIDI asignadas/actualizadas';
