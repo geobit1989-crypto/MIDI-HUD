@@ -49,3 +49,26 @@ jobs:
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
           command: deploy
+
+      - name: Verify deployed Worker and OAuth readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENDPOINT="https://midihudaut.midihudapp.workers.dev/health"
+          echo "Checking Cloudflare Worker health endpoint (no credentials transmitted)..."
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 12 "$ENDPOINT" -o /tmp/midi-hud-health.json; then
+              if node -e '
+                const fs=require("node:fs");
+                const h=JSON.parse(fs.readFileSync("/tmp/midi-hud-health.json","utf8"));
+                console.log("Service:",h.service,"Stage:",h.stage,"OAuth ready:",h.oauthEnabled);
+                if(h.service!=="midi-hud-auth"||h.stage!=="persistent-oauth"||h.oauthEnabled!==true) process.exit(2);
+              '; then
+                echo "Cloudflare Worker OAuth backend is ready."
+                exit 0
+              fi
+            fi
+            sleep 3
+          done
+          echo "::error::Worker published, but persistent OAuth is not ready. Check Cloudflare Worker secrets and D1 database binding."
+          exit 1
