@@ -89,7 +89,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   label.append(clientInput);setup.append(label);
   const saveClient=button('Guardar identificador',()=>{
    const id=clientInput.value.trim();
-   if(!/^[a-zA-Z0-9_-]+\\.apps\\.googleusercontent\\.com$/.test(id)){
+   if(!/^[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/.test(id)){
     status({state:'error',message:'El identificador debe terminar en .apps.googleusercontent.com. No introduzcas contraseñas ni secretos.'});return;
    }
    if(account){
