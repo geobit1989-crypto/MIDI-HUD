@@ -214,7 +214,7 @@ export default {
   const path=new URL(request.url).pathname;
   if(request.method==="GET"&&(path==="/"||path==="/health"))
    return response({service:"midi-hud-auth",status:isReady(env)?"ok":"pending_configuration",
-    stage:"persistent-oauth",oauthEnabled:isReady(env)});
+    stage:"persistent-oauth",oauthEnabled:isReady(env)},200,getOriginHeaders(request));
   if(path==="/auth/callback"&&request.method==="GET"){
    try{assertReady(env);return await googleCallback(request,env);}
    catch(error){return response({error:"oauth_callback_failed",message:"No se completó Google OAuth. Regresa a MIDI HUD e inténtalo de nuevo."},
