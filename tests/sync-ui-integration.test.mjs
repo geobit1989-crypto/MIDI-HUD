@@ -63,3 +63,20 @@ test("sincroniza automáticamente al guardar, volver a la pestaña y reconectars
  assert.match(syncUI,/auth\.restore\(\)/);
  assert.match(syncUI,/state:'reauth'/);
 });
+
+test("trusted-device OAuth becomes active only when Worker confirms readiness",()=>{
+ assert.match(syncUI,/import \{PersistentDriveAuth\}/);
+ assert.match(syncUI,/const persistent=new PersistentDriveAuth\(\)/);
+ assert.match(syncUI,/persistent\.hasSession\|\|await persistent\.ready\(\)/);
+ assert.match(syncUI,/auth=new GoogleDriveAuth/);
+ assert.match(syncUI,/auth\.listDevices\(\)/);
+ assert.match(syncUI,/auth\.revokeDevice\(d\.id\)/);
+ assert.match(editorScript,/20261018-persistent1/);
+ assert.match(livePage,/20261018-persistent1/);
+ const webClient=read("core/persistent-drive-auth.mjs");
+ assert.match(webClient,/midiHudTrustedDeviceSessionV1/);
+ assert.match(webClient,/\/session\/exchange/);
+ assert.match(webClient,/\/drive\/request/);
+ assert.match(webClient,/hud_auth_ticket/);
+ assert.doesNotMatch(webClient,/client_secret|refresh_token\s*[:=]/);
+});
