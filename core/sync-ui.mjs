@@ -37,8 +37,16 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
  const launch=button('Sincronización',()=>open());host.append(launch);
  const CLIENT_STORAGE_KEY='midiHudGoogleWebClientId';
  let auth,account=null,configured=false,identityReady=false,last={state:'local',message:'Guardado en este dispositivo'},panel=null,busy=false,stopped=false;
+ let queued=false,saveTimer=null;
  let resolveReady;const ready=new Promise(resolve=>{resolveReady=resolve;});
- const status=next=>{last=next;launch.textContent=next.state==='synced'?'Sincronizado':next.state==='pending'?'Sincronización pendiente':'Sincronización';refresh();};
+ const status=next=>{
+  last=next;
+  launch.textContent=next.state==='synced'?'Sincronizado':
+   next.state==='reauth'?'Reconectar Google':
+   ['pending','deferred','offline'].includes(next.state)?'Cambios pendientes':'Sincronización';
+  launch.setAttribute('data-sync-state',next.state);
+  launch.title=next.message;refresh();
+ };
  const controller=createSyncController({storage,history:new DriveHistory(request=>auth.request(request)),getLocal,canApply,onApplied,onStatus:status,resolveConflict:chooseConflict});
  const refresh=()=>{
   if(!panel?.open)return;
@@ -48,10 +56,28 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   panel.querySelector('[data-sync]').disabled=busy||!account;panel.querySelector('[data-disconnect]').disabled=busy||!account;
  };
  async function synchronize(options={}){
-  if(busy||!account||stopped)return;
-  if(mode==='live'&&!options.explicit&&!canApply(options)){status({state:'pending',message:'Actualiza los repertorios antes de tocar. LIVE conserva la sesión actual.'});return;}
-  busy=true;refresh();try{return await controller.synchronize(options);}
-  catch(error){status({state:'error',message:error.message});}finally{busy=false;refresh();}
+  if(!account||stopped)return;
+  if(busy){queued=true;return;}
+  // Esperar a que el editor guarde el borrador. LIVE no cambia su motor activo.
+  if(!canApply(options)){status({state:'deferred',message:'Cambios locales sin guardar. Sincronizaré después de Guardar.'});return;}
+  busy=true;refresh();
+  try{
+   const result=await controller.synchronize(options);
+   // Puede haberse guardado otro cambio mientras Drive respondía.
+   if(result?.pending&&!result?.deferred&&!result?.conflict)queued=true;
+   return result;
+  }catch(error){
+   if(error?.code==='AUTH_REQUIRED'){
+    account=null;
+    controller.setAccount(null);
+    status({state:'reauth',message:'La autorización de Google ha caducado. Los cambios permanecen en este dispositivo; vuelve a conectar una vez para reanudar.'});
+   }else status({state:'error',message:'Sincronización pendiente. Se reintentará al recuperar la conexión: '+error.message});
+  }finally{
+   busy=false;refresh();
+   if(queued&&account&&!stopped&&canApply({})&&document.visibilityState!=='hidden'){
+    queued=false;queueMicrotask(()=>{void synchronize({reason:'queued'});});
+   }
+  }
  }
  function recoveries(){
   const node=dialog('Versiones conservadas');let count=0;
@@ -107,7 +133,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   const connect=button('Conectar con Google',()=>{
    // connect() abre Google inmediatamente, dentro de esta pulsación.
    if(busy)return;busy=true;refresh();
-   auth.connect().then(next=>{account=next;controller.setAccount(account);status({state:'connected',message:'Cuenta conectada.'});}).catch(error=>status({state:'error',message:error.message})).finally(()=>{busy=false;refresh();if(account)void synchronize({explicit:true});});
+   auth.connect().then(next=>{account=next;controller.setAccount(account);status({state:'connected',message:'Cuenta conectada. Sincronización automática activada.'});}).catch(error=>status({state:'error',message:error.message})).finally(()=>{busy=false;refresh();if(account)void synchronize({explicit:true});});
   });connect.dataset.connect='';
   const sync=button(mode==='live'?'Actualizar repertorios':'Sincronizar ahora',()=>synchronize({explicit:true}));sync.dataset.sync='';
   const disconnect=button('Desconectar',async()=>{if(busy)return;busy=true;try{await auth.disconnect();account=null;controller.setAccount(null);status({state:'local',message:'Cuenta desconectada. Los repertorios permanecen en este dispositivo.'});}catch(error){status({state:'error',message:error.message});}finally{busy=false;refresh();}});disconnect.dataset.disconnect='';
@@ -124,14 +150,39 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
     const config=await response.json();auth=new GoogleDriveAuth({clientId:storage.getItem(CLIENT_STORAGE_KEY)||config.googleWebClientId||''});configured=auth.configured;
     if(configured){void loadGoogleIdentity().then(()=>{identityReady=true;refresh();}).catch(error=>status({state:'offline',message:error.message+' Tus datos locales siguen disponibles.'}));}
    }
-   if(configured){account=await auth.restore();if(account){controller.setAccount(account);await synchronize();}}
-   else status({state:'setup',message:'La conexión con Drive todavía necesita configurarse.'});
+   if(configured){
+    account=await auth.restore();
+    if(account){controller.setAccount(account);await synchronize({reason:'startup'});}
+    else status({state:'reauth',message:'Conecta tu cuenta de Google una vez para activar la sincronización automática. Tu repertorio local está a salvo.'});
+   }else status({state:'setup',message:'La conexión con Drive todavía necesita configurarse.'});
   }catch(error){status({state:'error',message:error.message});}
   finally{resolveReady();refresh();}
  }
- const resume=()=>{if(last.state!=='conflict'&&document.visibilityState!=='hidden')void synchronize();};
- window.addEventListener('online',resume);window.addEventListener('hud-foreground',resume);window.addEventListener('hud-library-saved',resume);document.addEventListener('visibilitychange',resume);
+ const resume=()=>{
+  if(last.state!=='conflict'&&document.visibilityState!=='hidden'&&account)void synchronize({reason:'resume'});
+ };
+ const onSaved=()=>{
+  if(!account){
+   status({state:'reauth',message:'Cambios guardados localmente. Conecta Google para activar la sincronización automática.'});
+   return;
+  }
+  if(saveTimer!==null)clearTimeout(saveTimer);
+  status({state:'pending',message:'Cambios guardados. Sincronizando con Google Drive automáticamente…'});
+  saveTimer=setTimeout(()=>{saveTimer=null;void synchronize({reason:'saved'});},350);
+ };
+ window.addEventListener('online',resume);
+ window.addEventListener('focus',resume);
+ window.addEventListener('pageshow',resume);
+ window.addEventListener('hud-foreground',resume);
+ window.addEventListener('hud-library-saved',onSaved);
+ document.addEventListener('visibilitychange',resume);
  const interval=setInterval(resume,60000);
  void initialize();
- return {ready,synchronize,open,destroy(){stopped=true;clearInterval(interval);window.removeEventListener('online',resume);window.removeEventListener('hud-foreground',resume);window.removeEventListener('hud-library-saved',resume);document.removeEventListener('visibilitychange',resume);launch.remove();}};
+ return {ready,synchronize,open,destroy(){
+  stopped=true;clearInterval(interval);if(saveTimer!==null)clearTimeout(saveTimer);
+  window.removeEventListener('online',resume);window.removeEventListener('focus',resume);
+  window.removeEventListener('pageshow',resume);window.removeEventListener('hud-foreground',resume);
+  window.removeEventListener('hud-library-saved',onSaved);
+  document.removeEventListener('visibilitychange',resume);launch.remove();
+ }};
 }
