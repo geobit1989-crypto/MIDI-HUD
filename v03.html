@@ -479,7 +479,7 @@ dialog.innerHTML=`
     <a href="./">▦ Inicio<small>Panel de acceso a MIDI HUD</small></a>
   </div>
 </nav>
-<footer class="hud-config-foot">El HUD únicamente representa estados visuales. No transmite MIDI a la GT ni supervisa sus cambios físicos.</footer>
+<footer class="hud-config-foot">El HUD únicamente representa estados visuales. No transmite MIDI a la GT ni supervisa sus cambios físicos. <a href="./privacy.html" lang="pt-PT">Privacidade (PT)</a> · <a href="./privacy-en.html" lang="en">Privacy (EN)</a> · <a href="./terms.html" lang="pt-PT">Termos (PT)</a> · <a href="./terms-en.html" lang="en">Terms (EN)</a></footer>
 `;
 overlay.append(dialog);document.body.append(overlay);
 function popup(open){overlay.hidden=!open;overlay.style.display=open?"flex":"none";if(open)dialog.querySelector("#hud-channel").focus();else gear.focus();}
