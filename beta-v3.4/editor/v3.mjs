@@ -759,8 +759,8 @@ function register(){
   if(name===null)return;
   immediate(db=>{
    const id=newRepertoire(db,name.trim()||"Nuevo repertorio");
-   activeRep=id;activeSong=db.repertoires.find(r=>r.id===id).songIds[0];
-   activeState=db.songs.find(s=>s.id===activeSong).stateIds[0];
+   catalogMode=false;activeRep=id;activeSong=db.repertoires.find(r=>r.id===id).songIds[0]||null;
+   activeState=db.songs.find(s=>s.id===activeSong)?.initialStateId??null;
   },"Repertorio creado.");
  };
  $("repRename").onclick=()=>{
