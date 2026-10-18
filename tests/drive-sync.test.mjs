@@ -125,3 +125,37 @@ test('las peticiones web no permiten hosts ajenos, borrados ni cabeceras de cred
  const nativeCalls=[],native=new GoogleDriveAuth({native:{call:async(command,payload)=>{nativeCalls.push({command,payload});return {id:'google-user-000001',email:'test@example.test'};}}});
  await native.connect();await native.request({method:'GET',path:'/drive/v3/files'});await native.disconnect();assert.deepEqual(nativeCalls.map(item=>item.command),['cloud.connect','cloud.request','cloud.disconnect']);assert(!JSON.stringify(nativeCalls).includes('access_token'));
 });
+
+test('Google Drive OAuth usa fetch ligado al contexto del navegador',async()=>{
+ const original=globalThis.fetch,requests=[];
+ globalThis.fetch=async function(url,options){
+  assert.equal(this,globalThis,'fetch nativo debe recibir Window como this');
+  requests.push({url:String(url),options});
+  if(String(url).includes('/oauth2/v3/userinfo')){
+   return {ok:true,json:async()=>({sub:'google-user-000009',email:'test@example.org'})};
+  }
+  return {ok:true,text:async()=>JSON.stringify({files:[]})};
+ };
+ try{
+  const auth=new GoogleDriveAuth({
+   native:null,
+   clientId:'123456789-test.apps.googleusercontent.com',
+   google:()=>({accounts:{oauth2:{initTokenClient:options=>({
+    requestAccessToken:()=>queueMicrotask(()=>options.callback({
+     access_token:'test-token',expires_in:3600,
+     scope:'openid email https://www.googleapis.com/auth/drive.appdata'
+    }))
+   })}}})
+  });
+  const account=await auth.connect();
+  assert.equal(account.email,'test@example.org');
+  const answer=await auth.request({method:'GET',path:'/drive/v3/files',query:{pageSize:10}});
+  assert.deepEqual(answer,{files:[]});
+  assert.equal(requests.length,2);
+  assert.match(requests[0].url,/oauth2\/v3\/userinfo/);
+  assert.match(requests[1].url,/drive\/v3\/files/);
+ }finally{
+  if(original===undefined)delete globalThis.fetch;
+  else globalThis.fetch=original;
+ }
+});
