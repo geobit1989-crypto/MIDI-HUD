@@ -4,7 +4,7 @@
  * Salida compatible con el motor: arrays de cuatro posiciones por compás.
  * Sin dependencias de DOM, MIDI ni almacenamiento.
  */
-const chordPattern = /^[A-G](?:#|b|♯|♭)?m?$/;
+const chordPattern = /^(?:[A-G](?:#|b|♯|♭)?m?|[b#♭♯]?(?:VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i|[1-7])(?:[°ø+]|(?:m|maj|sus|add|dim|aug)?\d*)?)$/;
 const uniqueInts = value => [...new Set(value || [])].filter(Number.isInteger);
 
 function problem(errors,line,message,section=null,bar=null){
@@ -55,7 +55,7 @@ export function parseLeadSheetText(input){
       if(chords.length>2)problem(errors,lineNo,"Máximo dos acordes por compás.",current.letter,bar);
       for(const chord of chords){
         if(!chordPattern.test(chord))
-          problem(errors,lineNo,"Acorde «"+chord+"» inválido. Usa A–G, #/b opcional y m opcional.",current.letter,bar);
+          problem(errors,lineNo,"Acorde «"+chord+"» inválido. Usa A–G, #/b opcional y m opcional, o grados I–VII / 1–7 escritos manualmente.",current.letter,bar);
       }
       const beats=repeat?["/","","",""]:
         chords.length===2?[chords[0],"",chords[1],""]:[chords[0]||"","","",""];

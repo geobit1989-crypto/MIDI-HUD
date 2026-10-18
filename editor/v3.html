@@ -213,6 +213,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
   </label>
   <div class="ctrlrow">
     <button id="repAdd" class="small" title="Nuevo repertorio">+ Repertorio</button>
+    <button id="repDuplicate" class="small">Duplicar lista</button>
     <button id="repRename" class="small" title="Renombrar repertorio">Renombrar</button>
     <button id="repRemove" class="small danger" title="Eliminar repertorio">Eliminar</button>
   </div>
@@ -232,11 +233,18 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
   <div class="ctrlrow">
     <button id="songAdd" class="small primary">+ Canción</button>
     <button id="songCopy" class="small">Duplicar</button>
-    <button id="songRemove" class="small danger">Eliminar</button>
+    <button id="songRemove" class="small danger">Quitar de lista</button>
     <button id="songUp" class="small" title="Subir canción">↑</button>
     <button id="songDown" class="small" title="Bajar canción">↓</button>
   </div>
   <hr>
+  <details class="catalog-import" open>
+    <summary>Catálogo maestro · versiones compartidas</summary>
+    <label class="field">Buscar título o variante<input id="masterSearch" type="search"></label>
+    <label><input id="masterArchived" type="checkbox"> Mostrar archivadas</label>
+    <button id="masterNew" class="small">+ Versión maestra</button>
+    <div id="masterResults" class="song-list" role="list"></div>
+  </details>
   <details class="catalog-import" id="catalogDetails">
     <summary>Importar canciones · Sheets/CSV</summary>
     <p class="help">En Google Sheets copia las columnas <b>Canción</b> y <b>Autor</b>, incluida la fila de encabezados. Pega la tabla aquí, o importa el CSV descargado.</p>
@@ -258,6 +266,17 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <div><span class="heading" id="repHeading">Repertorio</span><h2 id="songHeading">Selecciona una canción</h2>
       <p id="songSummary"></p></div>
   </div>
+  <div id="emptyPlaylist" class="empty" hidden>Esta lista está vacía. Busca una versión preparada en el catálogo y pulsa Añadir.</div>
+  <section id="sharedControls" class="section-card" hidden>
+    <p id="sharedWarning" class="help"></p>
+    <label class="field">Nombre de variante<input id="songVariant" maxlength="120" placeholder="Grados, Sol mayor…"></label>
+    <label class="field">Nueva variante independiente<input id="newVariantName" maxlength="120" placeholder="Nombre de la nueva versión"></label>
+    <div class="ctrlrow"><button id="versionSave" class="small primary">Guardar cambios compartidos</button><button id="versionNew" class="small">Guardar como nueva versión</button><button id="versionArchive" class="small">Archivar</button></div>
+    <label class="field">Historial recuperable<select id="versionHistory"></select></label>
+    <button id="versionRestore" class="small">Recuperar guardado</button>
+    <label id="occasionNoteWrap" class="field">Nota solo para este repertorio<textarea id="occasionNote" maxlength="4000"></textarea></label>
+    <button id="occasionSave" class="small">Guardar nota de ocasión</button>
+  </section>
   <nav class="tabs" aria-label="Secciones del editor">
     <button type="button" data-tab="song" aria-selected="true" class="active">Canción</button>
     <button type="button" data-tab="states" aria-selected="false">Estados</button>
@@ -437,7 +456,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
 <input id="catalogFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
-<script type="module" src="./v3.mjs?v=20261018-persistent1"></script>
+<script type="module" src="./v3.mjs?v=20261018-catalog2"></script>
 </div>
 </body>
 </html>

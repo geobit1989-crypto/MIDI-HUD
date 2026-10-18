@@ -115,7 +115,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 .hud-panel{gap:3px}
 }
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-  
+
 /* MIDI HUD: colores invertidos y ajustes puntuales sin rehacer la interfaz. */
 .lead-sheet{background:#05070b;color:#f8fafc;border:1px solid #46515c}
 .sheet-section{border-bottom-color:#46515c}
@@ -409,7 +409,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 
 <!-- Integracion funcional v1: el diseno de LIVE v0.3 permanece sin alteraciones estructurales. -->
 <script type="module">
-import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs";
+import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261018-catalog2";
 import {resolveModuleVisual} from "./core/module-visuals.mjs";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {openBrowserMidi} from "./core/midi-browser.mjs?v=20261015-ble1";
@@ -492,8 +492,19 @@ function prepare(){
    saveSettings(localStorage,{midiChannel});
    engine.dispatch({type:"SET_CHANNEL",channel:midiChannel});
  };
+ const label=document.createElement("label");label.textContent="Repertorio activo";
+ const reps=document.createElement("select");reps.id="hud-repertoire";
+ reps.replaceChildren(...library.repertoires.map(r=>new Option(r.name,r.id)));
+ label.append(reps);dialog.querySelector("#hud-preview").before(label);
+ reps.onchange=()=>{engine.dispatch({type:"SELECT_REPERTOIRE",repertoireId:reps.value});fillSongs();};
  const selector=dialog.querySelector("#hud-preview");
- selector.replaceChildren(...library.songs.map(s=>new Option(s.title,s.id)));
+ function fillSongs(){
+  const rep=library.repertoires.find(r=>r.id===reps.value)||library.repertoires[0];
+  selector.replaceChildren(...rep.songIds.map(id=>{const s=library.songs.find(x=>x.id===id);return new Option(s.title+(s.catalog?.variant?" — "+s.catalog.variant:""),s.id);}));
+  dialog.querySelector("#hud-preview-btn").disabled=!rep.songIds.length;
+ }
+ fillSongs();
+
  dialog.querySelector("#hud-preview-btn").onclick=()=>{
    engine.dispatch({type:"PREVIEW_SONG",songId:selector.value});popup(false);
  };

@@ -1,8 +1,9 @@
+import {catalogId,createCatalogVariant,createCatalogRepertoire} from "../core/catalog-v1.mjs";
 /**
  * MIDI HUD / Editor visual - operaciones puras sobre la biblioteca v2.
  * No altera hardware ni mezcla la configuracion de canal global con canciones.
  */
-import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs";
+import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261018-catalog2";
 
 const copy=x=>JSON.parse(JSON.stringify(x));
 function requireThat(ok,message){if(!ok)throw Error("Editor MIDI HUD: "+message);}
@@ -12,6 +13,7 @@ function locate(items,id,label){
  return item;
 }
 function nextId(db,prefix){
+ if(db.catalogVersion===1)return catalogId(prefix);
  const used=new Set([...db.repertoires,...db.songs,...db.states].map(x=>x.id));
  let i=1;while(used.has(prefix+"-"+i))i++;
  return prefix+"-"+i;
@@ -28,7 +30,7 @@ export function editLibrary(original,fn){
  return db;
 }
 export function newSong(db,repertoireId,title="Nueva canción"){
- const rep=locate(db.repertoires,repertoireId,"repertorio");
+ const rep=repertoireId==null&&db.catalogVersion===1?null:locate(db.repertoires,repertoireId,"repertorio");
  const id=nextId(db,"song");
  const sid=nextId(db,"state");
  db.songs.push({
@@ -37,10 +39,12 @@ export function newSong(db,repertoireId,title="Nueva canción"){
    stateIds:[sid],initialStateId:sid
  });
  db.states.push({id:sid,songId:id,name:"Clean",gtPatch:null,displayIndex:0,indicators:[]});
- rep.songIds.push(id);
+ if(db.catalogVersion===1){const song=db.songs.find(s=>s.id===id);song.catalog={familyId:id,variant:"",archived:false,history:[]};song.midiBindings=[];}
+ if(rep)rep.songIds.push(id);
  return id;
 }
 export function newRepertoire(db,name="Nuevo repertorio"){
+ if(db.catalogVersion===1)return createCatalogRepertoire(db,name);
  const id=nextId(db,"repertoire");
  db.repertoires.push({id,name,songIds:[]});
  newSong(db,id);
@@ -52,6 +56,7 @@ export function renameRepertoire(db,id,name){
  rep.name=name.trim();
 }
 export function copySong(db,repertoireId,songId){
+ if(db.catalogVersion===1){const id=createCatalogVariant(db,songId,{variant:(db.songs.find(s=>s.id===songId).catalog?.variant||"Versión")+" (copia)"});locate(db.repertoires,repertoireId,"repertorio").songIds.push(id);return id;}
  const rep=locate(db.repertoires,repertoireId,"repertorio");
  const original=locate(db.songs,songId,"canción");
  requireThat(rep.songIds.includes(songId),"la canción no pertenece a este repertorio");
@@ -84,7 +89,7 @@ function removeOrphanSong(db,songId){
  pruneOrphanIndicators(db);
 }
 function pruneActions(db,pred){
- for(const b of db.bindings)b.actions=b.actions.filter(a=>!pred(a));
+ for(const b of [...db.bindings,...db.songs.flatMap(s=>s.midiBindings||[])])b.actions=b.actions.filter(a=>!pred(a));
  db.bindings=db.bindings.filter(b=>b.actions.length);
 }
 function pruneOrphanIndicators(db){
@@ -94,15 +99,16 @@ function pruneOrphanIndicators(db){
 export function deleteSong(db,repertoireId,songId){
  const rep=locate(db.repertoires,repertoireId,"repertorio");
  requireThat(rep.songIds.includes(songId),"canción no pertenece al repertorio");
- requireThat(rep.songIds.length>1,"cada repertorio necesita al menos una canción");
+ requireThat(rep.songIds.length>1||db.catalogVersion===1,"cada repertorio necesita al menos una canción");
  rep.songIds=rep.songIds.filter(id=>id!==songId);
- removeOrphanSong(db,songId);
+ if(db.catalogVersion!==1)removeOrphanSong(db,songId);
+ if(rep.entryNotes)delete rep.entryNotes[songId];
 }
 export function deleteRepertoire(db,repertoireId){
  requireThat(db.repertoires.length>1,"debe existir al menos un repertorio");
  const rep=locate(db.repertoires,repertoireId,"repertorio");
  db.repertoires=db.repertoires.filter(r=>r.id!==repertoireId);
- for(const id of rep.songIds)removeOrphanSong(db,id);
+ if(db.catalogVersion!==1)for(const id of rep.songIds)removeOrphanSong(db,id);
 }
 export function moveSong(db,repertoireId,songId,delta){
  const rep=locate(db.repertoires,repertoireId,"repertorio");
@@ -196,31 +202,35 @@ export function setRepeatBar(db,songId,sectionIndex,barIndex,repeat){
  requireThat(section&&section.bars[barIndex],"compás inexistente");
  section.bars[barIndex]=repeat?["/","","",""]:["","","",""];
 }
-export function newBinding(db,cc,value){
+function bindingList(db,songId){return songId&&db.songs.find(song=>song.id===songId)?.catalog?(db.songs.find(song=>song.id===songId).midiBindings??=[]):db.bindings;}
+export function newBinding(db,cc,value,songId=null){
  requireThat(Number.isInteger(cc)&&cc>=0&&cc<128&&Number.isInteger(value)&&value>=0&&value<128,"CC y valor deben estar entre 0 y 127");
- const current=db.bindings.find(b=>b.cc===cc&&b.value===value);
+ const list=bindingList(db,songId),current=list.find(b=>b.cc===cc&&b.value===value);
  if(current)return current;
  const b={cc,value,actions:[]};
- db.bindings.push(b);
+ list.push(b);
  return b;
 }
-export function setBindingActions(db,cc,value,actions){
+export function setBindingActions(db,cc,value,actions,songId=null){
  requireThat(Array.isArray(actions)&&actions.length>0,"asignación sin acciones");
- const b=newBinding(db,cc,value);
+ const b=newBinding(db,cc,value,songId);
  b.actions=copy(actions);
 }
-export function deleteBinding(db,cc,value){
+export function deleteBinding(db,cc,value,songId=null){
+ if(songId&&db.songs.find(song=>song.id===songId)?.catalog){newBinding(db,cc,value,songId).actions=[];return;}
  db.bindings=db.bindings.filter(b=>!(b.cc===cc&&b.value===value));
 }
-export function bindingFor(db,cc,value){
+export function bindingFor(db,cc,value,songId=null){
+ const scoped=songId?bindingList(db,songId).find(b=>b.cc===cc&&b.value===value):null;
+ if(scoped)return scoped.actions.length?scoped:null;
  return db.bindings.find(b=>b.cc===cc&&b.value===value)||null;
 }
-export function chocolateMatrix(db,{startCC=20,value=127}={}){
+export function chocolateMatrix(db,{startCC=20,value=127,songId=null}={}){
  requireThat(Number.isInteger(startCC)&&startCC>=0&&startCC<=96,"CC inicial no válido");
  requireThat(Number.isInteger(value)&&value>=0&&value<=127,"valor fuera de rango");
  return Array.from({length:8},(_,bank)=>Array.from({length:4},(_,button)=>{
   const cc=startCC+bank*4+button;
-  return {bank:bank+1,button:CONTROL_BUTTONS[button],cc,value,binding:bindingFor(db,cc,value)};
+  return {bank:bank+1,button:CONTROL_BUTTONS[button],cc,value,binding:bindingFor(db,cc,value,songId)};
  }));
 }
 export function actionDescription(db,a){

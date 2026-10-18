@@ -2,8 +2,8 @@
  * Importación no destructiva del catálogo de canciones/autor.
  * No usa red, DOM ni localStorage; seguro para pruebas fuera del navegador.
  */
-import {newSong} from "./editor-model.mjs";
-import {validateLibrary} from "../core/engine-v1.mjs";
+import {newSong} from "./editor-model.mjs?v=20261018-catalog2";
+import {validateLibrary} from "../core/engine-v1.mjs?v=20261018-catalog2";
 
 const copy=value=>JSON.parse(JSON.stringify(value));
 const normalized=value=>String(value??"").normalize("NFD")
@@ -75,9 +75,12 @@ export function mergeSongCatalog(library,repertoireId,entries){
   const title=String(entry.title||"").trim(),author=String(entry.author||"").trim();
   if(!title)throw Error("Canción sin título.");
   // Buscar globalmente: una canción puede pertenecer a más de un repertorio.
-  let found=db.songs.find(s=>songKey(s.title,s.author||"")===songKey(title,author));
+  const matches=db.songs.filter(s=>!s.catalog?.archived&&songKey(s.title,s.author||"")===songKey(title,author));
+  if(matches.length>1)throw Error("Hay varias versiones de «"+title+"». Añade la versión concreta desde el catálogo.");
+  let found=matches[0];
   if(!found&&author){
-   const unnamed=db.songs.filter(s=>titleKey(s.title)===titleKey(title)&&!String(s.author||"").trim());
+   const unnamed=db.songs.filter(s=>titleKey(s.title)===titleKey(title)&&!String(s.author||"").trim()&&!s.catalog?.archived);
+   if(unnamed.length>1)throw Error("Título ambiguo: selecciona una versión desde el catálogo.");
    if(unnamed.length===1){
     found=unnamed[0];found.author=author;stats.authorsCompleted++;
    }
