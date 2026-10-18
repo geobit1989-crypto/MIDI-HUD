@@ -74,8 +74,12 @@ export class PersistentDriveAuth {
   url.searchParams.delete("hud_auth_error");
   this.history().replaceState(this.history().state,"",url.pathname+url.search+url.hash);
   if(error)throw Error("Google no completó la conexión: "+error);
-  const proof=parse(this.transient()?.getItem(PROOF_KEY));
+  // iOS may open the Google consent screen in a separate browser context.
+  // Keep the one-time login proof locally for a maximum of ten minutes.
+  const proof=parse(this.transient()?.getItem(PROOF_KEY))||
+   parse(this.store()?.getItem(PROOF_KEY));
   try{this.transient()?.removeItem(PROOF_KEY);}catch{}
+  try{this.store()?.removeItem(PROOF_KEY);}catch{}
   if(!proof?.value||!chars.test(proof.value)||now()-proof.created>600000||now()<proof.created-60000)
    throw Error("La autorización ha caducado. Vuelve a pulsar Conectar con Google.");
   const session=await this.call("/session/exchange",{method:"POST",body:{ticket,proof:proof.value},token:null});
@@ -106,7 +110,9 @@ export class PersistentDriveAuth {
   const proof=random(),proofHash=await digest(proof);
   let returnPath="/MIDI-HUD/editor/v3.html";
   if(this.location().pathname==="/MIDI-HUD/v03.html")returnPath="/MIDI-HUD/v03.html";
-  this.transient()?.setItem(PROOF_KEY,JSON.stringify({value:proof,created:now()}));
+  const pending=JSON.stringify({value:proof,created:now()});
+  try{this.transient()?.setItem(PROOF_KEY,pending);}catch{}
+  this.store()?.setItem(PROOF_KEY,pending);
   const next=await this.call("/auth/start",{method:"POST",body:{returnPath,proofHash},token:null});
   if(!next.authorizeUrl?.startsWith("https://accounts.google.com/o/oauth2/v2/auth?"))
    throw Error("El servidor devolvió una dirección de Google no válida.");
