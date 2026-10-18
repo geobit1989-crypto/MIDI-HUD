@@ -668,9 +668,9 @@ function register(){
    }
    const target=currentRep().name;
    const confirmation="Importar "+stats.read+" canciones a «"+target+"»?"+
-    "\\nNuevas: "+stats.added+" · Vinculadas: "+stats.linked+
+    "\nNuevas: "+stats.added+" · Vinculadas: "+stats.linked+
     " · Autores completados: "+stats.authorsCompleted+
-    "\\nSe conservarán todos los estados, configuraciones MIDI y lead sheets actuales.";
+    "\nSe conservarán todos los estados, configuraciones MIDI y lead sheets actuales.";
    if(!window.confirm(confirmation))return;
    persistLibrary(library,"Catálogo importado: "+stats.added+" nuevas, "+stats.linked+
      " vinculadas y "+stats.authorsCompleted+" autores completados.");
