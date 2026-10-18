@@ -2,10 +2,12 @@
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MIDI HUD · Configuración</title>
 <style>:root{font-family:system-ui;color:#eaf4ff;background:#0b1019}body{max-width:850px;margin:auto;padding:20px}h1{margin-bottom:4px}small{color:#a5bdd3}.card{background:#192433;border-radius:14px;padding:16px;margin:16px 0}label{display:block;margin:12px 0 5px}input,select{box-sizing:border-box;width:100%;padding:12px;border-radius:8px;background:#101c2a;color:white;border:1px solid #718ba6;font:inherit}button{background:#24516a;border:1px solid #73a8c0;color:white;border-radius:9px;padding:11px;margin:5px 4px 5px 0;font:inherit}button:disabled{opacity:.5}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:145px}#notice{min-height:22px}a{color:#80d9f2}hr{border:0;border-top:1px solid #3c5369}.header{display:flex;align-items:center;justify-content:space-between;gap:10px}.liveBtn{display:inline-flex;align-items:center;gap:7px;background:#087c9a;border:1px solid #30c9e9;color:white;padding:12px 15px;border-radius:10px;text-decoration:none;font-weight:700;white-space:nowrap}.liveBtn svg{width:17px;height:17px;fill:currentColor}</style></head><body>
 <div class="header"><h1>MIDI HUD · Configuración</h1><a class="liveBtn" href="../v03.html" aria-label="Ver maqueta LIVE v0.3"><span aria-hidden="true" style="font-size:23px;line-height:1">♫</span> LIVE v0.3</a></div><small>Preparación de repertorios · motor compartido v0.2 · sin MIDI real</small><p><a href="../lab/">Abrir banco de pruebas LAB</a></p>
-<div class="card"><label>Nombre del repertorio<input id="repName"></label><div class="row"><button id="newSong">+ Nueva canción</button><button id="removeSong">Eliminar canción</button></div><label>Canción seleccionada<select id="songSelect"></select></label><label>Título<input id="songTitle"></label><label>Tempo (BPM, opcional)<input id="tempo" type="number" min="30" max="300" step="1"></label></div>
-<div class="card"><h2>Presets de la canción</h2><div class="row"><button id="addPreset">+ Añadir preset</button><button id="removePreset">Eliminar preset</button></div><label>Preset seleccionado<select id="presetSelect"></select></label><label>Nombre del estado<input id="presetName"></label><label>Program Change (0–127, provisional)<input id="pc" type="number" min="0" max="127"></label><label>Función Morph<select id="assignment"><option value="ambient">Ambiente (reverb/delay)</option><option value="none">Sin asignación</option><option value="soloBoost">Boost solo</option></select></label><small>Al cambiar de preset, el indicador Morph se reinicia a cero. Los números MIDI deben verificarse con la GT-1000CORE.</small></div>
+<div class="card"><label>Nombre del repertorio<input id="repName"></label><div class="row"><button id="newSong">+ Nueva canción</button><button id="removeSong">Eliminar canción</button></div><label>Canción seleccionada<select id="songSelect"></select></label><label>Título<input id="songTitle"></label><label>Tempo (BPM, opcional)<input id="tempo" type="number" min="30" max="300" step="1"></label>
+<div class="row"><label>Banco de canción · CC0<input id="songCc0" type="number" readonly placeholder="Sin asignar"></label><label>Programa de canción · PC<input id="songPc" type="number" readonly placeholder="Sin asignar"></label></div>
+<small>Dirección MIDI definida únicamente en el repertorio maestro de Google Sheets, no en los presets del HUD.</small></div>
+<div class="card"><h2>Presets de la canción</h2><div class="row"><button id="addPreset">+ Añadir preset</button><button id="removePreset">Eliminar preset</button></div><label>Preset seleccionado<select id="presetSelect"></select></label><label>Nombre del estado<input id="presetName"></label><small>Los estados utilizan controles CC; su mapa se definirá independientemente del PC de la canción.</small><label>Función Morph<select id="assignment"><option value="ambient">Ambiente (reverb/delay)</option><option value="none">Sin asignación</option><option value="soloBoost">Boost solo</option></select></label><small>Al cambiar de preset, el indicador Morph se reinicia a cero. Los números MIDI deben verificarse con la GT-1000CORE.</small></div>
 <div class="card"><h2>Catálogo de canciones (nombre y autor)</h2>
-<p><small>Importa un CSV de Google Sheets con columnas Canción y Autor. Las canciones existentes mantienen sus presets y configuraciones MIDI. Las nuevas reciben un preset inicial sin asignación. No se eliminan canciones.</small></p>
+<p><small>Importa el CSV del repertorio maestro con Canción, Autor, CC0 y PC. Las direcciones MIDI se actualizan por identidad de canción, sin reemplazar IDs ni estados. Los nuevos temas reciben un estado inicial. Sin columnas CC0/PC se importarán solo los datos descriptivos.</small></p>
 <div class="row"><button id="catalogImport">Importar CSV</button><button id="catalogSync">Sincronizar CSV por URL</button></div>
 <label>URL de CSV publicado (opcional)<input id="catalogUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv"></label>
 <input id="catalogFile" type="file" accept=".csv,text/csv" hidden>
@@ -17,13 +19,12 @@ let db=null,si=0,pi=0;const $=s=>document.querySelector(s),uid=()=>('id-'+Date.n
 function check(x){try{validateLibrary(normalizeLibrary(x));return true}catch{return false}}
 const rep=()=>db.repertoires[0],songs=()=>rep().songIds.map(id=>db.songs.find(s=>s.id===id)).filter(Boolean),song=()=>songs()[si],presets=()=>song()?.presetIds.map(id=>db.presets.find(p=>p.id===id)).filter(Boolean)||[],preset=()=>presets()[pi];
 function save(){db=normalizeLibrary(db);validateLibrary(db);db.revision=(db.revision||0)+1;db.updatedAt=new Date().toISOString();localStorage.setItem("hudLibrary",JSON.stringify(db));$("#notice").textContent="Cambios guardados en este navegador"}
-function render(){if(!db)return;$('#repName').value=rep().name;$('#songSelect').replaceChildren(...songs().map((s,i)=>new Option((i+1)+'. '+s.title,i)));si=Math.max(0,Math.min(si,songs().length-1));$('#songSelect').value=String(si);$('#songTitle').value=song()?.title||'';$('#tempo').value=song()?.tempoBpm??'';$('#removeSong').disabled=songs().length<=1;$('#presetSelect').replaceChildren(...presets().map((p,i)=>new Option((i+1)+'. '+p.name,i)));pi=Math.max(0,Math.min(pi,presets().length-1));$('#presetSelect').value=String(pi);$('#presetName').value=preset()?.name||'';$('#pc').value=preset()?.programChange??0;$('#assignment').value=preset()?.morph?.assignment||'none';$('#removePreset').disabled=presets().length<=1}
+function render(){if(!db)return;$('#repName').value=rep().name;$('#songSelect').replaceChildren(...songs().map((s,i)=>new Option((i+1)+'. '+s.title,i)));si=Math.max(0,Math.min(si,songs().length-1));$('#songSelect').value=String(si);$('#songTitle').value=song()?.title||'';$('#tempo').value=song()?.tempoBpm??'';$('#songCc0').value=song()?.midiAddress?.cc0??'';$('#songPc').value=song()?.midiAddress?.pc??'';$('#removeSong').disabled=songs().length<=1;$('#presetSelect').replaceChildren(...presets().map((p,i)=>new Option((i+1)+'. '+p.name,i)));pi=Math.max(0,Math.min(pi,presets().length-1));$('#presetSelect').value=String(pi);$('#presetName').value=preset()?.name||'';$('#assignment').value=preset()?.morph?.assignment||'none';$('#removePreset').disabled=presets().length<=1}
 function edit(field,fn){field.addEventListener("change",()=>{const previous=JSON.stringify(db);try{fn();db=normalizeLibrary(db);validateLibrary(db);save();render()}catch(error){db=JSON.parse(previous);render();$("#notice").textContent="No se guardó: "+error.message}})}
 edit($('#repName'),()=>rep().name=$('#repName').value.trim()||'Repertorio');
 edit($('#songTitle'),()=>song().title=$('#songTitle').value.trim()||'Sin título');
 edit($('#tempo'),()=>song().tempoBpm=$('#tempo').value===''?null:Number($('#tempo').value));
 edit($('#presetName'),()=>preset().name=$('#presetName').value.trim()||'Preset');
-edit($('#pc'),()=>preset().programChange=Math.min(127,Math.max(0,Number($('#pc').value)||0)));
 edit($('#assignment'),()=>{const p=preset(),a=$('#assignment').value;p.morph.assignment=a;p.morph.parameters=a==='ambient'?{reverbLongPercent:[10,75],delayPercent:[8,60]}:a==='soloBoost'?{boostDb:[0,3]}:{}});
 $('#songSelect').onchange=()=>{si=Number($('#songSelect').value);pi=0;render()};
 $('#presetSelect').onchange=()=>{pi=Number($('#presetSelect').value);render()};
@@ -47,12 +48,25 @@ function csvRows(text){
 }
 function importCatalog(text){
   const rows=csvRows(text);if(rows.length<2)throw Error('CSV sin canciones');
-  const h=rows.shift().map(catalogKey),ti=h.findIndex(x=>['cancion','musica','titulo','title'].includes(x)),ai=h.findIndex(x=>['autor','version','artista','author'].includes(x));
+  const h=rows.shift().map(catalogKey),ti=h.findIndex(x=>['cancion','musica','titulo','title'].includes(x)),ai=h.findIndex(x=>['autor','version','artista','author'].includes(x)),ci=h.indexOf('cc0'),pci=h.indexOf('pc');
   if(ti<0||ai<0)throw Error('Se requieren las columnas Canción y Autor');
-  const entries=rows.map(r=>({title:(r[ti]||'').trim(),author:(r[ai]||'').trim()})).filter(r=>r.title);
+  if((ci<0)!==(pci<0))throw Error('CC0 y PC deben aparecer juntos');
+  const hasMidi=ci>=0&&pci>=0;
+  const entries=rows.map(r=>({title:(r[ti]||'').trim(),author:(r[ai]||'').trim(),
+    ...(hasMidi?{cc0:Number(r[ci]),pc:Number(r[pci])}:{})})).filter(r=>r.title);
   if(!entries.length)throw Error('No hay canciones válidas');
+  if(hasMidi){
+    const addresses=new Set();
+    for(const e of entries){
+      if(!Number.isInteger(e.cc0)||e.cc0<0||e.cc0>127||
+         !Number.isInteger(e.pc)||e.pc<0||e.pc>127)
+         throw Error('Dirección MIDI inválida en '+e.title);
+      const k=e.cc0+':'+e.pc;if(addresses.has(k))throw Error('CC0/PC duplicado: '+k);
+      addresses.add(k);
+    }
+  }
   const keys=new Set(),unique=entries.filter(r=>{const k=catalogKey(r.title)+'|'+catalogKey(r.author);if(keys.has(k))return false;keys.add(k);return true});
-  const before=JSON.stringify(db);let added=0,updated=0;
+  const before=JSON.stringify(db);let added=0,updated=0,addressed=0;
   try{
     const existing=new Map(db.songs.map(s=>[catalogKey(s.title)+'|'+catalogKey(s.author||''),s]));
     const byTitle=new Map();for(const s of db.songs){const k=catalogKey(s.title);if(!byTitle.has(k))byTitle.set(k,[]);byTitle.get(k).push(s)}
@@ -60,12 +74,19 @@ function importCatalog(text){
       const k=catalogKey(entry.title)+'|'+catalogKey(entry.author);
       let s=existing.get(k);
       if(!s){const same=byTitle.get(catalogKey(entry.title))||[];if(same.length===1&&!same[0].author)s=same[0]}
-      if(s){if(!s.author){s.author=entry.author;updated++}continue}
+      if(s){
+        if(!s.author){s.author=entry.author;updated++}
+        if(hasMidi&&(!s.midiAddress||s.midiAddress.cc0!==entry.cc0||s.midiAddress.pc!==entry.pc)){
+          s.midiAddress={cc0:entry.cc0,pc:entry.pc};addressed++;
+        }
+        continue;
+      }
       const id=uid(),pid=uid();s={id,title:entry.title,author:entry.author,tempoBpm:null,notes:'',presetIds:[pid]};
+      if(hasMidi){s.midiAddress={cc0:entry.cc0,pc:entry.pc};addressed++}
       db.songs.push(s);rep().songIds.push(id);db.presets.push({id:pid,name:'Inicial',songId:id,programChange:0,morph:{onLoad:0,min:0,max:127,assignment:'none',parameters:{}}});
       existing.set(k,s);added++;
     }
-    save();render();$('#catalogNotice').textContent=unique.length+' canciones leídas · '+added+' añadidas · '+updated+' autores completados · '+(unique.length-added-updated)+' existentes';
+    save();render();$('#catalogNotice').textContent=unique.length+' canciones leídas · '+added+' añadidas · '+updated+' autores completados · '+addressed+' direcciones MIDI asignadas/actualizadas';
   }catch(e){db=JSON.parse(before);throw e}
 }
 $('#catalogImport').onclick=()=>$('#catalogFile').click();
@@ -80,5 +101,58 @@ $('#catalogSync').onclick=async()=>{const url=$('#catalogUrl').value.trim();try{
 }catch(err){$('#catalogNotice').textContent='No se pudo sincronizar. Comprueba que el CSV sea accesible y permita CORS: '+err.message}};
 $('#import').onclick=()=>$('#file').click();
 $('#file').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>500000)throw Error('Archivo demasiado grande');const x=JSON.parse(await f.text());if(!check(x))throw Error("Formato o versión incompatible");db=normalizeLibrary(x);si=0;pi=0;save();render();$('#notice').textContent='Repertorio importado'}catch(err){$('#notice').textContent='Error: '+err.message}e.target.value=''};
-(async()=>{try{const saved=localStorage.getItem('hudLibrary')||localStorage.getItem('hudEditorLibrary');if(saved){const x=JSON.parse(saved);if(check(x))db=normalizeLibrary(x)}if(!db){const r=await fetch('../config/midi-hud-data-v1.json');if(!r.ok)throw Error('No se encontró el ejemplo');const x=await r.json();if(!check(x))throw Error("Ejemplo incompatible");db=normalizeLibrary(x)}render();$('#notice').textContent='Editor listo'}catch(err){$('#notice').textContent='No se pudo iniciar: '+err.message}})();
+// Aplicar automáticamente las direcciones MIDI de la copia publicada del maestro
+// SOLO a canciones ya existentes en el navegador; nunca cambia sus IDs ni presets.
+function applyMasterAddresses(entries){
+  if(!Array.isArray(entries))throw Error('Registro maestro incorrecto');
+  const previous=JSON.stringify(db);let changed=0;
+  try{
+    const byIdentity=new Map(db.songs.map(s=>[catalogKey(s.title)+'|'+catalogKey(s.author||''),s]));
+    const byTitle=new Map();
+    for(const s of db.songs){
+      const k=catalogKey(s.title);
+      if(!byTitle.has(k))byTitle.set(k,[]);
+      byTitle.get(k).push(s);
+    }
+    for(const entry of entries){
+      let s=byIdentity.get(catalogKey(entry.title)+'|'+catalogKey(entry.author));
+      if(!s){
+        const candidates=byTitle.get(catalogKey(entry.title))||[];
+        if(candidates.length===1&&!candidates[0].author)s=candidates[0];
+      }
+      if(!s)continue;
+      if(!Number.isInteger(entry.cc0)||!Number.isInteger(entry.pc)||entry.cc0<0||
+         entry.cc0>127||entry.pc<0||entry.pc>127)throw Error('Registro MIDI inválido');
+      if(!s.midiAddress||s.midiAddress.cc0!==entry.cc0||s.midiAddress.pc!==entry.pc){
+        s.midiAddress={cc0:entry.cc0,pc:entry.pc};changed++;
+      }
+    }
+    validateLibrary(db);
+    if(changed)save();
+    return changed;
+  }catch(err){db=JSON.parse(previous);throw err}
+}
+(async()=>{try{
+  const saved=localStorage.getItem('hudLibrary')||localStorage.getItem('hudEditorLibrary');
+  if(saved){const x=JSON.parse(saved);if(check(x))db=normalizeLibrary(x)}
+  if(!db){
+    const r=await fetch('../config/midi-hud-data-v1.json');
+    if(!r.ok)throw Error('No se encontró el ejemplo');
+    const x=await r.json();
+    if(!check(x))throw Error('Ejemplo incompatible');
+    db=normalizeLibrary(x);
+  }
+  try{
+    const r=await fetch('../config/sig-midi-song-addresses-v1.json',{cache:'no-store'});
+    if(r.ok){
+      const master=await r.json();
+      if(master.format!=='midi-hud-song-addresses')throw Error('Registro maestro incorrecto');
+      const count=applyMasterAddresses(master.songs);
+      $('#catalogNotice').textContent='Maestro MIDI: '+master.count+' direcciones · '+count+' aplicadas a canciones existentes';
+    }else{
+      $('#catalogNotice').textContent='Registro maestro MIDI no disponible; importar CSV actualizado';
+    }
+  }catch(err){$('#catalogNotice').textContent='Sin sincronizar direcciones: '+err.message}
+  render();$('#notice').textContent='Editor listo';
+}catch(err){$('#notice').textContent='No se pudo iniciar: '+err.message}})();
 </script></body></html>
