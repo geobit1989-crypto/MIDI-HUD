@@ -86,8 +86,6 @@ export function validateLibrary(data) {
     requireValid(songs.has(preset.songId), "songId inválido en " + preset.id);
     requireValid(typeof preset.name === "string" && preset.name.trim(),
       "preset sin nombre " + preset.id);
-    requireValid(uint(preset.programChange, 0, 127),
-      "Program Change inválido en " + preset.id);
     requireValid(object(preset.morph), "Morph ausente en " + preset.id);
     const m = preset.morph;
     requireValid(uint(m.min, 0, 127) && uint(m.max, 0, 127) && m.min <= m.max &&
@@ -109,6 +107,7 @@ export function normalizeLibrary(input) {
   const db = copy(input);
   if (object(db.midi) && object(db.midi.cc)) delete db.midi.cc.volume;
   if (object(db.controls)) delete db.controls.volume;
+  for (const p of db.presets || []) delete p.programChange; // Campo de legado: PC ahora pertenece a canción.
   return db;
 }
 
@@ -202,7 +201,7 @@ export function createEngine(input) {
       song: { id: song.id, title: song.title, tempoBpm: state.tempoBpm,
         midiAddress: song.midiAddress ?? null,
         position: rep.songIds.indexOf(song.id) + 1, total: rep.songIds.length },
-      preset: { id: preset.id, name: preset.name, programChange: preset.programChange,
+      preset: { id: preset.id, name: preset.name,
         position: song.presetIds.indexOf(preset.id) + 1, total: song.presetIds.length },
       morph: { value: state.morphValue, assignment: m.assignment,
         min: m.min, max: m.max, parameters: values },
