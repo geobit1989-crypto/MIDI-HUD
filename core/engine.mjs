@@ -3,7 +3,9 @@
  * Pure state machine: no DOM, network, localStorage or MIDI device access.
  * Compatible with config/midi-hud-data-v1.json (schema 1.0.0).
  */
-export const ENGINE_VERSION = "0.3.0";
+export const ENGINE_VERSION = "0.4.0";
+export const MIDI_CC = Object.freeze({volume:7, state:80, effect:81, morph:91, expression:11});
+export const CLOCK_CONFIG = Object.freeze({pulsesPerBeat:24, changeThresholdBpm:2, sustainedBeats:2, timeoutMs:1000});
 
 function requireValid(ok, message) {
   if (!ok) throw new Error("MIDI HUD: " + message);
@@ -34,8 +36,8 @@ export function validateLibrary(data) {
   requireValid(data.midi.programNumbering === "zero-based",
     "solo se admiten programas MIDI de 0 a 127");
   requireValid(object(data.midi.cc), "faltan los CC MIDI");
-  for (const name of ["morph", "wah"]) {
-    requireValid(uint(data.midi.cc[name], 0, 127), "CC " + name + " inválido");
+  for (const [name, number] of Object.entries(MIDI_CC)) {
+    requireValid(data.midi.cc[name] === number, "CC " + name + ": esperado " + number);
   }
   requireValid(Array.isArray(data.repertoires) && data.repertoires.length > 0,
     "no hay repertorios");
@@ -67,6 +69,22 @@ export function validateLibrary(data) {
       "canción inexistente " + id + " en " + rep.id);
   }
   for (const song of data.songs) {
+    requireValid(["none","wah","whammy"].includes(song.expressionMode || "none"), "expresión inválida: "+song.id);
+    const effectValues = new Set();
+    requireValid(Array.isArray(song.effects), "efectos ausentes en "+song.id);
+    for (const e of song.effects) {
+      requireValid(e && typeof e.id === "string" && typeof e.name === "string" && e.name.trim() && uint(e.ccValue,0,127),
+        "efecto superpuesto inválido en "+song.id);
+      requireValid(!effectValues.has(e.ccValue), "CC81 duplicado en "+song.id);
+      effectValues.add(e.ccValue);
+    }
+    const stateValues = new Set();
+    for (const presetId of song.presetIds) {
+      const assigned = data.presets.find(p => p.id === presetId);
+      requireValid(assigned && uint(assigned.controlValue,0,127), "CC80 sin asignar "+presetId);
+      requireValid(!stateValues.has(assigned.controlValue), "CC80 duplicado en "+song.id);
+      stateValues.add(assigned.controlValue);
+    }
     requireValid(typeof song.title === "string" && song.title.trim(),
       "canción sin título " + song.id);
     requireValid(Array.isArray(song.presetIds) && song.presetIds.length > 0,
@@ -105,9 +123,37 @@ export function validateLibrary(data) {
 /** Remove legacy volume metadata without changing other repertoire settings. */
 export function normalizeLibrary(input) {
   const db = copy(input);
-  if (object(db.midi) && object(db.midi.cc)) delete db.midi.cc.volume;
-  if (object(db.controls)) delete db.controls.volume;
-  for (const p of db.presets || []) delete p.programChange; // Campo de legado: PC ahora pertenece a canción.
+  if (object(db.midi)) {
+    db.midi.cc = {...MIDI_CC};
+    db.midi.provisional = false;
+  }
+  if (object(db.controls)) {
+    delete db.controls.volume;
+    if (object(db.controls.morph)) db.controls.morph.cc = MIDI_CC.morph;
+  }
+  for (const song of db.songs || []) {
+    song.expressionMode ||= "none";
+    song.effects ||= [];
+    const taken = new Set();
+    for (const pid of song.presetIds || []) {
+      const p = (db.presets || []).find(x => x.id === pid);
+      if (!p) continue;
+      if (!uint(p.controlValue,0,127) || taken.has(p.controlValue)) {
+        let n = 0; while (taken.has(n)) n++;
+        p.controlValue = n;
+      }
+      taken.add(p.controlValue);
+    }
+    const usedEffects = new Set();
+    for (const e of song.effects) {
+      if (!uint(e.ccValue,0,127) || usedEffects.has(e.ccValue)) {
+        let n = 0; while (usedEffects.has(n)) n++;
+        e.ccValue = n;
+      }
+      usedEffects.add(e.ccValue);
+    }
+  }
+  for (const p of db.presets || []) delete p.programChange;
   return db;
 }
 
@@ -116,7 +162,9 @@ export function normalizeLibrary(input) {
  * NEXT_SONG, PREVIOUS_SONG, SELECT_PRESET {presetId},
  * NEXT_PRESET, PREVIOUS_PRESET, SET_MORPH {value:0..127},
  * SET_WAH {percent:0..100}, RECEIVE_CC {controller,value,channel?},
- * RECEIVE_PC {program,channel?}.
+ * RECEIVE_PC {program,channel?}, RECEIVE_F8 {timestampMs}, CLOCK_TIMEOUT {timestampMs}.
+ * RECEIVE_CC uses MIDI_CC 7/11/80/81/91 and ignores other channels.
+ * F8 has no channel. Clock only measures GT tempo: it NEVER overwrites song BPM.
  *
  * dispatch returns {state, intents}. Intents describe MIDI messages for a future
  * hardware adapter. The engine NEVER transmits MIDI.
@@ -132,6 +180,12 @@ export function createEngine(input) {
   const firstSong = songs.get(firstRep.songIds[0]);
   const firstPreset = presets.get(firstSong.presetIds[0]);
   let selectedSongBank = 0; // CC0 Bank Select MSB, contexto de recepción.
+  let clockTicks = [], clockReference = null, clockChangeBeats = 0, clockDirection = 0;
+  let lastF8 = null, clockPulseCount = 0;
+  function clearClockTracking() {
+    clockTicks = []; clockReference = null; clockChangeBeats = 0;
+    clockDirection = 0; lastF8 = null; clockPulseCount = 0;
+  }
   let state = {
     repertoireId: firstRep.id,
     songId: firstSong.id,
@@ -139,6 +193,11 @@ export function createEngine(input) {
     tempoBpm: firstSong.tempoBpm ?? null,
     morphValue: firstPreset.morph.onLoad,
     wahPercent: 0,
+    volumePercent: 100,
+    overlayStates: Object.fromEntries((firstSong.effects || []).map(e=>[e.id,false])),
+    tempoLabel: "BPM",
+    clockBpm: null,
+    clockStatus: "waiting",
     sequence: 0
   };
 
@@ -158,15 +217,26 @@ export function createEngine(input) {
     }};
   }
   function percentToMidi(value) { return Math.round(value * 127 / 100); }
+  function midiToPercent(value) { return Math.round(value * 100 / 127); }
+  function resetClockDisplay(next) {
+    clearClockTracking();
+    return {...next, tempoLabel:"BPM", clockBpm:null,clockStatus:"waiting"};
+  }
   function loadPreset(id, songId) {
     const p = presets.get(id);
     requireValid(p && p.songId === songId, "preset no pertenece a la canción: " + id);
     const s = songs.get(songId);
-    const next = { ...state, songId: songId, presetId: id,
-      tempoBpm: s.tempoBpm ?? null, morphValue: p.morph.onLoad };
-    // El PC identifica canciones; los CC para estados se definirán aparte.
-    const intents = [ccIntent("morph", p.morph.onLoad)];
-    return { next, intents };
+    let next = {...state, songId, presetId:id};
+    // Nunca enviar reinicios físicos de efectos/expresión aún: pendiente observar GT.
+    // Tampoco forzamos Morph al cargar el preset.
+    if (state.songId !== songId) {
+      next.tempoBpm = s.tempoBpm ?? null;
+      next.overlayStates = Object.fromEntries(s.effects.map(e=>[e.id,null]));
+      next = resetClockDisplay(next);
+    }
+    return { next, intents: [{type:"midi-intent",message:{
+      kind:"control-change",channel:db.midi.channel,controller:MIDI_CC.state,value:p.controlValue
+    }}] };
   }
   function selectSong(id, repId = state.repertoireId) {
     requireValid(reps.has(repId) && reps.get(repId).songIds.includes(id),
@@ -175,7 +245,8 @@ export function createEngine(input) {
     const outcome = loadPreset(song.presetIds[0], id);
     outcome.next.repertoireId = repId;
     if (song.midiAddress) selectedSongBank = song.midiAddress.cc0;
-    outcome.intents = [...songMidiIntents(song), ...outcome.intents];
+    // PC carga estado inicial del nuevo tema; no emitir un CC80 duplicado.
+    outcome.intents = songMidiIntents(song);
     return outcome;
   }
   function move(ids, currentId, amount) {
@@ -201,11 +272,17 @@ export function createEngine(input) {
       song: { id: song.id, title: song.title, tempoBpm: state.tempoBpm,
         midiAddress: song.midiAddress ?? null,
         position: rep.songIds.indexOf(song.id) + 1, total: rep.songIds.length },
-      preset: { id: preset.id, name: preset.name,
+      preset: { id: preset.id, name: preset.name, ccValue:preset.controlValue,
         position: song.presetIds.indexOf(preset.id) + 1, total: song.presetIds.length },
+      states: song.presetIds.map(pid=>({id:pid,name:presets.get(pid).name,ccValue:presets.get(pid).controlValue,active:pid===preset.id})),
+      effects: song.effects.map(e=>({...e,active:state.overlayStates[e.id] ?? null})),
+      expressionMode: song.expressionMode,
       morph: { value: state.morphValue, assignment: m.assignment,
         min: m.min, max: m.max, parameters: values },
       wahPercent: state.wahPercent,
+      volumePercent: state.volumePercent,
+      tempo: {label:state.tempoLabel,displayBpm:state.tempoLabel==="TAP" ? state.clockBpm : state.tempoBpm,
+        savedBpm:state.tempoBpm,receivedBpm:state.clockBpm,clockStatus:state.clockStatus},
       sequence: state.sequence
     });
   }
@@ -221,8 +298,21 @@ export function createEngine(input) {
         requireValid(uint(event.controller, 0, 127) && uint(event.value, 0, 127),
           "CC recibido inválido");
         if (event.channel != null && event.channel !== db.midi.channel) break;
-        if (event.controller === 0) selectedSongBank = event.value;
-        break; // Recibir CC0 solo prepara el banco; NO cambia canción.
+        if (event.controller === 0) {selectedSongBank = event.value; break;}
+        if (event.controller === MIDI_CC.state) {
+          const target = song.presetIds.map(id=>presets.get(id)).find(x=>x.controlValue===event.value);
+          if (target && target.id !== state.presetId) ({next} = loadPreset(target.id,state.songId));
+        } else if (event.controller === MIDI_CC.effect) {
+          const e = song.effects.find(x=>x.ccValue===event.value);
+          if (e) next = {...state,overlayStates:{...state.overlayStates,[e.id]:state.overlayStates[e.id]!==true}};
+        } else if (event.controller === MIDI_CC.volume) {
+          next = {...state,volumePercent:midiToPercent(event.value)};
+        } else if (event.controller === MIDI_CC.morph) {
+          next = {...state,morphValue:clamp(event.value,p.morph.min,p.morph.max)};
+        } else if (event.controller === MIDI_CC.expression && song.expressionMode !== "none") {
+          next = {...state,wahPercent:midiToPercent(event.value)};
+        }
+        break;
       }
       case "RECEIVE_PC": {
         requireValid(uint(event.program, 0, 127), "PC recibido inválido");
@@ -237,6 +327,59 @@ export function createEngine(input) {
         if (!selectedRep) break;
         ({next} = selectSong(target.id, selectedRep));
         intents = []; // Evento recibido: evitar reenvío/eco MIDI.
+        break;
+      }
+      case "RECEIVE_F8": {
+        requireValid(Number.isFinite(event.timestampMs) && event.timestampMs >= 0,
+          "marca temporal Clock inválida");
+        const t = event.timestampMs;
+        if (lastF8 !== null && (t <= lastF8 || t-lastF8 > CLOCK_CONFIG.timeoutMs)) {
+          clearClockTracking();
+          next = resetClockDisplay(state);
+        }
+        lastF8 = t;
+        clockTicks.push(t);
+        if (clockTicks.length > 49) clockTicks.shift();
+        clockPulseCount++;
+        if (clockPulseCount === 1) next = {...next,clockStatus:"receiving"};
+        if (clockTicks.length>=25 && (clockPulseCount-1) % 24 === 0) {
+          const n=clockTicks.length;
+          const measured=60000 / (clockTicks[n-1]-clockTicks[n-25]);
+          if (Number.isFinite(measured) && measured>=30 && measured<=300) {
+            const bpm=Math.round(measured*10)/10;
+            if (clockReference===null) clockReference=bpm;
+            else {
+              const delta=bpm-clockReference;
+              const direction=Math.sign(delta);
+              if (Math.abs(delta)>=CLOCK_CONFIG.changeThresholdBpm) {
+                clockChangeBeats=direction===clockDirection ? clockChangeBeats+1 : 1;
+                clockDirection=direction;
+                if (clockChangeBeats>=CLOCK_CONFIG.sustainedBeats) {
+                  next={...next,tempoLabel:"TAP"};
+                  clockReference=bpm;
+                  clockChangeBeats=0;
+                }
+              } else {
+                clockChangeBeats=0;
+                clockDirection=0;
+                // Regresar a BPM solo cuando el Clock coincide con el valor almacenado.
+                if (state.tempoLabel==="TAP" && state.tempoBpm!==null &&
+                    Math.abs(bpm-state.tempoBpm)<CLOCK_CONFIG.changeThresholdBpm) {
+                  next={...next,tempoLabel:"BPM"};
+                }
+              }
+            }
+            next={...next,clockBpm:bpm,clockStatus:"receiving"};
+          }
+        }
+        break;
+      }
+      case "CLOCK_TIMEOUT": {
+        requireValid(Number.isFinite(event.timestampMs),"marca temporal inválida");
+        if (lastF8!==null && event.timestampMs-lastF8>CLOCK_CONFIG.timeoutMs) {
+          next=resetClockDisplay({...state,clockStatus:"lost"});
+          next.clockStatus="lost";
+        }
         break;
       }
       case "SELECT_REPERTOIRE": {
@@ -277,9 +420,18 @@ export function createEngine(input) {
         }
         break;
       }
+      case "SET_EFFECT": {
+        const e = song.effects.find(x=>x.id===event.effectId);
+        requireValid(!!e,"efecto desconocido");
+        next={...state,overlayStates:{...state.overlayStates,[e.id]:state.overlayStates[e.id]!==true}};
+        intents=[{type:"midi-intent",message:{kind:"control-change",channel:db.midi.channel,
+          controller:MIDI_CC.effect,value:e.ccValue}}];
+        break;
+      }
       case "SET_WAH": {
         requireValid(Number.isFinite(event.percent), "wah no numérico");
         const percent = clamp(event.percent, 0, 100);
+        if (song.expressionMode === "none") break;
         if (percent !== state.wahPercent) {
           next = {...state, wahPercent: percent};
           intents = [ccIntent("wah", percentToMidi(percent))];
