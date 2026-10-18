@@ -20,7 +20,8 @@ test("V3 editor connects saved repertoire changes to private Drive sync",()=>{
 test("LIVE receives shared repertoires without interrupting the current song",()=>{
  assert.match(livePage,/id="hud-sync-root"/);
  assert.match(livePage,/mode:"live"/);
- assert.match(livePage,/canApply:options=>!!options\.explicit/);
+ assert.match(livePage,/canApply:\(\)=>true/);
+ assert.match(livePage,/motor operativo NO se modifica en caliente/);
  assert.match(livePage,/id="hud-sync-reload"/);
  assert.match(livePage,/window\.location\.reload\(\)/);
 });
@@ -45,4 +46,18 @@ test("iPhone sync dialog shows Connect and Sync before advanced OAuth settings",
  assert.match(syncUI,/panel\.append\(actions,setup\)/);
  assert.match(syncUI,/\.hud-sync-actions \[data-connect\],\.hud-sync-actions \[data-sync\]\{grid-column:1\/-1\}/);
  assert.match(syncUI,/panel\.scrollTop=0/);
+});
+
+test("sincroniza automáticamente al guardar, volver a la pestaña y reconectarse a internet",()=>{
+ assert.match(syncUI,/window\.addEventListener\('hud-library-saved',onSaved\)/);
+ assert.match(syncUI,/window\.addEventListener\('online',resume\)/);
+ assert.match(syncUI,/window\.addEventListener\('focus',resume\)/);
+ assert.match(syncUI,/window\.addEventListener\('pageshow',resume\)/);
+ assert.match(syncUI,/document\.addEventListener\('visibilitychange',resume\)/);
+ assert.match(syncUI,/setInterval\(resume,60000\)/);
+ assert.match(syncUI,/synchronize\(\{reason:'saved'\}\)/);
+ assert.match(syncUI,/if\(busy\)\{queued=true;return;\}/);
+ assert.match(syncUI,/if\(result\?\.pending/);
+ assert.match(syncUI,/auth\.restore\(\)/);
+ assert.match(syncUI,/state:'reauth'/);
 });
