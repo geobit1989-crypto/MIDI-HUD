@@ -503,19 +503,58 @@ function register(){
  for(const node of document.querySelectorAll("[data-tab]"))
   node.onclick=()=>updateTab(node.dataset.tab);
  $("repSelect").onchange=e=>useRepertoire(e.target.value);
- $("repAdd").onclick=()=>{
-  const name=window.prompt("Nombre del repertorio","Nuevo repertorio");
-  if(name===null)return;
-  immediate(db=>{
-   const id=newRepertoire(db,name.trim()||"Nuevo repertorio");
-   activeRep=id;activeSong=db.repertoires.find(r=>r.id===id).songIds[0];
-   activeState=db.songs.find(s=>s.id===activeSong).stateIds[0];
-  },"Repertorio creado.");
+ // Formulario integrado: los cuadros window.prompt se bloquean en algunos navegadores.
+ const repForm=$("repForm"),repInput=$("repNameInput");
+ let repFormMode="create";
+ const closeRepForm=()=>{
+  repForm.hidden=true;
+  repInput.value="";
+  repInput.setCustomValidity("");
  };
- $("repRename").onclick=()=>{
-  const name=window.prompt("Nombre del repertorio",currentRep().name);
-  if(name!==null)immediate(db=>renameRepertoire(db,activeRep,name),"Repertorio renombrado.");
+ const openRepForm=mode=>{
+  repFormMode=mode;
+  $("repFormHeading").textContent=mode==="create"?"Crear repertorio":"Renombrar repertorio";
+  $("repFormSubmit").textContent=mode==="create"?"Crear":"Guardar nombre";
+  repInput.value=mode==="create"?"":currentRep().name;
+  repInput.setCustomValidity("");
+  repForm.hidden=false;
+  toggleLibrary(true);
+  repInput.focus();
+  if(mode==="rename")repInput.select();
  };
+ $("repAdd").onclick=()=>openRepForm("create");
+ $("repRename").onclick=()=>openRepForm("rename");
+ $("repFormCancel").onclick=closeRepForm;
+ repInput.addEventListener("input",()=>repInput.setCustomValidity(""));
+ repForm.addEventListener("keydown",event=>{
+  if(event.key==="Escape"){event.preventDefault();closeRepForm();}
+ });
+ repForm.addEventListener("submit",event=>{
+  event.preventDefault();
+  const name=repInput.value.trim();
+  if(!name){
+   repInput.setCustomValidity("Escribe un nombre para el repertorio.");
+   repInput.reportValidity();
+   return;
+  }
+  let saved;
+  if(repFormMode==="create"){
+   saved=immediate(db=>{
+    const id=newRepertoire(db,name);
+    activeRep=id;
+    activeSong=db.repertoires.find(r=>r.id===id).songIds[0];
+    activeState=db.songs.find(s=>s.id===activeSong).stateIds[0];
+    activeModule=0;
+    activeTab="song";
+    return true;
+   },"Repertorio «"+name+"» creado.");
+  }else{
+   const id=activeRep;
+   saved=immediate(db=>{renameRepertoire(db,id,name);return true;},
+    "Repertorio renombrado a «"+name+"».");
+  }
+  if(saved===true)closeRepForm();
+ });
  $("repRemove").onclick=()=>{
   if(window.confirm("¿Eliminar este repertorio y sus canciones no compartidas?"))
    immediate(db=>deleteRepertoire(db,activeRep),"Repertorio eliminado.");
