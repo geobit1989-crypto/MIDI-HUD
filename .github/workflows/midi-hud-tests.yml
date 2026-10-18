@@ -1,0 +1,22 @@
+name: MIDI HUD · Motor tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check core/engine.mjs
+          node --check core/midi-input.mjs
+          node --check tests/midi-v04.test.mjs
+      - name: Run MIDI v0.4 regression suite
+        run: node --test tests/midi-v04.test.mjs
