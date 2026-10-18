@@ -181,6 +181,10 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 .catalog-import .help{margin:8px 0}
 .catalog-import .ctrlrow button{flex:1}
 #catalogNotice{font-size:12px;overflow-wrap:anywhere}
+.rep-inline-form{margin:10px 0 13px;padding:12px;border:1px solid #48718c;background:#102b3b;border-radius:10px}
+.rep-inline-form[hidden]{display:none!important}
+.rep-inline-form .field{margin:10px 0}
+.rep-inline-form .ctrlrow button{flex:1}
 </style>
 </head>
 <body>
@@ -211,6 +215,16 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <button id="repRename" class="small" title="Renombrar repertorio">Renombrar</button>
     <button id="repRemove" class="small danger" title="Eliminar repertorio">Eliminar</button>
   </div>
+  <form id="repForm" class="rep-inline-form" hidden>
+    <div class="heading" id="repFormHeading">Crear repertorio</div>
+    <label class="field" for="repNameInput">Nombre del repertorio
+      <input id="repNameInput" type="text" maxlength="80" autocomplete="off" required placeholder="Ej. Worship / Rock">
+    </label>
+    <div class="ctrlrow">
+      <button id="repFormSubmit" type="submit" class="small primary">Crear</button>
+      <button id="repFormCancel" type="button" class="small ghost">Cancelar</button>
+    </div>
+  </form>
   <hr>
   <div class="sidebar-row"><span class="heading">Canciones</span><small id="songCounter"></small></div>
   <div id="songList" class="song-list" role="list"></div>
@@ -422,7 +436,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
 <input id="catalogFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
-<script type="module" src="./v3.mjs?v=20261018-catalogo1"></script>
+<script type="module" src="./v3.mjs?v=20261018-repertorios2"></script>
 </div>
 </body>
 </html>
