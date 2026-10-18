@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#03080d">
-  <title>MIDI HUD · Visual LIVE v0.3</title>
+  <title>MIDI HUD · LIVE v0.4</title>
   <style>
     :root{color-scheme:dark;--ui-font:'Roboto Condensed','Arial Narrow','Liberation Sans Narrow',system-ui,sans-serif;--white:#fff;--cyan:#00d6f4}
     *{box-sizing:border-box}html{background:#03070b}body{margin:0;background:#03070b;color:#fff;font-family:var(--ui-font)}
@@ -288,7 +288,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 </head>
 <body>
   <!-- MIDI HUD visualiza el repertorio, recibe CC/PC/F8 si el navegador admite Web MIDI; no transmite audio ni MIDI. -->
-  <main class="screen" aria-label="MIDI HUD, referencia visual v0.3">
+  <main class="screen" aria-label="MIDI HUD LIVE v0.4">
     <section class="lead-sheet" aria-label="Hoja de acordes de Quão Grande É o Meu Deus">
       <div class="sheet-section"><div class="section-label"><span class="section-letter">A</span><span>INTRO</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar" data-beats="C   "><span class="beat">C</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" style="border:0" data-beats="    "><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" style="border:0" data-beats="    "><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div></div></div>
       <div class="sheet-section"><div class="section-label"><span class="section-letter">B</span><span>VERSO</span></div><div class="chord-lines" style="--rows:3">
@@ -350,6 +350,17 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
     if (!engine) return;
     const vm=engine.getViewModel();
     $m("song-title").textContent=vm.song.title;
+    // El diseño de lead sheet de la versión visual es una ilustración de otro tema.
+    // No presentarlo como cifrado real de las canciones de la biblioteca.
+    const sheet=document.querySelector(".lead-sheet");
+    if(sheet && !sheet.dataset.liveContent){
+      sheet.replaceChildren();
+      const placeholder=document.createElement("div");
+      placeholder.style.cssText="padding:clamp(12px,2vw,28px);color:#c5dce9;text-align:center;font-weight:600";
+      placeholder.textContent="Lead sheet pendiente de integrar desde el Editor";
+      sheet.append(placeholder);
+      sheet.dataset.liveContent="placeholder";
+    }
     $m("tempo-label").textContent=vm.tempo.label;
     $m("tempo-value").textContent=vm.tempo.displayBpm==null?"—":String(Math.round(vm.tempo.displayBpm));
     $m("tempo-field").title=vm.tempo.clockStatus==="lost"
