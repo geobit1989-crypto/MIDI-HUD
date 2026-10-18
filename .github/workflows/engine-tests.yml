@@ -1,7 +1,7 @@
 name: MIDI HUD engine tests
 on:
   push:
-    branches: ["main", "feature/**"]
+    branches: ["main", "gh-pages", "feature/**"]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -22,8 +22,10 @@ jobs:
           node --check core/midi-browser.mjs
           node --check editor/editor-model.mjs
           node --check editor/v2.mjs
+          node --check editor/v3.mjs
+          node --check editor/catalog-import.mjs
       - name: Execute automatic tests
-        run: node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs
+        run: node --test tests/engine-v1.test.mjs tests/editor-model.test.mjs tests/editor-ui.test.mjs tests/catalog-import.test.mjs
       - name: Assemble standalone static website
         run: |
           mkdir -p build/MIDI-HUD-BETA/{core,editor,lab,config}
