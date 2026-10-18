@@ -4,6 +4,12 @@
 <div class="header"><h1>MIDI HUD · Configuración</h1><a class="liveBtn" href="../v03.html" aria-label="Ver maqueta LIVE v0.3"><span aria-hidden="true" style="font-size:23px;line-height:1">♫</span> LIVE v0.3</a></div><small>Preparación de repertorios · motor compartido v0.2 · sin MIDI real</small><p><a href="../lab/">Abrir banco de pruebas LAB</a></p>
 <div class="card"><label>Nombre del repertorio<input id="repName"></label><div class="row"><button id="newSong">+ Nueva canción</button><button id="removeSong">Eliminar canción</button></div><label>Canción seleccionada<select id="songSelect"></select></label><label>Título<input id="songTitle"></label><label>Tempo (BPM, opcional)<input id="tempo" type="number" min="30" max="300" step="1"></label></div>
 <div class="card"><h2>Presets de la canción</h2><div class="row"><button id="addPreset">+ Añadir preset</button><button id="removePreset">Eliminar preset</button></div><label>Preset seleccionado<select id="presetSelect"></select></label><label>Nombre del estado<input id="presetName"></label><label>Program Change (0–127, provisional)<input id="pc" type="number" min="0" max="127"></label><label>Función Morph<select id="assignment"><option value="ambient">Ambiente (reverb/delay)</option><option value="none">Sin asignación</option><option value="soloBoost">Boost solo</option></select></label><small>Al cambiar de preset, el indicador Morph se reinicia a cero. Los números MIDI deben verificarse con la GT-1000CORE.</small></div>
+<div class="card"><h2>Catálogo de canciones (nombre y autor)</h2>
+<p><small>Importa un CSV de Google Sheets con columnas Canción y Autor. Las canciones existentes mantienen sus presets y configuraciones MIDI. Las nuevas reciben un preset inicial sin asignación. No se eliminan canciones.</small></p>
+<div class="row"><button id="catalogImport">Importar CSV</button><button id="catalogSync">Sincronizar CSV por URL</button></div>
+<label>URL de CSV publicado (opcional)<input id="catalogUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv"></label>
+<input id="catalogFile" type="file" accept=".csv,text/csv" hidden>
+<p id="catalogNotice" role="status"></p></div>
 <div class="card"><h2>Archivos</h2><button id="import">Importar JSON</button><button id="export">Exportar JSON</button><input id="file" type="file" accept=".json,application/json" hidden><p id="notice" role="status"></p><small>Los cambios se guardan en este navegador. Para ensayarlos, abre LAB y pulsa «Copiar editor → LAB». La maqueta LIVE v0.3 todavía es visual.</small><p><a href="../lab/">Probar en LAB</a> · <a href="../v03.html">Ver LIVE v0.3</a></p></div>
 <script type="module">
 import {normalizeLibrary,validateLibrary} from "../core/engine.mjs";
@@ -27,6 +33,51 @@ $('#addPreset').onclick=()=>{addPreset();save();render()};
 $('#removePreset').onclick=()=>{if(presets().length<=1)return;const id=preset().id;song().presetIds=song().presetIds.filter(x=>x!==id);db.presets=db.presets.filter(x=>x.id!==id);pi=0;save();render()};
 $('#removeSong').onclick=()=>{if(songs().length<=1)return;const s=song();rep().songIds=rep().songIds.filter(x=>x!==s.id);db.presets=db.presets.filter(p=>!s.presetIds.includes(p.id));db.songs=db.songs.filter(x=>x.id!==s.id);si=0;pi=0;save();render()};
 $('#export').onclick=()=>{if(!db)return;db=normalizeLibrary(db);validateLibrary(db);const url=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='MIDI-HUD-repertorio.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);$('#notice').textContent='Archivo generado'};
+// Importación aditiva: nunca sustituir datos de una canción configurada.
+const catalogKey=s=>String(s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().replace(/\\s+/g,' ').toLocaleLowerCase('es');
+function csvRows(text){
+  text=text.replace(/^\\uFEFF/,'');const delimiter=(text.split(/\\r?\\n/,1)[0].match(/;/g)||[]).length>(text.split(/\\r?\\n/,1)[0].match(/,/g)||[]).length?';':',';
+  const rows=[];let row=[],value='',quoted=false;
+  for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(quoted&&text[i+1]==='"'){value+='"';i++}else quoted=!quoted}
+    else if(c===delimiter&&!quoted){row.push(value);value=''}
+    else if((c==='\\n'||c==='\\r')&&!quoted){if(c==='\\r'&&text[i+1]==='\\n')i++;row.push(value);if(row.some(x=>x.trim()))rows.push(row);row=[];value=''}
+    else value+=c}
+  if(quoted)throw Error('CSV con comillas sin cerrar');
+  row.push(value);if(row.some(x=>x.trim()))rows.push(row);return rows;
+}
+function importCatalog(text){
+  const rows=csvRows(text);if(rows.length<2)throw Error('CSV sin canciones');
+  const h=rows.shift().map(catalogKey),ti=h.findIndex(x=>['cancion','musica','titulo','title'].includes(x)),ai=h.findIndex(x=>['autor','version','artista','author'].includes(x));
+  if(ti<0||ai<0)throw Error('Se requieren las columnas Canción y Autor');
+  const entries=rows.map(r=>({title:(r[ti]||'').trim(),author:(r[ai]||'').trim()})).filter(r=>r.title);
+  if(!entries.length)throw Error('No hay canciones válidas');
+  const keys=new Set(),unique=entries.filter(r=>{const k=catalogKey(r.title)+'|'+catalogKey(r.author);if(keys.has(k))return false;keys.add(k);return true});
+  const before=JSON.stringify(db);let added=0,updated=0;
+  try{
+    const existing=new Map(db.songs.map(s=>[catalogKey(s.title)+'|'+catalogKey(s.author||''),s]));
+    const byTitle=new Map();for(const s of db.songs){const k=catalogKey(s.title);if(!byTitle.has(k))byTitle.set(k,[]);byTitle.get(k).push(s)}
+    for(const entry of unique){
+      const k=catalogKey(entry.title)+'|'+catalogKey(entry.author);
+      let s=existing.get(k);
+      if(!s){const same=byTitle.get(catalogKey(entry.title))||[];if(same.length===1&&!same[0].author)s=same[0]}
+      if(s){if(!s.author){s.author=entry.author;updated++}continue}
+      const id=uid(),pid=uid();s={id,title:entry.title,author:entry.author,tempoBpm:null,notes:'',presetIds:[pid]};
+      db.songs.push(s);rep().songIds.push(id);db.presets.push({id:pid,name:'Inicial',songId:id,programChange:0,morph:{onLoad:0,min:0,max:127,assignment:'none',parameters:{}}});
+      existing.set(k,s);added++;
+    }
+    save();render();$('#catalogNotice').textContent=unique.length+' canciones leídas · '+added+' añadidas · '+updated+' autores completados · '+(unique.length-added-updated)+' existentes';
+  }catch(e){db=JSON.parse(before);throw e}
+}
+$('#catalogImport').onclick=()=>$('#catalogFile').click();
+$('#catalogFile').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>2000000)throw Error('CSV demasiado grande');importCatalog(await file.text())}catch(err){$('#catalogNotice').textContent='Error: '+err.message}e.target.value=''};
+$('#catalogUrl').value=localStorage.getItem('hudCatalogCsvUrl')||'';
+$('#catalogSync').onclick=async()=>{const url=$('#catalogUrl').value.trim();try{
+  const u=new URL(url);if(u.protocol!=='https:')throw Error('Se requiere HTTPS');
+  if(!confirm('¿Importar canciones desde este CSV? No se borrarán canciones ni presets.'))return;
+  const response=await fetch(u.href,{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);
+  const text=await response.text();if(text.length>2000000)throw Error('CSV demasiado grande');
+  importCatalog(text);localStorage.setItem('hudCatalogCsvUrl',u.href);
+}catch(err){$('#catalogNotice').textContent='No se pudo sincronizar. Comprueba que el CSV sea accesible y permita CORS: '+err.message}};
 $('#import').onclick=()=>$('#file').click();
 $('#file').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>500000)throw Error('Archivo demasiado grande');const x=JSON.parse(await f.text());if(!check(x))throw Error("Formato o versión incompatible");db=normalizeLibrary(x);si=0;pi=0;save();render();$('#notice').textContent='Repertorio importado'}catch(err){$('#notice').textContent='Error: '+err.message}e.target.value=''};
 (async()=>{try{const saved=localStorage.getItem('hudLibrary')||localStorage.getItem('hudEditorLibrary');if(saved){const x=JSON.parse(saved);if(check(x))db=normalizeLibrary(x)}if(!db){const r=await fetch('../config/midi-hud-data-v1.json');if(!r.ok)throw Error('No se encontró el ejemplo');const x=await r.json();if(!check(x))throw Error("Ejemplo incompatible");db=normalizeLibrary(x)}render();$('#notice').textContent='Editor listo'}catch(err){$('#notice').textContent='No se pudo iniciar: '+err.message}})();
