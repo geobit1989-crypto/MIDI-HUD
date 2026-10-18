@@ -2,18 +2,28 @@
   "format": "midi-hud-repertoire",
   "schemaVersion": "1.0.0",
   "libraryId": "sig-main",
-  "revision": 3,
-  "updatedAt": "2026-10-18T21:25:00+01:00",
+  "revision": 4,
+  "updatedAt": "2026-10-18T22:40:00+01:00",
   "midi": {
     "channel": 1,
     "programNumbering": "zero-based",
     "cc": {
-      "morph": 20,
-      "wah": 22,
-      "tap": 23,
-      "tuner": 24
+      "volume": 7,
+      "state": 80,
+      "effect": 81,
+      "morph": 91,
+      "expression": 11
     },
-    "provisional": true
+    "provisional": false,
+    "gtChannel": null,
+    "clock": {
+      "message": "F8",
+      "pulsesPerBeat": 24,
+      "source": "GT-1000CORE",
+      "tempoThresholdBpm": 2,
+      "sustainedBeats": 2,
+      "hardwareVerified": false
+    }
   },
   "repertoires": [
     {
@@ -28,12 +38,25 @@
     {
       "id": "song-demo",
       "title": "Worship - demo",
-      "tempoBpm": null,
+      "tempoBpm": 120,
       "notes": "Datos de ensayo; no corresponde a una canción real",
       "presetIds": [
         "preset-clean",
         "preset-drive",
         "preset-solo"
+      ],
+      "expressionMode": "wah",
+      "effects": [
+        {
+          "id": "fx-boost",
+          "name": "Boost",
+          "ccValue": 0
+        },
+        {
+          "id": "fx-delay",
+          "name": "Delay",
+          "ccValue": 1
+        }
       ]
     }
   ],
@@ -57,7 +80,8 @@
             60
           ]
         }
-      }
+      },
+      "controlValue": 0
     },
     {
       "id": "preset-drive",
@@ -69,7 +93,8 @@
         "max": 127,
         "assignment": "none",
         "parameters": {}
-      }
+      },
+      "controlValue": 1
     },
     {
       "id": "preset-solo",
@@ -86,12 +111,13 @@
             3
           ]
         }
-      }
+      },
+      "controlValue": 2
     }
   ],
   "controls": {
     "morph": {
-      "cc": 20,
+      "cc": 91,
       "initialDisplayValue": 0,
       "resetOnPresetLoad": true
     }
