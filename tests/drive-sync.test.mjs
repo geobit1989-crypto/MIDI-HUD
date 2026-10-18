@@ -159,3 +159,54 @@ test('Google Drive OAuth usa fetch ligado al contexto del navegador',async()=>{
   else globalThis.fetch=original;
  }
 });
+
+test('la sesión OAuth web sobrevive a recargar la misma pestaña sin contraseña permanente',async()=>{
+ const values=new Map();
+ const session={
+  setItem:(key,value)=>values.set(key,String(value)),
+  getItem:key=>values.get(key)||null,
+  removeItem:key=>values.delete(key)
+ };
+ const clientId='123456789-autor.apps.googleusercontent.com';
+ const fetcher=async(url)=>{
+  if(String(url).includes('/oauth2/v3/userinfo'))
+   return {ok:true,json:async()=>({sub:'google-user-000055',email:'prueba@example.org'})};
+  return {ok:true,text:async()=>JSON.stringify({files:[]})};
+ };
+ const oauth=()=>({accounts:{oauth2:{initTokenClient:params=>({
+  requestAccessToken:()=>queueMicrotask(()=>params.callback({
+   access_token:'short-lived-test-token',expires_in:3600,
+   scope:'openid email https://www.googleapis.com/auth/drive.appdata'
+  }))
+ })}}});
+ const first=new GoogleDriveAuth({clientId,native:null,session,fetcher,google:oauth});
+ const account=await first.connect();
+ assert.equal(account.email,'prueba@example.org');
+ assert.equal(values.size,1,'Only sessionStorage, not localStorage');
+ assert(!JSON.stringify([...values]).includes('client_secret'));
+ const refreshed=new GoogleDriveAuth({clientId,native:null,session,fetcher,google:oauth});
+ assert.deepEqual(await refreshed.restore(),account);
+ assert.deepEqual(await refreshed.request({method:'GET',path:'/drive/v3/files'}),{files:[]});
+ await refreshed.disconnect();
+ assert.equal(values.size,0,'Logout forgets the temporary bearer token');
+ assert.equal(await new GoogleDriveAuth({clientId,native:null,session}).restore(),null);
+});
+test('sesión caducada o de otro cliente OAuth nunca se reutiliza',async()=>{
+ const cache=new Map();
+ const session={setItem:(k,v)=>cache.set(k,v),getItem:k=>cache.get(k)||null,removeItem:k=>cache.delete(k)};
+ const clientId='123456789-one.apps.googleusercontent.com';
+ cache.set('midiHudGoogleOAuthSessionV1',JSON.stringify({
+  clientId,account:{id:'google-user-000055',email:'prueba@example.org'},
+  token:{value:'already-expired',expiresAt:Date.now()-10000}
+ }));
+ const expired=new GoogleDriveAuth({clientId,native:null,session});
+ assert.equal(await expired.restore(),null);
+ assert.equal(cache.size,0);
+ cache.set('midiHudGoogleOAuthSessionV1',JSON.stringify({
+  clientId,account:{id:'google-user-000055',email:'prueba@example.org'},
+  token:{value:'still-valid',expiresAt:Date.now()+3600000}
+ }));
+ const changed=new GoogleDriveAuth({clientId:'123456789-different.apps.googleusercontent.com',native:null,session});
+ assert.equal(await changed.restore(),null);
+ assert.equal(cache.size,0);
+});
