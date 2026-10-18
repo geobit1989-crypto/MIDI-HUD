@@ -1,4 +1,5 @@
-import {randomToken,sha256,seal,unseal,base64url} from "./crypto.mjs";
+import {randomToken,sha256,seal,unseal} from "./crypto.mjs";
+import {prepareInitialSchema} from "./schema.mjs";
 
 const APP_ORIGIN="https://geobit1989-crypto.github.io";
 const SERVICE_URL="https://midihudaut.midihudapp.workers.dev";
@@ -26,8 +27,7 @@ const isReady=env=>!!(env.DB&&env.GOOGLE_CLIENT_ID&&env.GOOGLE_CLIENT_SECRET&&
 async function publicReady(env){
  if(!isReady(env))return false;
  try{
-  const table=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='google_accounts'").first();
-  return table?.name==="google_accounts";
+  return await prepareInitialSchema(env.DB);
  }catch{return false;}
 }
 const assertReady=env=>{if(!isReady(env))fail(503,"service_not_configured","La autenticación persistente está pendiente de configurar.");};
