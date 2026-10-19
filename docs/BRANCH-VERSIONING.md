@@ -1,6 +1,6 @@
 # MIDI HUD — Registro de ramas y numeración global
 
-**Estado:** convención aprobada; renombrado remoto pendiente para proteger los PR abiertos.
+**Estado:** PR #1–#4 cerrados y conservados; renombrado remoto pendiente de autorización/herramienta.
 **Fecha de registro:** 19/10/2026.
 **Rama de trabajo única:** `integration/ios-unified-20261019` (versión asignada **v6**).
 
@@ -22,12 +22,12 @@ La numeración se ha establecido retrospectivamente según las fechas de trabajo
 
 | Versión asignada | Rama existente (sin renombrar) | Nombre de destino propuesto | Estado |
 | --- | --- | --- | --- |
-| v1 | `feature/motor-midi-v1-20261014` | `feature/motor-midi-141026-v1` | Histórico; PR #1 abierto |
+| v1 | `feature/motor-midi-v1-20261014` | `feature/motor-midi-141026-v1` | Histórico; PR #1 cerrado |
 | v2 | `backup/ble-midi-compat-before-20261015` | `backup/ble-midi-compat-151026-v2` *(fecha de creación a confirmar)* | Respaldo |
-| v3 | `feature/ios-drive-sync-20261016` | `feature/ios-drive-sync-161026-v3` | Histórico; PR #2 abierto; base del PR #4 |
+| v3 | `feature/ios-drive-sync-20261016` | `feature/ios-drive-sync-161026-v3` | Histórico; PR #2 cerrado; base del PR #4 |
 | v4 | `feature/catalog-repertoires-20261018` | `feature/catalog-repertoires-181026-v4` | Histórico |
-| v5 | `feature/catalog-playlists-current-20261018` | `feature/catalog-playlists-181026-v5` | Histórico; PR #3 abierto |
-| v6 | `integration/ios-unified-20261019` | `integration/ios-unified-191026-v6` | Única rama activa; PR #4 abierto |
+| v5 | `feature/catalog-playlists-current-20261018` | `feature/catalog-playlists-181026-v5` | Histórico; PR #3 cerrado |
+| v6 | `integration/ios-unified-20261019` | `integration/ios-unified-191026-v6` | Única rama activa; PR #4 cerrado |
 
 ## Condición para renombrar
 
