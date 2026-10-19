@@ -1,0 +1,131 @@
+{
+  "format": "midi-hud-repertoire",
+  "schemaVersion": "1.0.0",
+  "libraryId": "sig-main",
+  "revision": 4,
+  "updatedAt": "2026-10-18T22:26:00+01:00",
+  "midi": {
+    "channel": 1,
+    "programNumbering": "zero-based",
+    "cc": {
+      "volume": 7,
+      "state": 80,
+      "effect": 81,
+      "morph": 91,
+      "expression": 11
+    },
+    "provisional": false,
+    "gtChannel": null,
+    "clock": {
+      "message": "F8",
+      "pulsesPerBeat": 24,
+      "source": "GT-1000CORE",
+      "tempoThresholdBpm": 2,
+      "sustainedBeats": 2,
+      "hardwareVerified": false
+    }
+  },
+  "repertoires": [
+    {
+      "id": "worship-main",
+      "name": "Worship",
+      "songIds": [
+        "song-demo"
+      ]
+    }
+  ],
+  "songs": [
+    {
+      "id": "song-demo",
+      "title": "Worship - demo",
+      "tempoBpm": 120,
+      "notes": "Datos de ensayo; no corresponde a una canción real",
+      "presetIds": [
+        "preset-clean",
+        "preset-drive",
+        "preset-solo"
+      ],
+      "expressionMode": "wah",
+      "effects": [
+        {
+          "id": "fx-boost",
+          "name": "Boost",
+          "ccValue": 0
+        },
+        {
+          "id": "fx-delay",
+          "name": "Delay",
+          "ccValue": 1
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "id": "preset-clean",
+      "name": "Crystal Clean",
+      "songId": "song-demo",
+      "morph": {
+        "onLoad": 0,
+        "min": 0,
+        "max": 127,
+        "assignment": "ambient",
+        "parameters": {
+          "reverbLongPercent": [
+            10,
+            75
+          ],
+          "delayPercent": [
+            8,
+            60
+          ]
+        }
+      },
+      "controlValue": 0
+    },
+    {
+      "id": "preset-drive",
+      "name": "Worship Overdrive",
+      "songId": "song-demo",
+      "morph": {
+        "onLoad": 0,
+        "min": 0,
+        "max": 127,
+        "assignment": "none",
+        "parameters": {}
+      },
+      "controlValue": 1
+    },
+    {
+      "id": "preset-solo",
+      "name": "Worship Solo",
+      "songId": "song-demo",
+      "morph": {
+        "onLoad": 0,
+        "min": 0,
+        "max": 127,
+        "assignment": "soloBoost",
+        "parameters": {
+          "boostDb": [
+            0,
+            3
+          ]
+        }
+      },
+      "controlValue": 2
+    }
+  ],
+  "controls": {
+    "morph": {
+      "cc": 91,
+      "initialDisplayValue": 0,
+      "resetOnPresetLoad": true
+    }
+  },
+  "sync": {
+    "mode": "manual-file",
+    "conflictPolicy": "ask-user",
+    "lastSyncedRevision": null
+  },
+  "extensions": {}
+}

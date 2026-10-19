@@ -40,28 +40,27 @@
     ctx.engine.dispatch({type:"RETURN_TO_ACTIVE"});
     feedback("Vista operativa restaurada");
   });
-  [...document.querySelectorAll(".switch-grid .switch")].forEach((node,index)=>{
-    node.tabIndex=0;
-    node.setAttribute("role","button");
-    node.dataset.hudModule=String(index+1);
-    node.title="Consultar módulo "+(index+1)+" (sin enviar MIDI)";
-    const inspect=()=>{
-      const ctx=context();if(!ctx)return;
-      const {engine,library}=ctx;
-      const vm=engine.getViewModel();
-      const song=library.songs.find(s=>s.id===vm.song.id);
-      if(!song)return;
-      const state=library.states.find(s=>s.songId===song.id&&s.displayIndex===index);
-      engine.dispatch(state
-        ? {type:"PREVIEW_STATE",stateId:state.id}
-        : {type:"PREVIEW_MODULE",index});
-      const name=state?.name||song.displaySlots?.[index]?.name||"Sin asignar";
-      feedback("Consulta visual: "+name+" · no cambia el sonido");
-    };
-    node.addEventListener("click",inspect);
-    node.addEventListener("keydown",event=>{
-      if(event.key==="Enter"||event.key===" "){event.preventDefault();inspect();}
-    });
+  // Delegación: los módulos se reconstruyen tras cada cambio de canción o estado.
+  const grid=document.querySelector(".switch-grid");
+  function inspectNode(node){
+    const ctx=context();if(!ctx)return;
+    const {engine,library}=ctx;
+    const vm=engine.getViewModel();
+    const song=library.songs.find(s=>s.id===vm.song.id);
+    const index=Number(node.dataset.hudIndex);
+    if(!song||!Number.isInteger(index)||index<0||index>=song.displaySlots.length)return;
+    const state=library.states.find(s=>s.songId===song.id&&s.displayIndex===index);
+    engine.dispatch(state?{type:"PREVIEW_STATE",stateId:state.id}:{type:"PREVIEW_MODULE",index});
+    feedback("Consulta visual: "+(state?.name||song.displaySlots[index]?.name||"Sin asignar")+" · no cambia el sonido");
+  }
+  grid?.addEventListener("click",event=>{
+    const tile=event.target.closest("[data-hud-index]");
+    if(tile&&grid.contains(tile))inspectNode(tile);
+  });
+  grid?.addEventListener("keydown",event=>{
+    if(event.key!=="Enter"&&event.key!==" ")return;
+    const tile=event.target.closest("[data-hud-index]");
+    if(tile&&grid.contains(tile)){event.preventDefault();inspectNode(tile);}
   });
   window.addEventListener("midi-hud-render",event=>{
     const view=event.detail;
@@ -75,7 +74,7 @@
     if(event.key==="ArrowLeft"){event.preventDefault();previewSong(-1);}
     else if(event.key==="ArrowRight"){event.preventDefault();previewSong(1);}
     else if(/^[1-9]$/.test(event.key)){
-      const module=document.querySelectorAll(".switch-grid .switch")[Number(event.key)-1];
+      const module=document.querySelectorAll(".switch-grid [data-hud-index]")[Number(event.key)-1];
       module?.click();
     }
   });

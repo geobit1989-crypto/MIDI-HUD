@@ -6,7 +6,7 @@ import json
 import shutil
 
 HERE = Path(__file__).resolve().parent
-SOURCE = HERE.parents[1] / "beta-v3.4"
+SOURCE = HERE.parents[1]
 TARGET = HERE / "Web"
 
 
@@ -19,7 +19,7 @@ def prepare():
             child.unlink()
     for name in ("core", "editor", "live", "lab", "config"):
         shutil.copytree(SOURCE / name, TARGET / name)
-    for name in ("index.html", "v03.html"):
+    for name in ("index.html", "v03.html", "privacy.html", "privacy-en.html", "terms.html", "terms-en.html", "README.md"):
         shutil.copy2(SOURCE / name, TARGET / name)
     manifest = {
         str(path.relative_to(TARGET)): hashlib.sha256(path.read_bytes()).hexdigest()

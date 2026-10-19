@@ -16,7 +16,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monos
 </style></head><body>
 <h1>Motor MIDI HUD · LAB v1</h1>
 <p>Entorno aislado: simula CC sin transmitir MIDI a la GT ni modificar la interfaz LIVE.</p>
-<p><a href="../v03.html">LIVE</a> · <a href="../editor/">Editor v3.4</a> · <a href="../lab/">LAB antiguo (respaldo)</a></p>
+<p><a href="../v03.html">LIVE</a> · <a href="../editor/v1.html">Editor MIDI v1</a> · <a href="../lab/">LAB antiguo (respaldo)</a></p>
 <section class="card"><h2>Canal MIDI de recepción (global)</h2>
 <label for="channel">Canal de MIDI HUD</label><select id="channel"></select>
 <p class="help">Se guarda en este navegador y es independiente de las canciones. Los transmisores deben usar el mismo canal.</p>
@@ -54,11 +54,10 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monos
 <h3>Registro de pruebas</h3><pre id="log"></pre>
 </section>
 <script type="module">
-import {createEngine,normalizeLibrary,validateLibrary,ENGINE_VERSION} from "../core/engine-v1.mjs?v=20261016-patch2";
+import {createEngine,normalizeLibrary,validateLibrary,ENGINE_VERSION} from "../core/engine-v1.mjs";
 import {readSettings,saveSettings} from "../core/settings-v1.mjs";
-import {readLibrarySource} from "../core/library-storage.mjs?v=20261016-patch2";
 import {openBrowserMidi} from "../core/midi-browser.mjs?v=20261015-ble1";
-const $=id=>document.getElementById(id),KEY="hudLabLibraryV34";
+const $=id=>document.getElementById(id),KEY="hudLabLibraryV1",EDITOR="hudLibraryV1";
 const settings=readSettings(localStorage);
 let engine,library,logs=[],link;
 for(let ch=1;ch<=16;ch++) $("channel").add(new Option("Canal "+ch,ch));
@@ -107,7 +106,7 @@ $("reload").onclick=async()=>{
  if(!r.ok)throw Error("No se pudo cargar ejemplo");open(await r.json(),true);}catch(e){log("ERROR: "+e.message);}
 };
 $("clone").onclick=()=>{
- const raw=readLibrarySource(localStorage);
+ const raw=localStorage.getItem(EDITOR);
  if(!raw){log("No hay datos en editor v1");return;}
  if(!confirm("¿Copiar el editor a LAB sin modificar el editor?"))return;
  try{open(JSON.parse(raw),true);}catch(e){log("ERROR: "+e.message);}

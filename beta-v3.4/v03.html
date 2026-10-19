@@ -644,7 +644,7 @@ function render(){
  $("#song-title").textContent=vm.song.title;
  const key=$(".topbar .key");key.textContent=vm.song.tono||"—";
  key.setAttribute("aria-label","Tonalidad "+(vm.song.tono||"sin definir"));
- $(".topbar .tempo").textContent=vm.song.tempoBpm==null?"— BPM":vm.song.tempoBpm+" BPM";
+ $(".topbar .tempo").textContent=(vm.tempo?.displayBpm??"—")+" "+(vm.tempo?.clockStatus==='lost'?'SIN CLK':vm.tempo?.label||'BPM');
  $("#bank").textContent=vm.song.bank||"—";
  sheet(vm.song.leadSheet);
  document.querySelector("#hud-return").hidden=!vm.isPreview;
@@ -667,10 +667,10 @@ function render(){
    try{window.history.replaceState(null,'',window.location.pathname+window.location.search);}catch{}
   }
   const cloud=installCloudSync({host:dialog.querySelector('#hud-sync-root'),mode:'live',
-   canApply:options=>!engine||!!options.explicit,
+   canApply:()=>true,
    onApplied:next=>{if(engine)window.location.reload();else data=next;}});
   // La conexión lenta nunca impide abrir el repertorio local para tocar.
-  await Promise.race([cloud.ready,new Promise(resolve=>setTimeout(resolve,3000))]);
+  // Local copy opens immediately; automatic sync only updates storage.
   const saved=readLibrarySource(localStorage);
   if(!data&&saved){try{data=normalizeLibrary(JSON.parse(saved));usingSavedLibrary=true;}catch{}}
   if(!data){
@@ -682,6 +682,7 @@ function render(){
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
   library=engine.getLibrary();prepare();
   window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
+  setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
   engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
   if(initialSelection.missingRequestedRepertoire)popup(true);
@@ -691,5 +692,5 @@ function render(){
 })();
 </script>
 <script src="./live/live-controls-v1.js" defer></script>
-</body>
+<nav aria-label="Legal" style="font-size:12px"><a href="./privacy.html">Privacidad</a> · <a href="./terms.html">Condiciones</a> · <a href="./privacy-en.html">Privacy</a> · <a href="./terms-en.html">Terms</a></nav></body>
 </html>

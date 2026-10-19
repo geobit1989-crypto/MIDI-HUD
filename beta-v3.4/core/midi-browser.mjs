@@ -1,4 +1,4 @@
-import {decodeMidiCC} from "./engine-v1.mjs";
+import {createMidiParser} from "./midi-stream.mjs";
 
 /**
  * Entrada Web MIDI sin envio a hardware. Acepta MIDIInputMap estandar y
@@ -69,9 +69,9 @@ export async function openBrowserMidi(onMessage, onPortsChanged) {
     }
     for (const input of inputs) {
       if (watched.has(input)) continue;
+      const parse=createMidiParser();
       const handler = message => {
-        const event = decodeMidiCC(message?.data ?? message);
-        if (event) onMessage(event);
+        for(const event of parse(message?.data ?? message,message?.timeStamp??performance.now()))onMessage(event);
       };
       watched.set(input, listen(input, handler));
     }

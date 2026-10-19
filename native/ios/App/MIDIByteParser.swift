@@ -11,7 +11,7 @@ struct MIDIByteParser {
     mutating func consume(_ input: [UInt8]) -> [[UInt8]] {
         var messages: [[UInt8]] = []
         for byte in input {
-            if byte >= 0xF8 { continue }
+            if byte >= 0xF8 { if byte == 0xF8 { messages.append([byte]) }; continue }
             if byte & 0x80 != 0 {
                 bytes.removeAll(keepingCapacity: true)
                 if byte >= 0xF0 {
@@ -29,7 +29,7 @@ struct MIDIByteParser {
             bytes.append(byte)
             let count = [UInt8(0xC0), 0xD0].contains(status & 0xF0) ? 1 : 2
             if bytes.count == count {
-                if status & 0xF0 == 0xB0 { messages.append([status] + bytes) }
+                if status & 0xF0 == 0xB0 || status & 0xF0 == 0xC0 { messages.append([status] + bytes) }
                 bytes.removeAll(keepingCapacity: true)
             }
         }

@@ -1,5 +1,6 @@
 import Foundation
 import CoreMIDI
+import Darwin
 
 final class MIDIManager {
     private var client = MIDIClientRef()
@@ -28,7 +29,10 @@ final class MIDIManager {
                     let dataOffset = MemoryLayout<MIDIPacket>.offset(of: \MIDIPacket.data)!
                     let data = UnsafeRawPointer(pointer).advanced(by: dataOffset).assumingMemoryBound(to: UInt8.self)
                     let bytes = Array(UnsafeBufferPointer(start: data, count: Int(pointer.pointee.length)))
-                    DispatchQueue.main.async { self?.receive(bytes, from: endpoint) }
+                    let hostTime = pointer.pointee.timeStamp == 0 ? mach_absolute_time() : pointer.pointee.timeStamp
+                    var info = mach_timebase_info_data_t(); mach_timebase_info(&info)
+                    let milliseconds = Double(hostTime) * Double(info.numer) / Double(info.denom) / 1_000_000
+                    DispatchQueue.main.async { self?.receive(bytes, from: endpoint, timestamp: milliseconds) }
                     pointer = UnsafePointer(MIDIPacketNext(pointer))
                 }
             })
@@ -68,11 +72,11 @@ final class MIDIManager {
         }
         var event = listing(); event["type"] = "midi.ports"; onEvent?(event)
     }
-    private func receive(_ bytes: [UInt8], from source: MIDIEndpointRef) {
+    private func receive(_ bytes: [UInt8], from source: MIDIEndpointRef, timestamp: Double) {
         guard connected.contains(source) else { return }
         var parser = parsers[source] ?? MIDIByteParser()
         let messages = parser.consume(bytes); parsers[source] = parser
-        for message in messages { onEvent?(["type": "midi.message", "portId": identifier(source), "data": message.map(Int.init)]) }
+        for message in messages { onEvent?(["type": "midi.message", "portId": identifier(source), "data": message.map(Int.init), "timestampMs": timestamp]) }
     }
     func stop() {
         if input != 0 { MIDIPortDispose(input); input = 0 }

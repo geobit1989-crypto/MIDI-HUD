@@ -123,7 +123,7 @@ export function createSyncController({storage,history,getLocal=()=>{const raw=re
   // La red puede tardar mientras el usuario sigue editando. Conservar la nueva
   // base remota, pero aplicar solamente si la copia local sigue siendo la leída.
   if(stillCurrent()&&!sameLibrary(captured,merged)){
-   replaceLibrary(storage,merged,captured||merged);onApplied(clone(merged));
+   replaceLibrary(storage,merged,captured||merged);onApplied(clone(merged),options);
   }
   state.accounts[account.id]={base:merged,heads:acceptedHeads,lastSyncedAt:now(),email:account.email||''};
   storage.setItem(SYNC_KEY,JSON.stringify(state));

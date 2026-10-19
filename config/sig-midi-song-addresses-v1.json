@@ -1,0 +1,815 @@
+{
+  "format": "midi-hud-song-addresses",
+  "schemaVersion": "1.0.0",
+  "source": {
+    "spreadsheetId": "1s8W76PE3IqGHv9uPbIZTRmvZswZ4LGVzhZr4W2fBrQs",
+    "sheet": "Repertorio maestro",
+    "columns": [
+      "Canción",
+      "Autor",
+      "CC0",
+      "PC"
+    ]
+  },
+  "count": 133,
+  "songs": [
+    {
+      "title": "A BENÇÃO",
+      "author": "GABRIEL GUEDES - NIVEA SOARES",
+      "cc0": 0,
+      "pc": 0
+    },
+    {
+      "title": "A BOA PARTE",
+      "author": "FHOP MUSIC",
+      "cc0": 0,
+      "pc": 1
+    },
+    {
+      "title": "A ELE A GLÓRIA",
+      "author": "DIANTE DO TRONO",
+      "cc0": 0,
+      "pc": 2
+    },
+    {
+      "title": "A FÉ",
+      "author": "NA GRAÇA",
+      "cc0": 0,
+      "pc": 3
+    },
+    {
+      "title": "A TUA PRESENÇA",
+      "author": "ELIANA RODRIGUES",
+      "cc0": 0,
+      "pc": 4
+    },
+    {
+      "title": "ABENÇOADO",
+      "author": "GABRIEL RODRIGUES",
+      "cc0": 0,
+      "pc": 5
+    },
+    {
+      "title": "AGNUS DEI",
+      "author": "GABRIELA ROCHA",
+      "cc0": 0,
+      "pc": 6
+    },
+    {
+      "title": "ALEGRIA DO SENHOR",
+      "author": "ELIEZER RODRIGUES",
+      "cc0": 0,
+      "pc": 7
+    },
+    {
+      "title": "ALELUIA DEUS É BOM",
+      "author": "ELIEZER RODRIGUES",
+      "cc0": 0,
+      "pc": 8
+    },
+    {
+      "title": "ALÉM DO RIO AZUL",
+      "author": "VERBO SEDE",
+      "cc0": 0,
+      "pc": 9
+    },
+    {
+      "title": "ALFA E OMEGA",
+      "author": "MARINE FRIESEN",
+      "cc0": 0,
+      "pc": 10
+    },
+    {
+      "title": "ALGO NOVO",
+      "author": "ANDRÉ MARTINS",
+      "cc0": 0,
+      "pc": 11
+    },
+    {
+      "title": "ALTAR",
+      "author": "BRASA CHURCH MUSIC / LIZ JOHNSON",
+      "cc0": 0,
+      "pc": 12
+    },
+    {
+      "title": "ALTO PREÇO",
+      "author": "ASAPH BORBA",
+      "cc0": 0,
+      "pc": 13
+    },
+    {
+      "title": "AMAZING GRACE",
+      "author": "VERBO SEDE",
+      "cc0": 0,
+      "pc": 14
+    },
+    {
+      "title": "AUTOR DO CAMINHO",
+      "author": "VERBO DA VIDA ZONA NORTE",
+      "cc0": 0,
+      "pc": 15
+    },
+    {
+      "title": "BASTA UMA PALAVRA DO MEU DEUS",
+      "author": "COMUNIDADE EVANGÉLICA DA ZONA SUL",
+      "cc0": 0,
+      "pc": 16
+    },
+    {
+      "title": "BOM PERFUME",
+      "author": "GABI SAMPAIO",
+      "cc0": 0,
+      "pc": 17
+    },
+    {
+      "title": "BONDADE DE DEUS",
+      "author": "IBAB CELEBRAÇÃO",
+      "cc0": 0,
+      "pc": 18
+    },
+    {
+      "title": "CADEIAS QUEBRAR",
+      "author": "SORAYA MORAES",
+      "cc0": 0,
+      "pc": 19
+    },
+    {
+      "title": "CAMINHOS ALTOS",
+      "author": "MINISTÉRIO DE LOUVOR HEBROM",
+      "cc0": 0,
+      "pc": 20
+    },
+    {
+      "title": "CANÇÃO DE NEEMIAS",
+      "author": "C2 WORSHIP",
+      "cc0": 0,
+      "pc": 21
+    },
+    {
+      "title": "CANÇÃO DO APOCALIPSE (REVELATION SONG)",
+      "author": "AVIVAH - FEAT.  MADALONI",
+      "cc0": 0,
+      "pc": 22
+    },
+    {
+      "title": "COMO EU TE AMO",
+      "author": "FERNANDONHO",
+      "cc0": 0,
+      "pc": 23
+    },
+    {
+      "title": "CREMOS NO TEU PODER",
+      "author": "EMYLIE RODRIGUES",
+      "cc0": 0,
+      "pc": 24
+    },
+    {
+      "title": "DE FÉ EM FÉ",
+      "author": "ELIEZER RODRIGUES",
+      "cc0": 0,
+      "pc": 25
+    },
+    {
+      "title": "DECLARO JESUS - CHARITY GAYLE",
+      "author": "MICHELLE RODRIGUES",
+      "cc0": 0,
+      "pc": 26
+    },
+    {
+      "title": "DEUS É BOM",
+      "author": "ADORAÇÃO E ADORADORES",
+      "cc0": 0,
+      "pc": 27
+    },
+    {
+      "title": "DEUS SE MOVE",
+      "author": "EMYLIE RODRIGUES",
+      "cc0": 0,
+      "pc": 28
+    },
+    {
+      "title": "DIGNO DE TUDO",
+      "author": "VERBO SEDE",
+      "cc0": 0,
+      "pc": 29
+    },
+    {
+      "title": "DIGNÓ É O SENHOR",
+      "author": "ALINE BARROS  20 ANOS",
+      "cc0": 0,
+      "pc": 30
+    },
+    {
+      "title": "ELE EXALTADO",
+      "author": "LUKAS AGOSTINHO",
+      "cc0": 0,
+      "pc": 31
+    },
+    {
+      "title": "ELE SE MOVE EM MIM",
+      "author": "REMOLINO-NEW WINE",
+      "cc0": 0,
+      "pc": 32
+    },
+    {
+      "title": "ELE VEM",
+      "author": "GABRIEL GUEDES",
+      "cc0": 0,
+      "pc": 33
+    },
+    {
+      "title": "EM SEU NOME",
+      "author": "ANDRÉ AQUINO",
+      "cc0": 0,
+      "pc": 34
+    },
+    {
+      "title": "ESTAMOS DE PÉ",
+      "author": "MARCUS SALLES",
+      "cc0": 0,
+      "pc": 35
+    },
+    {
+      "title": "ESTE É O DIA",
+      "author": "EULLER OLIVEIRA",
+      "cc0": 0,
+      "pc": 36
+    },
+    {
+      "title": "ESTE É O MEU DEUS",
+      "author": "ELIEZER ROSEIGUES",
+      "cc0": 0,
+      "pc": 37
+    },
+    {
+      "title": "ESTOU VOANDO",
+      "author": "ELIEZER RODRIGUES",
+      "cc0": 0,
+      "pc": 38
+    },
+    {
+      "title": "EU CREIO EM TI",
+      "author": "ANDRÉ MARTINS",
+      "cc0": 0,
+      "pc": 39
+    },
+    {
+      "title": "EU CREIO, TUDO VAI ACONTECER",
+      "author": "ELIEZER RODRIGUES",
+      "cc0": 0,
+      "pc": 40
+    },
+    {
+      "title": "EU ME RENDO",
+      "author": "RODRIGO SOEIRO",
+      "cc0": 0,
+      "pc": 41
+    },
+    {
+      "title": "EU TE AGRADEÇO - MAVERICK CITY MUSIC",
+      "author": "MICHELLE RODRIGUES",
+      "cc0": 0,
+      "pc": 42
+    },
+    {
+      "title": "EU VEJO A CHUVA",
+      "author": "ELIEZER RODRIGUES - MINHA VITÓRIA",
+      "cc0": 0,
+      "pc": 43
+    },
+    {
+      "title": "EU VI ALGUÉM MAIS BELO (AO VIVO)",
+      "author": "FLOP MUSIC",
+      "cc0": 0,
+      "pc": 44
+    },
+    {
+      "title": "EXISTE UM RIO",
+      "author": "EULLER OLIVEIRA",
+      "cc0": 0,
+      "pc": 45
+    },
+    {
+      "title": "FÉ",
+      "author": "MANASSES GUERRA",
+      "cc0": 0,
+      "pc": 46
+    },
+    {
+      "title": "FÉ - FHOP MUSIC",
+      "author": "FHOP MUSIC",
+      "cc0": 0,
+      "pc": 47
+    },
+    {
+      "title": "FILHO DO DEUS VIVO",
+      "author": "NIVEA SOARES",
+      "cc0": 0,
+      "pc": 48
+    },
+    {
+      "title": "GALILEU",
+      "author": "FERNANDINHO",
+      "cc0": 0,
+      "pc": 49
+    },
+    {
+      "title": "GERAÇÃO ELEITA",
+      "author": "JOE VASCONCELOS",
+      "cc0": 0,
+      "pc": 50
+    },
+    {
+      "title": "GRACA REAL",
+      "author": "IGREJA UNITED",
+      "cc0": 0,
+      "pc": 51
+    },
+    {
+      "title": "GRANDE É O SENHOR",
+      "author": "ADHEMAR DE CAMPOS",
+      "cc0": 0,
+      "pc": 52
+    },
+    {
+      "title": "GRATIDÃO",
+      "author": "FHOP MUSIC",
+      "cc0": 0,
+      "pc": 53
+    },
+    {
+      "title": "HEBREUS 1",
+      "author": "FHOP MUSIC",
+      "cc0": 0,
+      "pc": 54
+    },
+    {
+      "title": "INCENSÁRIO",
+      "author": "LAURA SOUGUELLIS",
+      "cc0": 0,
+      "pc": 55
+    },
+    {
+      "title": "INVENCÍVEL",
+      "author": "ALINE BARROS",
+      "cc0": 0,
+      "pc": 56
+    },
+    {
+      "title": "ISAÍAS 9",
+      "author": "RODOLFO ABRANTES",
+      "cc0": 0,
+      "pc": 57
+    },
+    {
+      "title": "JEOVAH JIREH",
+      "author": "ALINE BARROS",
+      "cc0": 0,
+      "pc": 58
+    },
+    {
+      "title": "JESUS EM TUA PRESENÇA",
+      "author": "QUATRO POR UM",
+      "cc0": 0,
+      "pc": 59
+    },
+    {
+      "title": "JESUS EM TUA PRESENÇA - ASAPH BORBA",
+      "author": "GABRIEL GUEDES",
+      "cc0": 0,
+      "pc": 60
+    },
+    {
+      "title": "LAURA SOUGUELLIS",
+      "author": "PRA TE ADORAR EU VIVO",
+      "cc0": 0,
+      "pc": 61
+    },
+    {
+      "title": "LEVANTO UM ALELUIA",
+      "author": "VERBO DA PEDRA",
+      "cc0": 0,
+      "pc": 62
+    },
+    {
+      "title": "LION (APENAS O REFRÃO)",
+      "author": "ELEVATIO WORSHIP",
+      "cc0": 0,
+      "pc": 63
+    },
+    {
+      "title": "LUGAR SECRETO",
+      "author": "GABRIELA ROCHA",
+      "cc0": 0,
+      "pc": 64
+    },
+    {
+      "title": "MARANATA",
+      "author": "MINISTÉRIO AVIVAH",
+      "cc0": 0,
+      "pc": 65
+    },
+    {
+      "title": "MARAVILHADO",
+      "author": "NIVEA SOARES",
+      "cc0": 0,
+      "pc": 66
+    },
+    {
+      "title": "MARAVILHOSA GRAÇA",
+      "author": "VERBO SEDE",
+      "cc0": 0,
+      "pc": 67
+    },
+    {
+      "title": "ME AMA",
+      "author": "SOL DA JUSTIÇA",
+      "cc0": 0,
+      "pc": 68
+    },
+    {
+      "title": "ME ATRAIU",
+      "author": "GABRIELA ROCHA",
+      "cc0": 0,
+      "pc": 69
+    },
+    {
+      "title": "ME RENDO",
+      "author": "DIANTE DO TRONO",
+      "cc0": 0,
+      "pc": 70
+    },
+    {
+      "title": "MERGULHO NAS ÁGUAS",
+      "author": "RODRIGO SOEIRO",
+      "cc0": 0,
+      "pc": 71
+    },
+    {
+      "title": "MINHA VITORIA",
+      "author": "ELIEZER RODRIGUES",
+      "cc0": 0,
+      "pc": 72
+    },
+    {
+      "title": "NADA É IMPOSSIVEL",
+      "author": "QUATRO POR UM",
+      "cc0": 0,
+      "pc": 73
+    },
+    {
+      "title": "NADA MAIS (NOTHING ELSE)",
+      "author": "ELIEZER RODRIGUES",
+      "cc0": 0,
+      "pc": 74
+    },
+    {
+      "title": "NADA ME FALTA",
+      "author": "ELIEZER RODRIGUES",
+      "cc0": 0,
+      "pc": 75
+    },
+    {
+      "title": "NÃO MAIS ESCRAVOS",
+      "author": "ELIEZER RODRIGUES",
+      "cc0": 0,
+      "pc": 76
+    },
+    {
+      "title": "NÃO SEREMOS ABALADOS",
+      "author": "NIVEA SOARES",
+      "cc0": 0,
+      "pc": 77
+    },
+    {
+      "title": "NINGUÉM É IGUAL A JESÚS",
+      "author": "ADHEMAR DE CAMPOS",
+      "cc0": 0,
+      "pc": 78
+    },
+    {
+      "title": "NOSSO DEUS (OUR GOD)",
+      "author": "MARCUS SALLES",
+      "cc0": 0,
+      "pc": 79
+    },
+    {
+      "title": "NOVA ESTAÇÃO",
+      "author": "BANDA RHEMA",
+      "cc0": 0,
+      "pc": 80
+    },
+    {
+      "title": "NOVA FASE",
+      "author": "ANA DINIZ",
+      "cc0": 0,
+      "pc": 81
+    },
+    {
+      "title": "O CANTO DOS SANTOS",
+      "author": "ANDRÉ MARTINS",
+      "cc0": 0,
+      "pc": 82
+    },
+    {
+      "title": "O NOSSO GENERAL É CRISTO",
+      "author": "COMUNIDADE EVANGÉLICA DA ZONA SUL",
+      "cc0": 0,
+      "pc": 83
+    },
+    {
+      "title": "OH, QUÃO LINDO ESSE NOME É",
+      "author": "ANA NÓBREGA",
+      "cc0": 0,
+      "pc": 84
+    },
+    {
+      "title": "OUTRO IGUAL NÃO HÁ",
+      "author": "GABRIEL GUEDES",
+      "cc0": 0,
+      "pc": 85
+    },
+    {
+      "title": "PÃO DA VIDA - CLÁUDIO CARO",
+      "author": "VERBO DA VIDA SEDE",
+      "cc0": 0,
+      "pc": 86
+    },
+    {
+      "title": "PODEROSO",
+      "author": "CORAL VOICE SOUL",
+      "cc0": 0,
+      "pc": 87
+    },
+    {
+      "title": "PRA SEMPRE (FOREVER)",
+      "author": "MINISTÉRIO AVIVAH",
+      "cc0": 0,
+      "pc": 88
+    },
+    {
+      "title": "PRA SEMPRE TEU",
+      "author": "ANDRÉ VALADÃO",
+      "cc0": 0,
+      "pc": 89
+    },
+    {
+      "title": "PRA TE ADORAR EU VIVO",
+      "author": "GABRIELA ROCHA",
+      "cc0": 0,
+      "pc": 90
+    },
+    {
+      "title": "QUEM DIZES QUE EU SOU",
+      "author": "HILLSONG EM PORTUGUÊS",
+      "cc0": 0,
+      "pc": 91
+    },
+    {
+      "title": "QUEM É ESSE ?",
+      "author": "JULLIANY SOUZA",
+      "cc0": 0,
+      "pc": 92
+    },
+    {
+      "title": "QUERO CONHECER JESUS + QUE SE ABRAM OS CEUS",
+      "author": "GABRIELA ROCHA FEAT LUKAS AGUSTINHO",
+      "cc0": 0,
+      "pc": 93
+    },
+    {
+      "title": "QUERO JESUS",
+      "author": "LAURA SOUGUELLIS",
+      "cc0": 0,
+      "pc": 94
+    },
+    {
+      "title": "REI DO MEU CORAÇÃO",
+      "author": "VERBO SEDE",
+      "cc0": 0,
+      "pc": 95
+    },
+    {
+      "title": "RUJA O LEÃO",
+      "author": "ISAÍAS SAAD + NIVEA SOARES",
+      "cc0": 0,
+      "pc": 96
+    },
+    {
+      "title": "SALMO 23",
+      "author": "CINTHYA MIRANDA",
+      "cc0": 0,
+      "pc": 97
+    },
+    {
+      "title": "SALMO 126",
+      "author": "MINISTÉRIO ZOE",
+      "cc0": 0,
+      "pc": 98
+    },
+    {
+      "title": "SANTO",
+      "author": "FERNANDINHO",
+      "cc0": 0,
+      "pc": 99
+    },
+    {
+      "title": "SANTO ESPÍRITO (HOLY SPIRIT) FT. PAULO BARUK E LEONARDO GONCALVES",
+      "author": "BRYAN AND KATIE TORWALT",
+      "cc0": 0,
+      "pc": 100
+    },
+    {
+      "title": "SANTO PARA SEMPRE (AO VIVO)",
+      "author": "GABRIEL GUEDES",
+      "cc0": 0,
+      "pc": 101
+    },
+    {
+      "title": "SEJA EXALTADO",
+      "author": "PRAISES",
+      "cc0": 0,
+      "pc": 102
+    },
+    {
+      "title": "SENHOR TU ES BOM - SOUL LIVRE",
+      "author": null,
+      "cc0": 0,
+      "pc": 103
+    },
+    {
+      "title": "SER SANTO",
+      "author": "JP MARÇAL & LAURA DE SOUZA",
+      "cc0": 0,
+      "pc": 104
+    },
+    {
+      "title": "SEU AMOR",
+      "author": "LUDI, FT. ISAIAS SAAD",
+      "cc0": 0,
+      "pc": 105
+    },
+    {
+      "title": "SO TU ES SANTO",
+      "author": "MORADA",
+      "cc0": 0,
+      "pc": 106
+    },
+    {
+      "title": "SOBRE AS ÁGUAS",
+      "author": "RAPHA GONÇALVES & ISAIAS SAAD",
+      "cc0": 0,
+      "pc": 107
+    },
+    {
+      "title": "SOBRE TODO NOME",
+      "author": "DAVI SILVA & FERNANDINHO",
+      "cc0": 0,
+      "pc": 108
+    },
+    {
+      "title": "SOMENTE CRISTO",
+      "author": "FLOP MUSIC",
+      "cc0": 0,
+      "pc": 109
+    },
+    {
+      "title": "SOMOS UM",
+      "author": "SALZBAND",
+      "cc0": 0,
+      "pc": 110
+    },
+    {
+      "title": "SONHANDO OS SONHOS DE DEUS + ESTA ESCRITO",
+      "author": "VERBO SEDE",
+      "cc0": 0,
+      "pc": 111
+    },
+    {
+      "title": "SUA PRESENÇA É TUDO PRA MIM",
+      "author": "GABRIEL GUEDES",
+      "cc0": 0,
+      "pc": 112
+    },
+    {
+      "title": "SUBLIME",
+      "author": "FHOP MUSIC",
+      "cc0": 0,
+      "pc": 113
+    },
+    {
+      "title": "TANTOS MOTIVOS",
+      "author": "BE ONE MUSIC",
+      "cc0": 0,
+      "pc": 114
+    },
+    {
+      "title": "TE AGRADEÇO",
+      "author": "KLÉBER LUCAS",
+      "cc0": 0,
+      "pc": 115
+    },
+    {
+      "title": "TE EXALTAMOS",
+      "author": "ALESSANDRO VILLAS BOAS",
+      "cc0": 0,
+      "pc": 116
+    },
+    {
+      "title": "TE SEGUIREI ATÉ O FIM",
+      "author": "KALEB E JOSH",
+      "cc0": 0,
+      "pc": 117
+    },
+    {
+      "title": "TEMPOS DE ABUNDÂNCIA",
+      "author": "GABRIEL RODRIGUES",
+      "cc0": 0,
+      "pc": 118
+    },
+    {
+      "title": "TEU AMOR NÃO FALHA",
+      "author": "NÍVEA SOARES",
+      "cc0": 0,
+      "pc": 119
+    },
+    {
+      "title": "TEU REINO",
+      "author": "NÍVEA SOARES",
+      "cc0": 0,
+      "pc": 120
+    },
+    {
+      "title": "TUDO É POSSÍVEL",
+      "author": "EMYLIE RODRIGUES",
+      "cc0": 0,
+      "pc": 121
+    },
+    {
+      "title": "TUDO É PRA TUA GLÓRIA",
+      "author": "LAURA SOUGUELLIS / FORNALHA DUNAMIS",
+      "cc0": 0,
+      "pc": 122
+    },
+    {
+      "title": "TUDO POR TI",
+      "author": "HILLSONG",
+      "cc0": 0,
+      "pc": 123
+    },
+    {
+      "title": "VEJA O QUE JESUS FEZ",
+      "author": "VERBO SEDE",
+      "cc0": 0,
+      "pc": 124
+    },
+    {
+      "title": "VELOZMENTE",
+      "author": "EMYLIE RODRIGUES",
+      "cc0": 0,
+      "pc": 125
+    },
+    {
+      "title": "VEM ME BUSCAR",
+      "author": "JEFFERSON E SUELLEN",
+      "cc0": 0,
+      "pc": 126
+    },
+    {
+      "title": "VIDA AOS SEPULCROS",
+      "author": "JULIANE NOGUEIRA",
+      "cc0": 0,
+      "pc": 127
+    },
+    {
+      "title": "VIM PARA ADORAR-TE",
+      "author": "ADORAÇÃO E ADORADORES",
+      "cc0": 1,
+      "pc": 0
+    },
+    {
+      "title": "VITORIOSO ÉS (BETHEL MUSIC)",
+      "author": "VERBO SEDE",
+      "cc0": 1,
+      "pc": 1
+    },
+    {
+      "title": "VITORIOSO ÉS + CONSAGRAÇÃO + COM MUITO OOUVOR",
+      "author": "MICHELLE RODIRGUES",
+      "cc0": 1,
+      "pc": 2
+    },
+    {
+      "title": "YAHWEH SE MANIFESTARÁ (LIVE)",
+      "author": "OASIS MINITRY",
+      "cc0": 1,
+      "pc": 3
+    },
+    {
+      "title": "YESHUA",
+      "author": "FERNANDINHO",
+      "cc0": 1,
+      "pc": 4
+    }
+  ]
+}

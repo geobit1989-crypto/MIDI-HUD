@@ -1,10 +1,11 @@
+import {chordParts} from "./chord-notation.mjs";
 /**
  * Parser del mini-lenguaje aprobado en MIDI HUD Lead Sheet LAB v0.4.
  * Entrada humana: «A - Intro», «| C | F Am | / |», «|: C | G :|».
  * Salida compatible con el motor: arrays de cuatro posiciones por compás.
  * Sin dependencias de DOM, MIDI ni almacenamiento.
  */
-const chordPattern = /^[A-G](?:#|b|♯|♭)?m?$/;
+const chordPattern = /^(?:[A-G](?:#|b|♯|♭)?m?|[b#♭♯]?(?:VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i|[1-7])(?:[°ø+]|(?:m|maj|sus|add|dim|aug)?\d*)?)$/;
 const uniqueInts = value => [...new Set(value || [])].filter(Number.isInteger);
 
 function problem(errors,line,message,section=null,bar=null){
@@ -54,8 +55,8 @@ export function parseLeadSheetText(input){
       const chords=repeat?[]:text.split(/\s+/);
       if(chords.length>2)problem(errors,lineNo,"Máximo dos acordes por compás.",current.letter,bar);
       for(const chord of chords){
-        if(!chordPattern.test(chord))
-          problem(errors,lineNo,"Acorde «"+chord+"» inválido. Usa A–G, #/b opcional y m opcional.",current.letter,bar);
+        if(!chordParts(chord)&&!chordPattern.test(chord))
+          problem(errors,lineNo,"Acorde «"+chord+"» inválido. Usa A–G, #/b opcional y m opcional, o grados I–VII / 1–7 escritos manualmente.",current.letter,bar);
       }
       const beats=repeat?["/","","",""]:
         chords.length===2?[chords[0],"",chords[1],""]:[chords[0]||"","","",""];
@@ -81,6 +82,19 @@ export function compileLeadSheetText(input){
     sourceText:result.sourceText,
     sections:result.sections
   }};
+}
+/** A name/key-only edit or a new view must not recompile an existing score.
+ * Older scores may contain empty bars or metadata not represented by this editor.
+ * Edited text still goes through the existing parser and its error reporting. */
+export function prepareLeadSheetText(existing,input){
+ const source=String(input??'');
+ if(source===formatLeadSheetText(existing)){
+  const leadSheet=existing==null?null:JSON.parse(JSON.stringify(existing));
+  const sections=leadSheet?.sections||[];
+  return {leadSheet,sections,errors:[],sourceText:source,totalBars:sections.reduce((n,s)=>n+s.bars.length,0)};
+ }
+ const result=source.trim()?parseLeadSheetText(source):{sections:[],errors:[],totalBars:0,sourceText:source};
+ return {...result,leadSheet:source.trim()?{...(existing||{}),sourceText:source,sections:result.sections}:null};
 }
 function compactBar(bar){
   if(!Array.isArray(bar))return "";

@@ -1,5 +1,5 @@
 /**
- * MIDI HUD: único catálogo de apariencia de las nueve casillas de LIVE.
+ * MIDI HUD: catálogo de apariencia de los módulos adaptativos de LIVE.
  * Se guarda en song.displaySlots[] para mantener compatibilidad con v2;
  * la sección unificada "Estados y módulos" lo edita en conjunto.
  */
@@ -45,7 +45,7 @@ function lighten(hex){
 export function validModuleColor(value){return typeof value==="string"&&HEX.test(value);}
 export function validModuleIcon(value){return MODULE_ICONS.some(icon=>icon.id===value);}
 export function moduleDefaults(index){
- const safe=Number.isInteger(index)&&index>=0&&index<9?index:0;
+ const safe=Number.isInteger(index)&&index>=0?index%MODULE_COLORS.length:0;
  return {color:MODULE_COLORS[safe].hex,icon:DEFAULT_ICONS[safe]};
 }
 export function resolveModuleVisual(slot,index){
@@ -57,7 +57,13 @@ export function resolveModuleVisual(slot,index){
 }
 export function normalizeSlot(slot,index){
  const style=resolveModuleVisual(slot,index);
- return {name:typeof slot?.name==="string"?slot.name:"—",
-   sub:typeof slot?.sub==="string"?slot.sub:"Sin asignar",
+ return {...slot,name:typeof slot?.name==="string"?slot.name:"—",
+   sub:slot?.deviceTag==null&&slot?.sub==="GT"?"":typeof slot?.sub==="string"?slot.sub:"Sin asignar",
+   deviceTag:typeof slot?.deviceTag==="string"?slot.deviceTag:slot?.sub==="GT"?"GT":"",
+   kind:slot?.kind==="expression"?"expression":"control",
+   ...(slot?.stateMode==null?{}:{stateMode:slot.stateMode}),
+   ...(slot?.indicatorId==null?{}:{indicatorId:slot.indicatorId}),
+   hidden:slot?.hidden===true,
+   rowBreakBefore:slot?.rowBreakBefore===true,
    color:style.color,icon:style.icon};
 }

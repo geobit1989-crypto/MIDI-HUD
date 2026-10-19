@@ -1,0 +1,17 @@
+name = "midihudaut"
+main = "src/index.mjs"
+compatibility_date = "2026-10-18"
+workers_dev = true
+preview_urls = false
+
+[vars]
+GOOGLE_CLIENT_ID = "904503234355-khv7o4hd4gvgs01tphl1r4negfs6nl16.apps.googleusercontent.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "midi-hud-auth-db"
+database_id = "cff94e50-ac03-42f6-a015-fc3cd7838981"
+
+# Cloudflare runtime secrets, set privately in the Worker dashboard:
+# GOOGLE_CLIENT_SECRET and TOKEN_ENCRYPTION_KEY.
+# NEVER commit OAuth secrets, device tokens or refresh tokens.

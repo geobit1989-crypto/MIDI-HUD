@@ -63,6 +63,9 @@ export function renderLiveModules(grid,vm){
  }
  for(const tile of grid.querySelectorAll('[data-hud-index]')){
   const i=Number(tile.dataset.hudIndex);
+  const cc=slots[i]?.expressionCC,value=vm.expressions?.[cc];
+  const readout=tile.querySelector('.value'),meter=tile.querySelector('.exmeter');
+  if(readout&&meter){const known=Number.isInteger(value);readout.hidden=!known;meter.hidden=!known;if(known){const percent=Math.round(value*100/127);readout.textContent=percent+'%';tile.style.setProperty('--fill',percent+'%');}}
   const selected=(vm.previewModuleIndex??vm.state.displayIndex)===i;
   const lit=vm.state.indicators.some(ind=>ind.active&&ind.displayIndex===i);
   tile.style.boxShadow=selected?'inset 0 0 0 3px #f3ffff,0 0 14px #00d6f455':lit?'inset 0 0 0 3px #5fe9f0,0 0 12px #00d6f455':'';

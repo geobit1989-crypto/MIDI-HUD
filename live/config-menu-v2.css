@@ -31,7 +31,7 @@
 .hud-config-group label{display:block;font-weight:750;font-size:13px;margin:7px 0}
 .hud-config-group select{
  display:block;min-height:43px;background:#071827;color:#fff;
- border:1px solid #6a96ab;border-radius:8px;padding:8px 11px;font:inherit;width:100%;margin-top:7px
+ border:1px solid #6a96ab;border-radius:8px;padding:8px 11px;font:inherit;font-size:16px;width:100%;margin-top:7px
 }
 .hud-config-actions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
 .hud-config-panel button:not(.hud-config-close){
@@ -43,6 +43,7 @@
 .hud-config-panel button:focus-visible,.hud-config-panel a:focus-visible{outline:3px solid #96edff;outline-offset:2px}
 .hud-config-panel button.hud-primary{background:#08738b;border-color:#3ec1d9}
 .hud-config-group .hud-config-readout{color:#a4e6ef;font-size:12px;min-height:18px;margin-top:9px}
+.hud-config-group #hud-library-status{font-size:14px;line-height:1.5}
 .hud-config-tools{padding:0 20px 20px}
 .hud-config-tools h3{margin:10px 0 9px;font-size:17px}
 .hud-config-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}

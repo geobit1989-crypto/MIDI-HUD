@@ -57,7 +57,7 @@ export function resolveModuleVisual(slot,index){
 }
 export function normalizeSlot(slot,index){
  const style=resolveModuleVisual(slot,index);
- return {name:typeof slot?.name==="string"?slot.name:"—",
+ return {...slot,name:typeof slot?.name==="string"?slot.name:"—",
    sub:slot?.deviceTag==null&&slot?.sub==="GT"?"":typeof slot?.sub==="string"?slot.sub:"Sin asignar",
    deviceTag:typeof slot?.deviceTag==="string"?slot.deviceTag:slot?.sub==="GT"?"GT":"",
    kind:slot?.kind==="expression"?"expression":"control",

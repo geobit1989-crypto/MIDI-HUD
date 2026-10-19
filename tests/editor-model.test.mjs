@@ -12,12 +12,12 @@ const fixture=JSON.parse(readFileSync(new URL("../config/midi-hud-data-v2.json",
 const copy=x=>JSON.parse(JSON.stringify(x));
 const edit=(base,fn)=>editLibrary(base,fn);
 
-test("crear canción genera estado inicial, nueve módulos y referencia de repertorio",()=>{
+test("crear canción genera estado inicial, cuatro módulos flexibles y referencia de repertorio",()=>{
  let id;
  const db=edit(fixture,d=>{id=newSong(d,"worship");});
  assert.equal(db.songs.length,fixture.songs.length+1);
  const song=db.songs.find(x=>x.id===id);
- assert.equal(song.displaySlots.length,9);
+ assert.equal(song.displaySlots.length,4);
  assert.equal(db.states.find(s=>s.id===song.initialStateId)?.songId,id);
  assert.ok(db.repertoires[0].songIds.includes(id));
  assert.equal(validateLibrary(db),true);
@@ -82,7 +82,7 @@ test("módulos visuales se editan por canción, sin cambiar estructura LIVE",()=
  const db=edit(fixture,d=>setSlot(d,"uma-vez",8,"DIST","GT"));
  assert.equal(db.songs.find(x=>x.id==="uma-vez").displaySlots[8].name,"DIST");
  assert.equal(db.songs.find(x=>x.id==="quao-grande").displaySlots[8].name,"DIST");
- assert.throws(()=>edit(db,d=>setSlot(d,"uma-vez",9,"Otro","X")),/posición/);
+ assert.throws(()=>edit(db,d=>setSlot(d,"uma-vez",256,"Otro","X")),/posición/);
 });
 test("lead sheet: sección y acordes en cuatro pulsos, con repetición de compás",()=>{
  const db=edit(fixture,d=>{

@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08111b">
-<title>MIDI HUD · Editor visual v3</title>
+<title>MIDI HUD · Editor v3.4</title>
 <style>
 :root{color-scheme:dark;--bg:#08111b;--card:#111f2d;--card-alt:#17293a;--line:#31485e;--muted:#b4c6d7;--txt:#f2f7fc;--accent:#5bd6f0;--accent-bg:#113c51;--bad:#ffaaa5;--good:#9fe6cc;--radius:13px}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
 body{padding:clamp(10px,1.5vw,22px)}
 button,input,select,textarea{font:inherit;color:inherit}
+/* Evita la ampliación automática al enfocar campos en iPhone. */
+input,select,textarea{font-size:16px}
 button{cursor:pointer;border:1px solid var(--line);border-radius:9px;padding:10px 13px;min-height:41px;background:#243b50}
 button:hover{border-color:#85c9dc;background:#2b4a61}
 button:disabled{opacity:.38;cursor:not-allowed}
@@ -46,7 +48,7 @@ small,.muted{color:var(--muted)}
 .field{display:block;font-weight:620;font-size:13px;color:#c6dceb}
 .field input,.field select,.field textarea{margin-top:6px}
 input:not([type=file]):not([type=checkbox]),select,textarea{background:#091929;border:1px solid #516b83;border-radius:8px;min-height:42px;padding:9px 11px;width:100%;color:#fff}
-textarea{resize:vertical;min-height:100px;font:13px/1.5 ui-monospace,"Cascadia Code",monospace}
+textarea{resize:vertical;min-height:100px;font:16px/1.5 ui-monospace,"Cascadia Code",monospace}
 input[type=checkbox]{accent-color:#49d0ec;width:18px;height:18px}
 .help{font-size:13px;color:#bdd0dd;line-height:1.5}
 .group{display:flex;flex-direction:column;gap:7px}
@@ -85,7 +87,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 .measure{border:1px solid #3b5b71;padding:9px;border-radius:10px;background:#071725}
 .measure>header{display:flex;justify-content:space-between;align-items:center;gap:4px;color:#b4d4e3;font-size:12px;font-weight:700;margin-bottom:8px}
 .beats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
-.beat-input{min-width:0!important;text-align:center;padding:7px 2px!important;font-size:13px}
+.beat-input{min-width:0!important;text-align:center;padding:7px 2px!important;font-size:16px}
 .repeat-note{background:#1a3449;color:#bfe2f5;border-radius:5px;padding:8px;text-align:center;font-size:14px}
 .matrix{grid-template-columns:50px repeat(4,minmax(0,1fr));gap:6px}
 .matrix .cell{min-height:57px;padding:7px 5px;font-size:13px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center}
@@ -117,10 +119,10 @@ th:first-child{width:115px}
 .sheet-source{display:grid;grid-template-columns:43px minmax(0,1fr);min-width:0}
 .sheet-gutter{position:relative;overflow:hidden;min-height:340px;background:#0a1828;color:#a5c3d7;border:1px solid #536e84;border-right:0;border-radius:8px 0 0 8px;user-select:none}
 .sheet-gutter-lines{position:absolute;inset:0 0 auto;padding:11px 0;will-change:transform}
-.sheet-line{font:14px/24px ui-monospace,monospace;height:24px;padding-right:8px;text-align:right}
+.sheet-line{font:16px/24px ui-monospace,monospace;height:24px;padding-right:8px;text-align:right}
 .sheet-line.invalid{background:#6a2933;color:white;font-weight:800;border-right:3px solid #ff7e86;padding-right:5px}
 .sheet-line.current:not(.invalid){background:#28485b;color:white}
-textarea.sheet-text{border:1px solid #536e84!important;border-radius:0 8px 8px 0!important;background:#081623!important;color:#f3fbff!important;padding:11px!important;resize:vertical;height:340px;min-height:340px;font:14px/24px ui-monospace,monospace;white-space:pre;tab-size:2;overflow:auto}
+textarea.sheet-text{border:1px solid #536e84!important;border-radius:0 8px 8px 0!important;background:#081623!important;color:#f3fbff!important;padding:11px!important;resize:vertical;height:340px;min-height:340px;font:16px/24px ui-monospace,monospace;white-space:pre;tab-size:2;overflow:auto}
 .sheet-text[aria-invalid=true]{border-color:#ff727c!important}
 .sheet-helper{color:#b9d2df;font-size:12px;margin:9px 0;line-height:1.6}
 .sheet-editor-status{font-size:13px;line-height:1.5;color:#a6e6ef;font-weight:650;min-height:26px;margin:9px 0}
@@ -148,39 +150,50 @@ textarea.sheet-text{border:1px solid #536e84!important;border-radius:0 8px 8px 0
 .section-save-note.pending{color:#ffd48b;font-weight:700}
 .state-module-layout{display:grid;grid-template-columns:minmax(300px,1.1fr) minmax(300px,1fr);gap:14px}
 .module-selector{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
-button.module-select-tile{position:relative;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:97px;border:1px solid #59748b;border-radius:10px;padding:7px 5px;color:white;text-shadow:0 1px 2px #000a}
+button.module-select-tile{position:relative;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:150px;border:1px solid #8ba3b5;border-radius:10px;padding:15px 10px;color:white;text-shadow:0 1px 3px #000}
 .module-select-tile.is-selected{outline:3px solid #c7f9ff;outline-offset:0}
 .module-select-tile .tile-num{position:absolute;top:5px;left:7px;font-size:11px;font-weight:800;color:white}
 .module-select-tile .tile-symbol{font-size:23px;line-height:1.1;height:25px}
-.module-select-tile .tile-name{font-size:13px;line-height:1.12;font-weight:900;overflow-wrap:anywhere}
-.module-select-tile .tile-hint{font-size:10px;line-height:1.1;color:#ebf7fa}
-.appearance-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(200px,.65fr);align-items:start;gap:16px}
-.module-preview-wrap{border:1px solid #4f7188;padding:13px;border-radius:12px;background:#0a1c2a}
-.module-preview-title{font-size:12px;color:#a3c5d9;font-weight:800;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
-.module-preview{display:flex;gap:14px;align-items:center;border-radius:11px;border:1px solid #6c8495;padding:20px 13px;background:linear-gradient(175deg,var(--module-light,#075eff),var(--module-dark,#003088));min-height:110px;text-shadow:0 1px 2px #000a}
-.preview-icon{font-size:32px;line-height:1}
-.module-preview strong{display:block;font-size:19px;line-height:1.12}
-.module-preview small{display:block;color:#f2faff;font-size:12px}
+.module-select-tile .tile-name{font-size:18px;line-height:1.2;font-weight:900;overflow-wrap:anywhere}
+.module-select-tile .tile-sub{display:block;width:100%;font-size:14px;line-height:1.3;font-weight:600;color:#fff;overflow-wrap:anywhere}
+.module-select-tile .tile-device{display:block;border:1px solid #fff9;background:#0005;border-radius:5px;padding:3px 7px;font-size:13px;font-weight:700;line-height:1.2;color:#fff;max-width:100%;overflow-wrap:anywhere}
+.module-select-tile .tile-device[hidden]{display:none}
+.appearance-layout{display:block}
+#stateAdvanced>summary{cursor:pointer;font-size:16px;font-weight:700;color:var(--txt)}
+#stateAdvanced .ctrlrow{margin:12px 0}
+.activation-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,.65fr);align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:16px}
+.activation-row span{overflow-wrap:anywhere}
+.activation-row select{margin:0}
 input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 @media(max-width:1150px){.state-module-layout{grid-template-columns:1fr}}
-@media(max-width:800px){.appearance-layout{grid-template-columns:1fr}.module-selector{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:800px){.module-selector{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.module-selector{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 
-/* En móvil el contenido de edición tiene prioridad; biblioteca desplegable. */
-#libraryToggle{display:none}
-@media(max-width:700px){
- #libraryToggle{display:inline-flex;align-items:center;justify-content:center;background:#173a4d;border-color:#538ba5}
- .workspace>.side{display:none}
- .workspace>.side.is-open{display:block}
- .workspace>.main{min-height:unset}
-}
+/* Biblioteca: cajón lateral independiente, siempre accesible y ocultable. */
+.workspace{display:block}
+#libraryToggle{display:inline-flex;align-items:center;justify-content:center;background:#173a4d;border-color:#538ba5}
+#libraryBackdrop{position:fixed;inset:0;background:#0009;z-index:40;border:0;border-radius:0;padding:0;min-height:0;width:100%;cursor:default}
+#libraryBackdrop[hidden]{display:none!important}
+.workspace>.side{position:fixed;z-index:41;top:0;bottom:0;left:0;width:min(370px,calc(100vw - 24px));max-width:none;min-height:0;height:100dvh;padding:calc(17px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain;border-radius:0 14px 14px 0;box-shadow:10px 0 30px #0009;transform:translateX(-104%);visibility:hidden;pointer-events:none;transition:transform .22s ease,visibility .22s}
+.workspace>.side.is-open{transform:translateX(0);visibility:visible;pointer-events:auto}
+.workspace>.main{min-height:unset}
+.recovery-card{border:1px solid #50768a;border-radius:9px;padding:11px;margin-top:13px;background:#102b3a}
+.recovery-card h3{margin-bottom:6px}
+.recovery-result{padding:10px 0;border-top:1px solid #34546a;font-size:13px}
+.recovery-result p{margin:3px 0 8px;color:#c3dbe7}
+.recovery-result button{min-height:35px}
+.recovery-result strong{font-weight:750}
+.drawer-close{background:#26475b;font-weight:700;min-height:35px}
+@media(prefers-reduced-motion:reduce){.workspace>.side{transition:none}}
+@media(max-width:700px){.workspace>.side{width:min(350px,calc(100vw - 20px))}}
 </style>
 </head>
 <body>
 <div class="container">
 <header class="top">
   <div>
-    <div class="brandline"><b>MIDI HUD</b><h1>Editor</h1><span>v3 · beta</span></div>
+    <div class="brandline"><b>MIDI HUD</b><h1>Editor</h1><span>v3.4 · beta</span></div>
     <small>Configura repertorios, estados y comandos visuales. Sin MIDI de salida.</small>
   </div>
   <div class="top-actions">
@@ -189,31 +202,75 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <button type="button" id="undo" title="Recuperar el último guardado anterior">Deshacer cambio</button>
     <button type="button" id="importBtn">Importar</button>
     <button type="button" id="exportBtn" class="primary">Exportar JSON</button>
+    <span id="cloudSync"></span>
+    <button type="button" id="midiLinkBtn" class="primary">Enlace para navegador MIDI</button>
     <a href="../lab/midi-v1.html">LAB</a>
-    <a href="../v03.html">LIVE</a>
+    <a id="liveLink" href="../v03.html?v=20261016-repertoires1">LIVE</a>
   </div>
 </header>
+<button type="button" id="libraryBackdrop" hidden aria-label="Cerrar biblioteca"></button>
 <div class="workspace">
-<aside class="side" id="editorSidebar" aria-label="Biblioteca de repertorios y canciones">
+<aside class="side" id="editorSidebar" aria-label="Biblioteca de repertorios y canciones" aria-hidden="true" inert>
+  <div class="sidebar-row"><span class="heading">Biblioteca</span><button type="button" class="drawer-close small" id="libraryClose" aria-label="Cerrar biblioteca">Cerrar ×</button></div>
   <div class="sidebar-row"><span class="heading">Repertorio</span></div>
   <label class="field" for="repSelect">Repertorio activo
     <select id="repSelect"></select>
   </label>
   <div class="ctrlrow">
     <button id="repAdd" class="small" title="Nuevo repertorio">+ Repertorio</button>
+    <button id="repDuplicate" class="small">Duplicar lista</button>
     <button id="repRename" class="small" title="Renombrar repertorio">Renombrar</button>
     <button id="repRemove" class="small danger" title="Eliminar repertorio">Eliminar</button>
   </div>
+  <form id="repForm" class="rep-inline-form" hidden>
+    <div class="heading" id="repFormHeading">Crear repertorio</div>
+    <label class="field" for="repNameInput">Nombre del repertorio
+      <input id="repNameInput" type="text" maxlength="80" autocomplete="off" required placeholder="Ej. Worship / Rock">
+    </label>
+    <div class="ctrlrow">
+      <button id="repFormSubmit" type="submit" class="small primary">Crear</button>
+      <button id="repFormCancel" type="button" class="small ghost">Cancelar</button>
+    </div>
+  </form>
   <hr>
   <div class="sidebar-row"><span class="heading">Canciones</span><small id="songCounter"></small></div>
   <div id="songList" class="song-list" role="list"></div>
   <div class="ctrlrow">
     <button id="songAdd" class="small primary">+ Canción</button>
-    <button id="songCopy" class="small">Duplicar</button>
-    <button id="songRemove" class="small danger">Eliminar</button>
+    <button id="songAddSig" class="small" title="Crear canción con Clean, Ambient, Drive y Solo">+ Plantilla SIG</button>
+    <button id="songCopy" class="small">Otro lead sheet</button>
+    <button id="songRemove" class="small danger">Quitar de lista</button>
     <button id="songUp" class="small" title="Subir canción">↑</button>
     <button id="songDown" class="small" title="Bajar canción">↓</button>
   </div>
+  <hr>
+  <div class="help">Los cambios quedan en este navegador y en esta dirección web. Exporta JSON para conservar una copia.</div>
+  <section class="recovery-card" aria-label="Recuperación de repertorios anteriores">
+    <h3>Recuperar repertorios</h3>
+    <p class="help">Busca guardados anteriores de este mismo navegador y sitio. No modifica los datos hasta que decidas recuperar uno.</p>
+    <button type="button" id="scanOld" class="small">Buscar guardados anteriores</button>
+    <div id="recoveryResults" role="status" aria-live="polite" class="help"></div>
+  </section>
+  <details class="catalog-import" open>
+    <summary>Repertorio maestro · canciones</summary>
+    <label class="field">Buscar título o variante<input id="masterSearch" type="search"></label>
+    <label><input id="masterArchived" type="checkbox"> Mostrar archivadas</label>
+    <button id="masterNew" class="small">+ Canción maestra</button>
+    <div id="masterResults" class="song-list" role="list"></div>
+  </details>
+  <details class="catalog-import" id="catalogDetails">
+    <summary>Importar canciones · Sheets/CSV</summary>
+    <p class="help">En Google Sheets copia las columnas <b>Canción</b> y <b>Autor</b>, incluida la fila de encabezados. Pega la tabla aquí, o importa el CSV descargado.</p>
+    <label class="field" for="catalogPaste">Canciones y autores
+      <textarea id="catalogPaste" rows="5" placeholder="Canción&#9;Autor&#10;A BENÇÃO&#9;GABRIEL GUEDES - NIVEA SOARES"></textarea>
+    </label>
+    <div class="ctrlrow">
+      <button type="button" id="catalogClipboard" class="small">Leer portapapeles</button>
+      <button type="button" id="catalogFileBtn" class="small">Abrir CSV</button>
+    </div>
+    <button type="button" id="catalogImport" class="small primary">Importar al repertorio activo</button>
+    <p class="help" id="catalogNotice" role="status" aria-live="polite">Solo se importan los nombres y autores. Las canciones, estados y lead sheets existentes se conservan.</p>
+  </details>
   <hr>
   <div class="help">Los cambios quedan en este navegador. Puedes exportar el repertorio para conservar una copia y abrirlo en otro dispositivo.</div>
 </aside>
@@ -222,6 +279,15 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <div><span class="heading" id="repHeading">Repertorio</span><h2 id="songHeading">Selecciona una canción</h2>
       <p id="songSummary"></p></div>
   </div>
+  <div id="emptyPlaylist" class="empty" hidden>Esta lista está vacía. Busca una versión preparada en el catálogo y pulsa Añadir.</div>
+  <section id="sharedControls" class="section-card" hidden>
+    <p id="sharedWarning" class="help"></p><button id="versionSave" class="small primary">Guardar cambios compartidos</button><details><summary>Historial y notas</summary>
+    <div class="ctrlrow"><button id="versionArchive" class="small">Archivar</button></div>
+    <label class="field">Historial recuperable<select id="versionHistory"></select></label>
+    <button id="versionRestore" class="small">Recuperar guardado</button>
+    <label id="occasionNoteWrap" class="field">Nota solo para este repertorio<textarea id="occasionNote" maxlength="4000"></textarea></label>
+    <button id="occasionSave" class="small">Guardar nota de ocasión</button></details>
+  </section>
   <nav class="tabs" aria-label="Secciones del editor">
     <button type="button" data-tab="song" aria-selected="true" class="active">Canción</button>
     <button type="button" data-tab="states" aria-selected="false">Estados</button>
@@ -232,81 +298,76 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <div class="panel-title"><h2>Datos de la canción</h2><p>Información común para todos sus estados musicales.</p></div>
     <div class="grid">
       <label class="field">Título de la canción<input id="songTitle" maxlength="120"></label>
-      <label class="field">Tonalidad<input id="songTone" maxlength="20" placeholder="C, F#m, Bb…"></label>
+      <label class="field">Banco MIDI CC0<input id="songCC0" type="number" min="0" max="127" placeholder="Sin asignar"></label><label class="field">Programa MIDI PC<input id="songPC" type="number" min="0" max="127" placeholder="Sin asignar"></label>
+<label class="field">Autor<input id="songAuthor" maxlength="160" placeholder="Artista, ministerio o compositor"></label>
       <label class="field">Tempo · BPM<input id="songBpm" type="number" min="30" max="300" step="1"></label>
       <label class="field">Banco mostrado en LIVE<input id="songBank" maxlength="24" placeholder="C1"></label>
       <label class="field">Estado inicial<select id="songInitial"></select></label>
     </div>
     <div class="section-card">
       <h3>Cómo se presenta en LIVE</h3>
-      <p class="help">En pantalla aparecerá el valor de la tonalidad, por ejemplo <b>C</b>, sin las palabras «Tono» ni «Tonalidad». El banco indica una asignación programada, no una lectura del Chocolate físico.</p>
+      <p class="help">La tonalidad se configura en Lead sheet. En pantalla aparecerá el valor de la vista seleccionada, por ejemplo <b>C</b>, sin las palabras «Tono» ni «Tonalidad». El banco indica una asignación programada, no una lectura del Chocolate físico.</p>
     </div>
     <div class="section-footer"><span class="section-save-note" id="songDirty">Sin cambios pendientes</span><button id="songSave" class="primary">Guardar</button></div>
   </section>
   <section data-panel="states" hidden>
     <div class="panel-title">
       <h2>Estados</h2>
-      <p>Una sola configuración por canción. Selecciona un módulo, asígnale un estado y define su texto, color e icono; después pulsa Guardar.</p>
+      <p>Escribe cada nombre una vez. Los estados musicales se alternan; los efectos y expresiones se suman al estado activo. Pulsa Guardar cuando termines.</p>
     </div>
     <div class="state-module-layout">
       <section class="section-card">
-        <h3>Distribución LIVE · 3 × 3</h3>
-        <div id="moduleGrid" class="module-grid module-selector" aria-label="Nueve módulos visuales"></div>
-        <p class="help">Elige una casilla para editarla. Las casillas sin estado también pueden usarse para funciones informativas o de la GT.</p>
+        <h3>Módulos</h3>
+        <label class="field">Distribución de filas<select id="moduleLayout"><option value="auto">Automática</option><option value="manual">Filas elegidas</option></select></label>
+        <div class="ctrlrow"><button id="moduleAdd" class="small primary">+ Estado musical</button><button id="moduleEffectAdd" class="small">+ Efecto</button><button id="moduleExpressionAdd" class="small">+ Expresión</button><button id="moduleRemove" class="small danger">Quitar</button><button id="moduleUp" class="small">↑ Mover</button><button id="moduleDown" class="small">↓ Mover</button></div>
+        <div id="moduleGrid" class="module-grid module-selector" aria-label="Módulos de la canción"></div>
+        <p class="help">Para Delay o Boost usa + Efecto. Para Morph, Wah, Whammy o Volumen usa + Expresión. Marca «Empezar una fila nueva» para elegir el reparto.</p>
       </section>
       <section class="section-card">
-        <h3>Estados musicales de esta canción</h3>
-        <div id="stateList" class="state-picker"></div>
-        <div class="ctrlrow">
-          <button id="stateAdd" class="small primary">+ Estado</button>
-          <button id="stateCopy" class="small">Duplicar</button>
-          <button id="stateRemove" class="small danger">Eliminar</button>
-          <button id="stateUp" class="small">↑ Orden</button>
-          <button id="stateDown" class="small">↓ Orden</button>
-        </div>
+        <h3>Editar módulo <span id="selectedModuleLabel"></span></h3>
+        <p id="stateSelectionNote" class="help" role="status"></p>
         <div class="grid">
-          <label class="field">Nombre del estado<input id="stateName" maxlength="80" placeholder="Clean, Ambient, Solo…"></label>
-          <label class="field">Módulo vinculado al estado
-            <select id="stateSlot"></select>
-          </label>
+          <label class="field">Nombre<input id="moduleName" maxlength="80" placeholder="Intro, Verso, Coro…"></label>
+          <label class="field">Descripción<input id="moduleSub" maxlength="75"></label>
+          <label class="field">Dispositivo (etiqueta)<input id="moduleDeviceTag" maxlength="16" placeholder="GT, MIDI, EXP…"></label>
+          <label class="field">Tipo de módulo<select id="moduleKind"><option value="control">Estado musical</option><option value="effect">Efecto</option><option value="expression">Expresión</option><option value="utility">Control auxiliar</option></select></label>
+          <label class="field"><input id="moduleHidden" type="checkbox"> Ocultar módulo</label>
+          <label class="field"><input id="moduleRowBreak" type="checkbox"> Empezar una fila nueva</label>
+          <label class="field">Color del módulo<select id="moduleColorPreset"></select></label>
+          <label class="field">Color personalizado<input id="moduleColor" type="color" value="#075eff"></label>
+          <label class="field">Icono<select id="moduleIcon"></select></label>
           <label class="field">Referencia patch GT (solo informativa)
-            <input id="statePatch" type="number" min="0" max="127" placeholder="Sin asignar">
+            <input id="statePatch" type="text" inputmode="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" pattern="[A-Za-z0-9\-]*" placeholder="Ej.: U01-1 o P50-5">
           </label>
         </div>
-        <p class="help">El patch de la GT es una referencia informativa. No se envía MIDI desde el Editor.</p>
+        <p class="help">La referencia patch admite letras, números y guion. No aparece en LIVE ni envía MIDI desde el Editor.</p>
+        <p id="statesInitialStatus" class="help" role="status"></p>
+        <button id="stateMakeInitial" class="small primary">Usar como inicial</button>
       </section>
     </div>
-    <section class="section-card">
-      <h3>Apariencia del módulo <span id="selectedModuleLabel"></span></h3>
-      <div class="appearance-layout">
-        <div class="appearance-fields">
-          <div class="grid">
-            <label class="field">Título visible<input id="moduleName" maxlength="45"></label>
-            <label class="field">Descripción<input id="moduleSub" maxlength="75"></label>
-            <label class="field">Color del módulo
-              <select id="moduleColorPreset"></select>
-            </label>
-            <label class="field">Color personalizado
-              <input id="moduleColor" type="color" value="#075eff">
-            </label>
-            <label class="field">Icono
-              <select id="moduleIcon"></select>
-            </label>
-            <label class="field">Estado asociado a esta casilla
-              <select id="moduleLinkedState"></select>
-            </label>
-          </div>
-        </div>
-        <div class="module-preview-wrap">
-          <div class="module-preview-title">Vista previa de LIVE</div>
-          <div id="modulePreview" class="module-preview">
-            <span id="modulePreviewIcon" class="preview-icon">✦</span>
-            <div><strong id="modulePreviewName">CLEAN</strong><small id="modulePreviewSub">Twin Clean</small></div>
-          </div>
-          <p class="help">El aspecto cambiará en LIVE después de Guardar y actualizar la pantalla.</p>
-        </div>
-      </div>
+    <section id="moduleActivation" class="section-card" hidden>
+      <h3>Al entrar en cada estado</h3>
+      <p class="help">Elige si este efecto o expresión comienza encendido o apagado. Después puedes cambiarlo por MIDI mientras continúa el estado musical.</p>
+      <div id="moduleActivationRows"></div>
+      <p class="help">Al cambiar de estado se usa su configuración de entrada. Configura los mensajes de encendido y apagado en la pestaña MIDI.</p>
+      <p id="expressionActivationNote" class="help" hidden>Esta configuración representa encendido y apagado; no determina la posición del pedal ni muestra su porcentaje.</p>
     </section>
+    <details id="stateAdvanced" class="section-card">
+      <summary>Asociaciones avanzadas</summary>
+      <p class="help">Puedes gestionar estados existentes, cambiar sus asociaciones o añadir controles auxiliares.</p>
+      <label class="field">Valor MIDI (CC80 estado / CC81 efecto)<input id="moduleMidiValue" type="number" min="0" max="127" placeholder="Sin asignar"></label><label class="field">Expresión MIDI<select id="moduleExpressionCC"><option value="">Sin asignar</option><option value="7">CC7 Volumen</option><option value="91">CC91 Morph</option><option value="11">CC11 Wah / Whammy</option></select></label><div id="stateList" class="state-picker"></div>
+      <div class="ctrlrow">
+        <button id="stateAdd" class="small">+ Estado</button>
+        <button id="moduleUtilityAdd" class="small">+ Control auxiliar</button>
+        <button id="stateCopy" class="small">Duplicar estado</button>
+        <button id="stateRemove" class="small danger">Eliminar estado</button>
+        <button id="stateUp" class="small">↑ Orden</button>
+        <button id="stateDown" class="small">↓ Orden</button>
+      </div>
+      <div class="grid">
+        <label class="field">Módulo vinculado al estado<select id="stateSlot"></select></label>
+        <label class="field">Estado asociado al módulo<select id="moduleLinkedState"></select></label>
+      </div>
     <section class="section-card">
       <h3>Indicadores del estado seleccionado</h3>
       <div id="indicatorList"></div>
@@ -321,9 +382,22 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
       </div>
       <p class="help">Los indicadores representan la configuración prevista, no telemetría del hardware.</p>
     </section>
+    </details>
     <div class="section-footer"><span id="statesDirty" class="section-save-note">Sin cambios pendientes</span><button id="statesSave" class="primary">Guardar</button></div>
   </section>
   <section data-panel="sheet" hidden>
+    <div class="section-card">
+      <label class="field">Lead sheet de esta canción<select id="leadSheetSelect"></select></label>
+      <p class="help" id="leadSheetScope"></p>
+      <div class="grid">
+        <label class="field">Nombre del lead sheet<input id="leadSheetName" maxlength="120"></label>
+        <label class="field">Tonalidad de este lead sheet<input id="songTone" maxlength="20" placeholder="Sol mayor, La menor…"></label>
+        <label class="field">Notación<select id="leadNotation"><option value="acordes">Acordes</option><option value="grados">Grados</option></select></label>
+      </div>
+      <label class="field">Nombre de la nueva variante<input id="newVariantName" maxlength="120" placeholder="Grados — Sol mayor"></label>
+      <button id="versionNew" class="small">Crear nueva variante sin sobrescribir</button>
+      <p class="help">La nueva variante conserva el contenido y la tonalidad que estás preparando. Los estados, controles y expresiones siguen perteneciendo a la misma canción.</p>
+    </div>
     <div class="panel-title">
       <h2>Lead sheet · editor de texto</h2>
       <p>Escribe los acordes y el sistema construye la partitura. La vista previa se actualiza al escribir. Publica los cambios pulsando Guardar.</p>
@@ -331,11 +405,18 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <div class="sheet-workspace">
       <section class="sheet-card" aria-label="Editor de acordes en texto">
         <h3>Escribe los acordes</h3>
+        <div class="formrow sheet-notation-row">
+          <label class="field">Cifrado de la canción
+            <select id="sheetNotation"><option value="americano">Americano (C, D, E)</option><option value="latino">Latino (Do, Re, Mi)</option></select>
+          </label>
+          <button id="sheetConvert" class="nonflex" type="button">Convertir toda la canción</button>
+        </div>
+        <p id="sheetNotationDetected" class="help" role="status">Cifrado: sin analizar</p>
         <div class="sheet-source">
           <div class="sheet-gutter" aria-hidden="true"><div id="leadGutter" class="sheet-gutter-lines"></div></div>
           <textarea class="sheet-text" id="leadText" wrap="off" spellcheck="false" aria-describedby="leadHelp" placeholder="A - Intro&#10;| C | F |&#10;&#10;B - Verso&#10;| C | / | F Am | G |"></textarea>
         </div>
-        <p class="sheet-helper" id="leadHelp"><strong>Ejemplo:</strong> <code>A - Intro</code> abre la sección; <code>| C | F Am | / |</code> crea tres compases; <code>|: C | G :|</code> indica repetición. Acordes mayores y menores, con # o b; máximo dos acordes por compás.</p>
+        <p class="sheet-helper" id="leadHelp"><strong>Ejemplo:</strong> <code>A - Intro</code> abre la sección; <code>| C | F Am | / |</code> crea tres compases; <code>|: C | G :|</code> indica repetición. Acordes mayores, menores, sus2, sus4, 7, m7, maj7 y bajos alternativos (C/E). También acepta Do, Re, Mi, Fa, Sol, La y Si; máximo dos acordes por compás.</p>
         <p id="leadStatus" class="sheet-editor-status" role="status"></p>
         <div id="leadErrors" class="sheet-errors" aria-live="polite"></div>
         <p id="leadDraftWarning" class="sheet-draft-warning" hidden>Este texto contiene errores. Se conserva como borrador local y LIVE mantiene el último lead sheet válido.</p>
@@ -367,8 +448,10 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
         <label class="field">Acción a añadir
           <select id="actionType">
             <option value="ACTIVATE_STATE">Activar estado</option>
+            <option value="MODULE_ON">Encender efecto o expresión</option>
+            <option value="MODULE_OFF">Apagar efecto o expresión</option>
             <option value="SELECT_SONG">Seleccionar canción</option>
-            <option value="SET_INDICATOR">Encender/apagar indicador</option>
+            <option value="SET_INDICATOR">Indicador avanzado: encender/apagar</option>
           </select>
         </label>
       </div>
@@ -399,7 +482,8 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
-<script type="module" src="./v3.mjs?v=20261015-inicio2"></script>
+<input id="catalogFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
+<script type="module" src="./v3.mjs?v=20261018-leadsheets1"></script>
 </div>
-</body>
+<nav aria-label="Legal" style="font-size:12px"><a href="../privacy.html">Privacidad</a> · <a href="../terms.html">Condiciones</a> · <a href="../privacy-en.html">Privacy</a> · <a href="../terms-en.html">Terms</a></nav></body>
 </html>

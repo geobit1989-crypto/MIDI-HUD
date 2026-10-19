@@ -6,12 +6,12 @@ final class MIDIHUDTests: XCTestCase {
     func testRunningStatusRealtimeAndSplitPackets() {
         var parser = MIDIByteParser()
         XCTAssertEqual(parser.consume([0xB2, 20]), [])
-        XCTAssertEqual(parser.consume([127, 21, 0xF8, 0]), [[0xB2, 20, 127], [0xB2, 21, 0]])
-        XCTAssertEqual(parser.consume([0x90, 60, 100, 61, 0, 0xC0, 1, 0xB0, 25, 1]), [[0xB0, 25, 1]])
+        XCTAssertEqual(parser.consume([127, 21, 0xF8, 0]), [[0xB2, 20, 127], [0xF8], [0xB2, 21, 0]])
+        XCTAssertEqual(parser.consume([0x90, 60, 100, 61, 0, 0xC0, 1, 0xB0, 25, 1]), [[0xC0, 1], [0xB0, 25, 1]])
     }
     func testSystemMessagesNeverBecomeCC() {
         var parser = MIDIByteParser()
-        XCTAssertEqual(parser.consume([0xB0, 20, 1, 0xF0, 1, 2, 0xF8, 3, 0xF7, 20, 2]), [[0xB0, 20, 1]])
+        XCTAssertEqual(parser.consume([0xB0, 20, 1, 0xF0, 1, 2, 0xF8, 3, 0xF7, 20, 2]), [[0xB0, 20, 1], [0xF8]])
         XCTAssertEqual(parser.consume([0xF2, 1, 2, 3, 0xB1, 0, 0]), [[0xB1, 0, 0]])
     }
     @MainActor

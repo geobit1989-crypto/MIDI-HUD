@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#03080d">
-  <title>MIDI HUD · Visual LIVE v0.3</title>
+  <title>MIDI HUD v3.4 · · Visual LIVE v0.3</title>
   <style>
     :root{color-scheme:dark;--ui-font:'Roboto Condensed','Arial Narrow','Liberation Sans Narrow',system-ui,sans-serif;--white:#fff;--cyan:#00d6f4}
     *{box-sizing:border-box}html{background:#03070b}body{margin:0;background:#03070b;color:#fff;font-family:var(--ui-font)}
@@ -115,7 +115,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 .hud-panel{gap:3px}
 }
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-  
+
 /* MIDI HUD: colores invertidos y ajustes puntuales sin rehacer la interfaz. */
 .lead-sheet{background:#05070b;color:#f8fafc;border:1px solid #46515c}
 .sheet-section{border-bottom-color:#46515c}
@@ -285,11 +285,12 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 }
 </style>
 <link rel="stylesheet" href="./live/responsive-v1.css?v=20261015-iphone2">
-<link rel="stylesheet" href="./live/config-menu-v2.css?v=20261015-iphone2">
+<link rel="stylesheet" href="./live/config-menu-v2.css?v=20261016-repertoires1">
 <link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261015-fit3">
+<link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261016-rows2">
 </head>
 <body>
-  <!-- MIDI HUD sólo visualiza información. No crea, envía ni recibe comandos MIDI. -->
+  <!-- MIDI HUD recibe mensajes para visualizar estados; no envía MIDI al hardware. -->
   <main class="screen" aria-label="MIDI HUD, referencia visual v0.3">
     <section class="lead-sheet" aria-label="Hoja de acordes de Quão Grande É o Meu Deus">
       <div class="sheet-section"><div class="section-label"><span class="section-letter">A</span><span>INTRO</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar" data-beats="C   "><span class="beat">C</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" style="border:0" data-beats="    "><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" style="border:0" data-beats="    "><span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div></div></div>
@@ -302,19 +303,10 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
       <div class="sheet-section"><div class="section-label"><span class="section-letter">D</span><span>PONTE</span></div><div class="chord-lines" style="--rows:1"><div class="chord-line"><div class="bar repeat-start" data-beats="F   "><span class="beat">F</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar" data-beats="Am   "><span class="beat">Am</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div><div class="bar repeat-end" data-beats="G   "><span class="beat">G</span><span class="beat"></span><span class="beat"></span><span class="beat"></span></div></div></div></div>
     </section>
     <section class="hud-panel" aria-label="Información del banco y controles asignados">
-      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-left"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div></div><div class="brand">MIDI HUD <span>LIVE</span></div><div class="hud-right"><strong class="bank" id="bank">C1</strong><div class="settings" aria-label="Configuración. Mantén pulsado dos segundos para abrir el Editor" title="Toque: Configuración · Mantener 2 s: Editor">⚙</div></div></div><div class="song-navigation"><button class="song-nav" id="hud-prev" type="button" aria-label="Consultar canción anterior">‹</button><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1><button class="song-nav" id="hud-next" type="button" aria-label="Consultar canción siguiente">›</button><button type="button" class="return-active" id="hud-return" hidden>Volver a activa</button></div></header>
-      <div class="switch-grid" aria-label="Nueve funciones visualizadas">
-        <div class="switch" style="--light:#075eff;--dark:#003088;--meter:#02ddf4;--fill:49%"><span class="number">1</span><span class="icon-wrap">✦</span><div class="details"><div class="name">CLEAN</div><div class="sub">Twin Clean</div></div><span class="arrow">›</span><div class="meter"></div></div>
-        <div class="switch" style="--light:#08b7ae;--dark:#005251;--meter:#09ffff;--fill:50%"><span class="number">2</span><span class="icon-wrap">≋</span><div class="details"><div class="name">AMBIENT</div><div class="sub">Delay · Reverb</div></div><span class="arrow">›</span><div class="meter"></div></div>
-        <div class="switch" style="--light:#ff8300;--dark:#8f3700;--meter:#ffa645;--fill:47%"><span class="number">3</span><span class="icon-wrap">∿</span><div class="details"><div class="name">DRIVE</div><div class="sub">OD · Crunch</div></div><span class="arrow">›</span><div class="meter"></div></div>
-        <div class="switch" style="--light:#ff071b;--dark:#930011;--meter:#ff5060;--fill:51%"><span class="number">4</span><span class="icon-wrap">◎</span><div class="details"><div class="name">SOLO</div><div class="sub">Lead · Boost</div></div><span class="arrow">›</span><div class="meter"></div></div>
-        <div class="switch" style="--light:#eac400;--dark:#776400;--meter:#f5fd00;--fill:47%"><span class="number">5</span><span class="icon-wrap">⠿</span><div class="details"><div class="name">DELAY</div><div class="sub">Dotted 8th</div></div><span class="arrow">›</span><div class="meter"></div></div>
-        <div class="switch" style="--light:#536d8a;--dark:#1d2b3a;--meter:#fff;--fill:26%"><span class="number">6</span><span class="icon-wrap">▂▅▇</span><div class="details"><div class="name">BOOST</div><div class="sub">+3 dB</div></div><span class="arrow">›</span><div class="meter"></div></div>
-        <div class="switch" style="--light:#aaab00;--dark:#454700;--meter:#feff00;--fill:20%"><span class="number">7</span><span class="icon-wrap">▼</span><div class="details"><div class="name">COMP</div><div class="sub"><span class="gt">GT</span></div></div><span class="arrow">›</span><div class="meter"></div></div>
-        <div class="switch" style="--light:#8500ef;--dark:#320076;--meter:#e87aff;--fill:28%"><span class="number">8</span><span class="icon-wrap">▲</span><div class="details"><div class="name">OD</div><div class="sub"><span class="gt">GT</span></div></div><span class="arrow">›</span><div class="meter"></div></div>
-        <div class="switch" style="--light:#4b5056;--dark:#1d2429;--meter:#fefefe;--fill:23%"><span class="number">9</span><span class="icon-wrap" style="font-size:clamp(14px,2.2cqw,34px)">CTL1</span><div class="details"><div class="name">DIST</div><div class="sub"><span class="gt">GT</span></div></div><span class="arrow">›</span><div class="meter"></div></div>
+      <header class="topbar" aria-label="Encabezado de la canción"><div class="hud-meta"><div class="hud-left"><div class="key" aria-label="Tonalidad F">F</div><div class="tempo">75 BPM</div></div><div class="brand">MIDI HUD <span>LIVE 3.4</span></div><div class="hud-right"><strong class="bank" id="bank">C1</strong><div class="settings" aria-label="Configuración. Mantén pulsado dos segundos para abrir el Editor" title="Toque: Configuración · Mantener 2 s: Editor">⚙</div></div></div><div class="song-navigation"><button class="song-nav" id="hud-prev" type="button" aria-label="Consultar canción anterior">‹</button><h1 class="song-title" id="song-title">Quão Grande É o Meu Deus</h1><button class="song-nav" id="hud-next" type="button" aria-label="Consultar canción siguiente">›</button><button type="button" class="return-active" id="hud-return" hidden>Volver a activa</button></div></header>
+      <div class="switch-grid" aria-label="Módulos visuales configurables">
+        <div class="modules-empty">Cargando módulos…</div>
       </div>
-      <div class="expression-row" aria-label="Pedales de expresión"><div class="expression" style="--edge:#cf61ff;--exp-a:#4b006d;--exp-b:#200036;--fill:45%"><div class="exhead"><strong class="exname">MORPH</strong><strong class="value">45%</strong></div><div class="exsub">Preset → Solo</div><div class="exmeter" aria-hidden="true"></div></div><div class="expression" style="--edge:#00e5ff;--exp-a:#003a55;--exp-b:#003345;--fill:75%"><div class="exhead"><strong class="exname">WAH / EXP</strong><strong class="value">75%</strong></div><div class="exsub">Wah · Whammy</div><div class="exmeter" aria-hidden="true"></div></div></div>
     </section>
   </main>
   <div id="hud-toast" role="status" aria-live="polite" class="hud-toast" hidden></div>
@@ -409,14 +401,20 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 
 <!-- Integracion funcional v1: el diseno de LIVE v0.3 permanece sin alteraciones estructurales. -->
 <script type="module">
-import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs";
-import {resolveModuleVisual} from "./core/module-visuals.mjs";
+import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261016-repertoires1";
+import {resolveLiveSelection} from "./core/live-selection-v34.mjs?v=20261016-repertoires1";
+import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261016-repertoires1";
+import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261016-transfer1";
+import {installCloudSync} from "./core/sync-ui.mjs?v=20261016-native1";
+import {installNativeMidiControls} from "./core/native-controls.mjs?v=20261016-native1";
+import {renderLiveModules} from "./live/modules-v34.mjs?v=20261016-overlays1";
+import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {openBrowserMidi} from "./core/midi-browser.mjs?v=20261015-ble1";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
-const SETTINGS=readSettings(localStorage),EDITOR_KEY="hudLibraryV1";
+const SETTINGS=readSettings(localStorage);
 const $=s=>document.querySelector(s);
-let engine,library,midiPort;
+let engine,library,midiPort,initialSelection,usingSavedLibrary=false;
 const adaptiveSheet=installAdaptiveLeadSheet(document.querySelector(".lead-sheet"));
 const gear=$(".topbar .settings");
 gear.tabIndex=0;gear.setAttribute("role","button");
@@ -438,6 +436,19 @@ dialog.innerHTML=`
 </header>
 <div class="hud-config-content">
   <div class="hud-config-grid">
+    <section class="hud-config-group" aria-labelledby="hud-sync-heading">
+      <h3 id="hud-sync-heading">Repertorios compartidos</h3>
+      <div id="hud-sync-root" class="hud-config-actions"></div>
+      <p>Actualiza antes de tocar. LIVE conserva su sesión mientras interpretas.</p>
+    </section>
+    <section class="hud-config-group" aria-labelledby="hud-library-heading">
+      <h3 id="hud-library-heading">Repertorio en LIVE</h3>
+      <label for="hud-repertoire">Repertorio activo
+        <select id="hud-repertoire"></select>
+      </label>
+      <p id="hud-library-status" class="hud-config-readout" role="status"></p>
+      <p>La selección se recuerda en este navegador. Para traer tus guardados de otro navegador, usa allí «Enlace para navegador MIDI» en el Editor. Después puedes seguir editando desde aquí.</p>
+    </section>
     <section class="hud-config-group" aria-labelledby="hud-midi-heading">
       <h3 id="hud-midi-heading">Recepción MIDI</h3>
       <p>Canal global de entrada, compartido por todas las canciones.</p>
@@ -466,7 +477,7 @@ dialog.innerHTML=`
 <nav class="hud-config-tools" aria-label="Herramientas MIDI HUD">
   <h3>Ir a otra herramienta</h3>
   <div class="hud-config-links">
-    <a href="./editor/">✎ Editor<small>Modificar canciones, estados y lead sheets</small></a>
+    <a id="hud-editor-link" href="./editor/v3.html?v=20261016-repertoires1">✎ Editor<small>Modificar canciones, estados y lead sheets</small></a>
     <a href="./lab/">◇ LAB<small>Simular los mensajes CC y sus acciones</small></a>
     <a href="./">▦ Inicio<small>Panel de acceso a MIDI HUD</small></a>
   </div>
@@ -474,7 +485,7 @@ dialog.innerHTML=`
 <footer class="hud-config-foot">El HUD únicamente representa estados visuales. No transmite MIDI a la GT ni supervisa sus cambios físicos.</footer>
 `;
 overlay.append(dialog);document.body.append(overlay);
-function popup(open){overlay.hidden=!open;overlay.style.display=open?"flex":"none";if(open)dialog.querySelector("#hud-channel").focus();else gear.focus();}
+function popup(open){overlay.hidden=!open;overlay.style.display=open?"flex":"none";if(open)dialog.querySelector("#hud-repertoire").focus();else gear.focus();}
 function prepare(){
  const ch=dialog.querySelector("#hud-channel");
  for(let i=1;i<=16;i++)ch.add(new Option("Canal "+i,i));
@@ -485,7 +496,6 @@ function prepare(){
    engine.dispatch({type:"SET_CHANNEL",channel:midiChannel});
  };
  const selector=dialog.querySelector("#hud-preview");
- selector.replaceChildren(...library.songs.map(s=>new Option(s.title,s.id)));
  dialog.querySelector("#hud-preview-btn").onclick=()=>{
    engine.dispatch({type:"PREVIEW_SONG",songId:selector.value});popup(false);
  };
@@ -493,6 +503,9 @@ function prepare(){
    engine.dispatch({type:"RETURN_TO_ACTIVE"});popup(false);
  };
  dialog.querySelector("#hud-close-btn").onclick=()=>popup(false);
+ installNativeMidiControls(dialog.querySelector('[aria-labelledby="hud-midi-heading"]'));
+ installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
+   missingRequestedRepertoire:initialSelection.missingRequestedRepertoire,onUse:()=>popup(false)});
  dialog.querySelector("#hud-midi-btn").onclick=async()=>{
    try{
      if(midiPort)midiPort.close();
@@ -529,7 +542,7 @@ gear.addEventListener("pointerdown",event=>{
   gearPressTimer=setTimeout(()=>{
     gearPressTimer=null;gearLongPress=true;
     gear.classList.remove("hud-holding");
-    window.location.assign("./editor/");
+    window.location.assign(dialog.querySelector("#hud-editor-link").href);
   },EDITOR_HOLD_MS);
 });
 gear.addEventListener("pointerup",cancelGearHold);
@@ -631,68 +644,53 @@ function render(){
  $("#song-title").textContent=vm.song.title;
  const key=$(".topbar .key");key.textContent=vm.song.tono||"—";
  key.setAttribute("aria-label","Tonalidad "+(vm.song.tono||"sin definir"));
- $(".topbar .tempo").textContent=vm.song.tempoBpm==null?"— BPM":vm.song.tempoBpm+" BPM";
+ $(".topbar .tempo").textContent=(vm.tempo?.displayBpm??"—")+" "+(vm.tempo?.clockStatus==='lost'?'SIN CLK':vm.tempo?.label||'BPM');
  $("#bank").textContent=vm.song.bank||"—";
  sheet(vm.song.leadSheet);
  document.querySelector("#hud-return").hidden=!vm.isPreview;
  const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
- const slots=[...document.querySelectorAll(".switch-grid .switch")];
- for(let i=0;i<slots.length;i++){
-  const cfg=vm.song.displaySlots?.[i]||{name:"—",sub:"Sin asignar"};
-  const visual=resolveModuleVisual(cfg,i);
-  const tile=slots[i];
-  tile.style.setProperty("--light",visual.light);
-  tile.style.setProperty("--dark",visual.dark);
-  tile.style.setProperty("--meter",visual.meter);
-  const symbol=tile.querySelector(".icon-wrap");
-  if(symbol){symbol.textContent=visual.glyph;symbol.setAttribute("aria-hidden","true");}
-  const name=tile.querySelector(".name"),sub=tile.querySelector(".sub");
-  if(name)name.textContent=cfg.name;
-  if(sub){
-   if(cfg.sub==="GT"){
-    const gt=document.createElement("span");gt.className="gt";gt.textContent="GT";
-    sub.replaceChildren(gt);
-   }else sub.textContent=cfg.sub;
-  }
-  const selected=(vm.previewModuleIndex==null?vm.state.displayIndex:vm.previewModuleIndex)===i;
-  const lit=vm.state.indicators.some(ind=>ind.active&&ind.displayIndex===i);
-  slots[i].style.boxShadow=selected?"inset 0 0 0 3px #f3ffff,0 0 14px #00d6f455":
-    lit?"inset 0 0 0 3px #5fe9f0,0 0 12px #00d6f455":"";
-  slots[i].setAttribute("aria-label",(vm.isPreview?"Consulta visual: ":selected?"Estado seleccionado: ":lit?"Indicador activo: ":"Indicador programado: ")+cfg.name);
-  slots[i].setAttribute("aria-pressed",String(selected));
- }
- const expressions=[...document.querySelectorAll(".expression")];
- for(const el of expressions){
-  const value=el.querySelector(".value"),sub=el.querySelector(".exsub");
-  if(value)value.textContent="—";
-  if(sub)sub.textContent="Sin telemetría";
-  el.style.setProperty("--fill","0%");
- }
+ renderLiveModules(document.querySelector(".switch-grid"),vm);
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
  const currentInfo=dialog.querySelector("#hud-current-info");
  if(currentInfo)currentInfo.textContent=(vm.isPreview?"Vista de consulta: ":"Vista operativa: ")+
-  vm.song.title+" · "+vm.state.name;
+  vm.repertoire.name+" · "+vm.song.title+" · "+vm.state.name;
+ dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261016-repertoires1&repertoire='+
+  encodeURIComponent(vm.repertoire.id)+'&song='+encodeURIComponent(vm.song.id);
 }
 (async()=>{
  try{
   let data;
-  const saved=localStorage.getItem(EDITOR_KEY);
-  if(saved){try{data=normalizeLibrary(JSON.parse(saved));}catch{}}
+  const transferred=await receiveLibraryTransfer(localStorage,window.location.hash,{confirmReplace:packet=>
+   window.confirm('El enlace contiene '+packet.library.repertoires.map(rep=>rep.name).join(', ')+'. ¿Usar esta biblioteca? La actual se conservará como copia anterior.')});
+  if(transferred){
+   if(transferred.applied){data=transferred.library;usingSavedLibrary=true;}
+   try{window.history.replaceState(null,'',window.location.pathname+window.location.search);}catch{}
+  }
+  const cloud=installCloudSync({host:dialog.querySelector('#hud-sync-root'),mode:'live',
+   canApply:()=>true,
+   onApplied:next=>{if(engine)window.location.reload();else data=next;}});
+  // La conexión lenta nunca impide abrir el repertorio local para tocar.
+  // Local copy opens immediately; automatic sync only updates storage.
+  const saved=readLibrarySource(localStorage);
+  if(!data&&saved){try{data=normalizeLibrary(JSON.parse(saved));usingSavedLibrary=true;}catch{}}
   if(!data){
    const response=await fetch("./config/midi-hud-data-v2.json");
    if(!response.ok)throw Error("No se encontró la biblioteca v2");
    data=await response.json();
   }
-  engine=createEngine(data,{midiChannel:SETTINGS.midiChannel});
+  initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
+  engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
   library=engine.getLibrary();prepare();
   window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
+  setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
   engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
+  if(initialSelection.missingRequestedRepertoire)popup(true);
  }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);
   const boot=document.querySelector("#hud-boot-status");if(boot)boot.textContent="Error de inicialización: "+err.message;
  }
 })();
 </script>
 <script src="./live/live-controls-v1.js" defer></script>
-</body>
+<nav aria-label="Legal" style="font-size:12px"><a href="./privacy.html">Privacidad</a> · <a href="./terms.html">Condiciones</a> · <a href="./privacy-en.html">Privacy</a> · <a href="./terms-en.html">Terms</a></nav></body>
 </html>
