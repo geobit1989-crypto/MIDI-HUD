@@ -19,7 +19,7 @@ jobs:
     needs: web
     runs-on: macos-latest
     env:
-      HUD_GOOGLE_IOS_CLIENT_ID: ${{ vars.HUD_GOOGLE_IOS_CLIENT_ID }}
+      HUD_GOOGLE_IOS_CLIENT_ID: ${{ vars.HUD_GOOGLE_IOS_CLIENT_ID || '904503234355-emfjjsvo8n31ugt6f4a3ac3mb2gjl8jb.apps.googleusercontent.com' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
