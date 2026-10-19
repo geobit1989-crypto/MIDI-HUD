@@ -18,9 +18,32 @@ jobs:
   ios:
     needs: web
     runs-on: macos-latest
+    env:
+      HUD_GOOGLE_IOS_CLIENT_ID: ${{ vars.HUD_GOOGLE_IOS_CLIENT_ID }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Configure Google OAuth for the iOS IPA
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          client = os.environ.get("HUD_GOOGLE_IOS_CLIENT_ID", "").strip()
+          if not client:
+              print("Google OAuth iOS is not configured: building an offline-capable IPA.")
+          else:
+              suffix = ".apps.googleusercontent.com"
+              if not re.fullmatch(r"[A-Za-z0-9_-]+\.apps\.googleusercontent\.com", client):
+                  raise SystemExit("HUD_GOOGLE_IOS_CLIENT_ID has an invalid format.")
+              reversed_client = "com.googleusercontent.apps." + client[:-len(suffix)]
+              file = Path("native/ios/Config/Local.xcconfig")
+              file.write_text("GOOGLE_IOS_CLIENT_ID = " + client + "\n" +
+                              "GOOGLE_REVERSED_CLIENT_ID = " + reversed_client + "\n",
+                              encoding="utf-8")
+              print("Google OAuth iOS Client ID and redirect URL scheme configured.")
+          PY
       - name: Prepare identical offline web resources
         run: python3 native/ios/prepare_web.py
       - name: Find available iPhone simulator
@@ -49,6 +72,29 @@ jobs:
           ditto build/ios-device/Build/Products/Release-iphoneos/MIDIHUD.app build/ios-unsigned-ipa/Payload/MIDIHUD.app
           (cd build/ios-unsigned-ipa && zip -qry ../MIDIHUD-iOS-unsigned.ipa Payload)
           unzip -t build/MIDIHUD-iOS-unsigned.ipa
+      - name: Verify embedded iOS OAuth configuration
+        run: |
+          python3 - <<'PY'
+          import os
+          import plistlib
+          from pathlib import Path
+
+          plist_path = Path("build/ios-device/Build/Products/Release-iphoneos/MIDIHUD.app/Info.plist")
+          with plist_path.open("rb") as stream:
+              info = plistlib.load(stream)
+          client = os.environ.get("HUD_GOOGLE_IOS_CLIENT_ID", "").strip()
+          embedded = info.get("GIDClientID", "")
+          schemes = [value for item in info.get("CFBundleURLTypes", []) for value in item.get("CFBundleURLSchemes", [])]
+          if client:
+              expected_scheme = "com.googleusercontent.apps." + client.removesuffix(".apps.googleusercontent.com")
+              if embedded != client or expected_scheme not in schemes:
+                  raise SystemExit("OAuth iOS configuration was not embedded correctly.")
+              print("Verified embedded Google OAuth iOS configuration.")
+          elif embedded:
+              raise SystemExit("Unexpected Google OAuth identifier in unconfigured IPA.")
+          else:
+              print("Verified offline-only IPA with no Google OAuth credentials.")
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
