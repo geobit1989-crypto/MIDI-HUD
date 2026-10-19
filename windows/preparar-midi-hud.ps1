@@ -9,7 +9,7 @@
 
 param(
     [string]$Repository = "geobit1989-crypto/MIDI-HUD",
-    [string]$Branch = "integration/ios-unified-20261019",
+    [string]$Branch = "integration/ios-unified-191026-v6",
     [string]$OutputDirectory = (Join-Path ([Environment]::GetFolderPath("UserProfile")) "Downloads\MIDI-HUD")
 )
 $ErrorActionPreference = "Stop"
