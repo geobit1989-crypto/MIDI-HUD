@@ -1,0 +1,54 @@
+{
+  "schema": "midi-hud.worship-demo.v1",
+  "name": "Worship — 3 estados + Morph",
+  "simulation": true,
+  "states": [
+    {
+      "id": "clean",
+      "name": "Crystal Clean",
+      "amp": "Twin Reverb 65",
+      "drive": 0,
+      "boostDb": 0,
+      "reverbShort": 22,
+      "reverbLong": 8,
+      "delay": 8,
+      "morph": {
+        "target": "ambient",
+        "heel": {
+          "reverbLong": 8,
+          "delay": 8
+        },
+        "toe": {
+          "reverbLong": 65,
+          "delay": 48
+        }
+      }
+    },
+    {
+      "id": "drive",
+      "name": "Worship Overdrive",
+      "amp": "Twin Reverb 65",
+      "drive": 35,
+      "boostDb": 0,
+      "reverbShort": 20,
+      "reverbLong": 15,
+      "delay": 22
+    },
+    {
+      "id": "solo",
+      "name": "Worship Solo",
+      "amp": "Twin Reverb 65",
+      "drive": 55,
+      "boostDb": 3,
+      "reverbShort": 18,
+      "reverbLong": 20,
+      "delay": 28
+    }
+  ],
+  "volumePedal": {
+    "scope": "all-routes",
+    "heel": 0,
+    "toe": 100
+  },
+  "notes": "Valores simulados, no parámetros validados de Boss GT-1000CORE. Morph ambiental solo en Clean. Dos bloques de reverb y delay independientes."
+}

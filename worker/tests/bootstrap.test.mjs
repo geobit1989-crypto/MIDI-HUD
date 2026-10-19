@@ -101,6 +101,20 @@ test("cross-origin requests and unknown paths cannot access private API",async()
  assert.equal(result.headers.get("Access-Control-Allow-Headers"),"Authorization, Content-Type");
 });
 
+test("v6 staging OAuth redirects are allowlisted without opening external redirects",async()=>{
+ const env=testEnv(fakeDB().DB);
+ for(const returnPath of ["/MIDI-HUD/editor/v3.html","/MIDI-HUD/v03.html",
+   "/MIDI-HUD/pruebas/v6/editor/v3.html","/MIDI-HUD/pruebas/v6/v03.html"]){
+  const result=await worker.fetch(api("/auth/start","POST",{returnPath,proofHash:"A".repeat(43)}),env);
+  assert.equal(result.status,200,returnPath);
+ }
+ for(const returnPath of ["/MIDI-HUD/pruebas/v7/editor/v3.html",
+   "/MIDI-HUD/pruebas/v6/../../../elsewhere","https://attacker.example","/MIDI-HUD/pruebas/v6/"]){
+  const result=await worker.fetch(api("/auth/start","POST",{returnPath,proofHash:"A".repeat(43)}),env);
+  assert.equal(result.status,400,returnPath);
+ }
+});
+
 test("crypto seals secrets without exposing them as plaintext",async()=>{
  const key=base64url(crypto.getRandomValues(new Uint8Array(32)));
  const cipher=await seal("offline-refresh-secret",key);
