@@ -332,11 +332,11 @@ test('un Lead Sheet inválido no reemplaza al anterior; convertir y guardar cons
  const song=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)).songs.find(s=>s.id===t.songId);
  assert.equal(song.leadSheet.sourceText,'A - Intro\n| C | G/B | Am7 |');assert.equal(song.chordNotation,'americano');
 });
-test('CC cero explícito es válido y los campos vacíos de la matriz muestran error',async()=>{
+test('CC0 está reservado y los campos vacíos de la matriz muestran error',async()=>{
  const t=setup({tab:'midi'});
  t.elements.get('midiCC').value='0';t.elements.get('midiValue').value='0';t.elements.get('actionAdd').onclick();
  await t.elements.get('midiSave').onclick();
- assert.ok(JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)).songs.find(s=>s.id===t.songId).midiBindings.some(b=>b.cc===0&&b.value===0));
+ assert.ok(!t.snapshot().working.songs.find(s=>s.id===t.songId).midiBindings.some(b=>b.cc===0&&b.value===0));
  t.elements.get('matrixStart').value='';t.elements.get('matrixStart').onchange();
  assert.equal(t.elements.get('midiMatrix').children.length,1);
  assert.match(t.elements.get('midiMatrix').children[0].textContent,/CC inicial/);

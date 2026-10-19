@@ -17,6 +17,7 @@ export function installLibraryPicker({root,engine,library,storage,usingSavedLibr
   if(previousRep!==rep.id){
    songs.replaceChildren(...rep.songIds.map(id=>option(library.songs.find(song=>song.id===id).title,id)));
    songs.value=rep.songIds.includes(vm.song.id)?vm.song.id:rep.songIds[0];previousRep=rep.id;
+   const preview=root.querySelector('#hud-preview-btn');if(preview)preview.disabled=!rep.songIds.length;
   }
   const selection={repertoireId:rep.id,songId:vm.active.songId},signature=JSON.stringify(selection);
   if(signature!==previousSelection){

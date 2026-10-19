@@ -62,3 +62,14 @@ Pendientes físicos: iPhone offline/rotación/persistencia/retorno a primer plan
 ## Reversión
 
 Producción y ramas originales intactas: basta seguir usando su versión. No instalar una versión anterior sobre datos migrados sin exportar: recuperar JSON original desde copias inmutables/backup y revisar antes de importar. Historial Drive conserva commits, nunca se elimina. No borrar instalación iOS para revertir si contiene cambios no exportados. La integración no ejecuta migración remota de datos reales.
+
+## Evidencia de cierre y regresión adicional
+
+PR de revisión: https://github.com/geobit1989-crypto/MIDI-HUD/pull/4 (sin fusionar).
+Primer commit remoto integrado: `283e7b361d40111250d70ea1865510c1a1dda3ae`.
+CI web satisfactoria: https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/39230258079 .
+CI iOS satisfactoria (3 XCTest, cero fallos, compilación de dispositivo e IPA verificado): https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/39230258172 .
+
+La revisión posterior añade una prueba de ciclo de vida real del controlador/UI con transporte simulado: inicio offline, recuperación de sesión al reconectar, guardado durante subida, cola sin transferencias simultáneas, primer plano, borrador, snapshot LIVE y actualización explícita exactamente una vez. Se corrige recuperación de sesión y se conserva intención explícita en la cola. Conectar cuenta no actualiza LIVE. CC0 queda reservado también en el formulario de acciones; se conserva cualquier dato histórico. CC11 admite un único destino de expresión por canción. JSON local inválido detiene el arranque LIVE sin sustituirlo por ejemplos; playlists vacías no permiten previsualización inválida.
+
+Validación local final: 216 pruebas de aplicación y 4 del Worker, cero fallos; 41 scripts/123 referencias; 61 recursos espejo idénticos; 63 recursos offline preparados. La nueva ejecución de CI de la rama verifica este ajuste y publica su propio IPA; seleccionar siempre ejecución satisfactoria correspondiente al último SHA, no confundir el primer artefacto con el ajuste posterior. La prueba de transporte simulado no acredita acceso real a Drive ni hardware.

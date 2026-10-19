@@ -22,7 +22,7 @@ test("LIVE receives shared repertoires without interrupting the current song",()
  assert.match(livePage,/mode:'live'/);
  assert.match(livePage,/canApply:\(\)=>true/);
  assert.doesNotMatch(livePage,/await Promise\.race\(\[cloud\.ready/);
- assert.match(syncUI,/mode!==\'live\'\|\|options\?\.explicit/);
+ assert.match(syncUI,/if\(mode!=='live'\)onApplied/);
  assert.match(livePage,/window\.location\.reload\(\)/);
 });
 test("Cloud sync uses existing browser V3 key, not another beta browser database",()=>{
@@ -56,7 +56,7 @@ test("sincroniza automáticamente al guardar, volver a la pestaña y reconectars
  assert.match(syncUI,/document\.addEventListener\('visibilitychange',resume\)/);
  assert.match(syncUI,/setInterval\(resume,60000\)/);
  assert.match(syncUI,/synchronize\(\{reason:'saved'\}\)/);
- assert.match(syncUI,/if\(busy\)\{queued=true;return;\}/);
+ assert.match(syncUI,/if\(busy\)\{queued=true;queuedOptions=/);
  assert.match(syncUI,/if\(result\?\.pending/);
  assert.match(syncUI,/auth\.restore\(\)/);
  assert.match(syncUI,/state:'reauth'/);

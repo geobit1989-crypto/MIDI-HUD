@@ -672,7 +672,7 @@ function render(){
   // La conexión lenta nunca impide abrir el repertorio local para tocar.
   // Local copy opens immediately; automatic sync only updates storage.
   const saved=readLibrarySource(localStorage);
-  if(!data&&saved){try{data=normalizeLibrary(JSON.parse(saved));usingSavedLibrary=true;}catch{}}
+  if(!data&&saved){data=normalizeLibrary(JSON.parse(saved));usingSavedLibrary=true;}
   if(!data){
    const response=await fetch("./config/midi-hud-data-v2.json");
    if(!response.ok)throw Error("No se encontró la biblioteca v2");

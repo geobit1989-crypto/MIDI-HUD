@@ -964,6 +964,7 @@ function register(){
  $("actionAdd").onclick=()=>{
   let pair;
   try{pair=validatePair();}catch(e){notice(e.message,true);return;}
+  if(pair.cc===0){notice("CC0 está reservado al banco de canciones; configura CC0 y PC en Canción.",true);return;}
   const type=$("actionType").value,target=$("actionTarget").value;
   if(!target)return;
   let actions;

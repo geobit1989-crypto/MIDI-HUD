@@ -145,6 +145,7 @@ export function validateLibrary(raw) {
       const {cc0,pc}=song.midiAddress,key=cc0+':'+pc;
       insist(integer(cc0,0,127)&&integer(pc,0,127)&&!addresses.has(key),'dirección CC0/PC inválida o duplicada');addresses.add(key);
     }
+    insist((song.displaySlots||[]).filter(slot=>slot.expressionCC===11).length<=1,'CC11 permite Wah o Whammy, no ambos');
     const controls=new Set(),effects=new Set();
     for(const slot of song.displaySlots||[]){
       if(slot.midiValue!=null){
