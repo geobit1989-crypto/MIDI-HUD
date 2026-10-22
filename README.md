@@ -43,6 +43,10 @@ Los números CC/PC pertenecen al canal RX del HUD, distinto del RX de GT; **F8 n
 - **Sin prueba física aún:** Clock F8 y Tap desde GT-1000CORE, conmutación real CC81 en GT, ruteo del puente y persistencia de efectos/expresión entre canciones. La lectura LIVE no constituye control de audio.
 - El lead sheet mostrado en la antigua maqueta era ilustrativo; LIVE señala que los cifrados reales todavía requieren integración, para no asociar acordes de ejemplo a canciones ajenas.
 
+## Continuidad y persistencia
+
+Para trabajos posteriores, consultar la [entrada operativa AGENTS.md](./AGENTS.md) y el [PCP — Protocolo de Continuidad y Persistencia v1.0](https://docs.google.com/document/d/1NaYQOiI-vL4vueMNFM014jXPInE023hA0xDcM9xZph0/edit). Este enlace orienta la consulta selectiva; no establece una lectura automática global en ChatGPT.
+
 ## Documentación
 
 - [Contrato de selección de canciones](./config/SIG-MIDI-song-selection-v1.md).
