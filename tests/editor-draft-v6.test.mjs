@@ -6,8 +6,8 @@ import {runInNewContext} from 'node:vm';
 // Execute only the Editor controller (no boot or external service).
 // This is an isolated regression harness; physical browser, Drive and MIDI acceptance remain separate.
 const editorSource=readFileSync(new URL('../editor/v3.mjs',import.meta.url),'utf8')
- .replace(/^import\\s+[\\s\\S]*?\\s+from\\s+["'][^"']+["'];\\s*/gm,'')
- .replace(/boot\\(\\)\\.catch\\([\\s\\S]*$/,'');
+ .replace(/^import\s+[\s\S]*?\s+from\s+["'][^"']+["'];\s*/gm,'')
+ .replace(/boot\(\)\.catch\([\s\S]*$/,'');
 function makeStorage(){
  const data=new Map();
  return {data,getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
@@ -102,5 +102,5 @@ test('UI incorpora un único Guardar global y oculta acciones por sección',()=>
  const html=readFileSync(new URL('../editor/v3.html',import.meta.url),'utf8');
  assert.match(html,/id="saveAll"/);
  assert.match(html,/id="lastConfirmedSave"/);
- assert.match(html,/#songSave,#statesSave,#sheetSave,#midiSave,#versionSave\\{display:none\\}/);
+ assert.match(html,/#songSave,#statesSave,#sheetSave,#midiSave,#versionSave\{display:none\}/);
 });
