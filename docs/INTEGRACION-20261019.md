@@ -51,6 +51,12 @@ Guardado local primero, debounce 350 ms, inicio/reconexión/primer plano y consu
 
 Fusión conservadora por canción: editar lead sheets distintos de la misma canción puede pedir resolución, preservando ambas versiones completas; no se elige por reloj de dispositivo. Historial/ancestros están separados por cuenta. No se promete ejecución iOS suspendida ni prueba real de Google con mocks.
 
+### Ejecución de CI solicitada — 25/10/2026
+
+Los workflows **engine-tests.yml** y **native-ios.yml** están definidos en `.github/workflows/` y configurados para ejecutarse con cada `push` a `integration/**`. Los commits de migración de las pruebas del Editor han activado dichas ejecuciones en la rama `integration/ios-unified-20261019` (último commit de la actualización de tests: `844c09d6db2aad653f3685fa8b124d8e6ee4f88d`). Se actualizaron las pruebas `tests/editor-draft-v6.test.mjs`, `tests/editor-states-flow.test.mjs`, `tests/editor-ui.test.mjs` y `tests/browser-integration.mjs` para el guardado global.
+
+La revisión adicional de lectura verificó sintaxis JS de los archivos modificados y que los triggers corresponden a la rama. **Estado de los jobs remotos: pendiente de verificación**: la integración GitHub disponible permite consultar los runs vinculados a PR, pero no enumera los runs de `push`, y los checks Actions no figuran en el endpoint de estados clásicos. No declarar CI verde ni IPA actualizado hasta obtener el resultado de Actions. Enlaces: https://github.com/geobit1989-crypto/MIDI-HUD/actions/workflows/engine-tests.yml y https://github.com/geobit1989-crypto/MIDI-HUD/actions/workflows/native-ios.yml .
+
 ## Ajuste de flujo del Editor — 25/10/2026 (rama v6, pendiente de publicación)
 
 **Decisión aprobada:** la navegación entre Canción, Estados, Lead sheet, MIDI, repertorios y canciones no exige guardar ni descarta modificaciones. Cada edición se mantiene como borrador local recuperable bajo `midiHudEditorDraftV6`, con asociación a la revisión de biblioteca confirmada. Las importaciones aditivas de catálogo se incorporan al borrador, no publican automáticamente. Las acciones destructivas/importaciones de reemplazo conservan confirmaciones explícitas.
