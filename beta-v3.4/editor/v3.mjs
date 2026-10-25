@@ -37,7 +37,7 @@ const LABELS={song:"Canción",states:"Estados",sheet:"Lead sheet",midi:"MIDI"};
 let committed=null,working=null,activeRep=null,activeSong=null,activeState=null;
 let activeModule=0,activeTab="song",hasDraft=false,cc=20,value=127;
 let leadSource="",leadParse=null,catalogMode=false,masterSheetId=null;
-let saving=false,leadDrafts=new Map(),isLeaving=false,draftStoreError=false;
+let saving=false,leadDrafts=new Map(),isLeaving=false,draftStoreError=false,editSequence=0;
 const DRAFT_KEY="midiHudEditorDraftV6";
 function draftBase(){return [committed.libraryId??null,committed.revision??0,committed.updatedAt??null];}
 function clearDrafts(){leadDrafts.clear();draftStoreError=false;localStorage.removeItem(DRAFT_KEY);}
@@ -164,7 +164,7 @@ function syncStatus(error=false){
  }
 }
 function dirty(){
- hasDraft=true;persistDraft();syncStatus();
+ editSequence++;hasDraft=true;persistDraft();syncStatus();
  if(!draftStoreError)$("editorNotice").textContent="Borrador protegido. Cambia de pestaña libremente; pulsa «Guardar» al finalizar.";
 }
 function selected(){
@@ -271,6 +271,7 @@ function awaitNotationChoice(){
 async function save(){
  if(!hasDraft||saving)return;
  let failed=false;saving=true;syncStatus();
+ const startingEdit=editSequence;
  try{
   const next=copy(working);
   for(const [sheetId,source] of leadDrafts){
@@ -291,6 +292,7 @@ async function save(){
    }
   }
   for(const song of next.songs)syncDefaultLeadSheet(song);
+  if(startingEdit!==editSequence)throw Error("El borrador cambió durante la confirmación. Revisa y pulsa Guardar de nuevo.");
   persistLibrary(next,"Cambios confirmados. LIVE se actualiza solo con «Actualizar repertorios».");
  }catch(error){failed=true;notice("No se guardó: "+error.message,true);}
  finally{saving=false;syncStatus(failed);}
@@ -1024,10 +1026,9 @@ function register(){
  // Importación aditiva del catálogo: jamás reemplaza estados, lead sheets ni asignaciones MIDI.
  async function importCatalogText(text){
   try{
-   if(!allowLeaving())return;
    const entries=parseSongCatalog(text);
-   const {library,stats}=mergeSongCatalog(committed,activeRep,entries);
-   const changed=JSON.stringify(library)!==JSON.stringify(committed);
+   const {library,stats}=mergeSongCatalog(working,activeRep,entries);
+   const changed=JSON.stringify(library)!==JSON.stringify(working);
    if(!changed){
     $("catalogNotice").textContent=stats.read+" canciones revisadas: todas estaban registradas.";
     return;
@@ -1038,8 +1039,8 @@ function register(){
     " · Autores completados: "+stats.authorsCompleted+
     "\nSe conservarán todos los estados, configuraciones MIDI y lead sheets actuales.";
    if(!window.confirm(confirmation))return;
-   persistLibrary(library,"Catálogo importado: "+stats.added+" nuevas, "+stats.linked+
-     " vinculadas y "+stats.authorsCompleted+" autores completados.");
+   working=library;selected();refreshLeadSource();dirty();render();
+   notice("Catálogo incorporado al borrador: "+stats.added+" nuevas y "+stats.linked+" vinculadas. Confirma con Guardar.");
    $("catalogNotice").textContent="Correcto: "+stats.read+" entradas leídas · "+
      stats.added+" añadidas · "+stats.linked+" vinculadas · "+
      stats.authorsCompleted+" autores actualizados. No se eliminaron canciones.";
@@ -1101,7 +1102,10 @@ function register(){
  $("midiLinkBtn").onclick=async()=>{
   const action=$('midiLinkBtn');action.disabled=true;
   try{
-   if(hasDraft){await save();if(hasDraft)return;}
+   if(hasDraft){
+    if(!window.confirm("Hay un borrador sin confirmar. ¿Guardar toda la configuración antes de generar el enlace?"))return;
+    await save();if(hasDraft)return;
+   }
    const link=await createLibraryTransferUrl(committed,{repertoireId:activeRep,songId:activeSong},window.location.href);
    showMidiLink(link);
   }catch(error){notice('No se pudo preparar el enlace: '+error.message,true);}
