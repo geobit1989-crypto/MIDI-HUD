@@ -43,8 +43,8 @@ test("el editor V3 importa el catálogo sin reemplazar JSON ni su configuración
  assert.ok(ids.has("catalogClipboard"));
  assert.ok(ids.has("catalogFile"));
  assert.match(script,/mergeSongCatalog/);
- assert.match(script,/persistLibrary\(library,/);
- assert.match(script,/allowLeaving\(\)/);
+ assert.match(script,/working=library;selected\(\);refreshLeadSource\(\);dirty\(\);render\(\)/);
+ assert.match(script,/mergeSongCatalog\(working,/);
  assert.match(page,/Importar canciones/);
 });
 
