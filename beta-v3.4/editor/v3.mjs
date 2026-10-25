@@ -37,7 +37,51 @@ const LABELS={song:"Canción",states:"Estados",sheet:"Lead sheet",midi:"MIDI"};
 let committed=null,working=null,activeRep=null,activeSong=null,activeState=null;
 let activeModule=0,activeTab="song",hasDraft=false,cc=20,value=127;
 let leadSource="",leadParse=null,catalogMode=false,masterSheetId=null;
-let saving=false;
+let saving=false,leadDrafts=new Map(),isLeaving=false,draftStoreError=false;
+const DRAFT_KEY="midiHudEditorDraftV6";
+function draftBase(){return [committed.libraryId??null,committed.revision??0,committed.updatedAt??null];}
+function clearDrafts(){leadDrafts.clear();draftStoreError=false;localStorage.removeItem(DRAFT_KEY);}
+function persistDraft(){
+ if(!committed||!working)return;
+ try{
+  const record={version:1,base:draftBase(),working,leadDrafts:[...leadDrafts],activeRep,activeSong,activeState,activeModule,activeTab,catalogMode,masterSheetId};
+  const raw=JSON.stringify(record);localStorage.setItem(DRAFT_KEY,raw);
+  if(localStorage.getItem(DRAFT_KEY)!==raw)throw Error("No se pudo verificar la copia del borrador.");
+  draftStoreError=false;
+ }catch(error){
+  draftStoreError=true;
+  $("editorNotice").textContent="No se pudo proteger el borrador en disco: "+error.message;
+  $("editorNotice").style.background="#3e1b26";
+ }
+}
+function refreshLeadSource(){const sheet=currentSheet();leadSource=sheet?(leadDrafts.get(sheet.id)??formatLeadSheetText(sheet.leadSheet)):"";}
+function restoreDraft(){
+ const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return false;
+ let data;try{data=JSON.parse(raw);}catch{return false;}
+ if(data.version!==1||JSON.stringify(data.base)!==JSON.stringify(draftBase())||!data.working||!Array.isArray(data.leadDrafts))return false;
+ working=data.working;leadDrafts=new Map(data.leadDrafts);
+ activeRep=data.activeRep;activeSong=data.activeSong;activeState=data.activeState;activeModule=data.activeModule;
+ activeTab=SECTIONS.includes(data.activeTab)?data.activeTab:"song";
+ catalogMode=!!data.catalogMode;masterSheetId=data.masterSheetId;
+ hasDraft=true;return true;
+}
+function confirmationTime(){
+ const date=new Date(committed?.updatedAt);
+ return !committed?.updatedAt||Number.isNaN(date.getTime())?"Último guardado: no disponible":
+  "Último guardado: "+new Intl.DateTimeFormat("es-ES",{dateStyle:"short",timeStyle:"short"}).format(date);
+}
+function confirmEditorExit(href){
+ if(!hasDraft){window.location.assign(href);return;}
+ const dialog=make("dialog");
+ dialog.style.cssText="width:min(520px,calc(100vw - 24px));background:#122535;color:white;border:1px solid #7290a7;border-radius:12px;padding:20px";
+ const actions=make("div");actions.style.cssText="display:flex;gap:10px;flex-wrap:wrap";
+ const leave=()=>{isLeaving=true;window.location.assign(href);};
+ actions.append(button("Guardar y salir",async()=>{await save();if(!hasDraft){dialog.close();leave();}},"primary"),
+  button("Seguir editando",()=>dialog.close()),
+  button("Salir sin confirmar",()=>{dialog.close();leave();}));
+ dialog.append(make("h2","Cambios sin confirmar"),make("p","Tu borrador queda protegido, pero LIVE solo utiliza la última biblioteca confirmada."),actions);
+ document.body.append(dialog);dialog.addEventListener("close",()=>dialog.remove(),{once:true});dialog.showModal();
+}
 const make=(tag,text,klass)=>{
  const node=document.createElement(tag);
  if(text!==undefined)node.textContent=String(text);
@@ -86,7 +130,7 @@ function makeSelectionInitial(){
   const id=st?setInitialState(next,activeSong,st.id):useModuleAsInitialState(next,activeSong,activeModule);
   working=next;activeState=id;activeModule=currentState().displayIndex??null;
   dirty();renderStates();renderSong();
-  notice('«'+currentState().name+'» será el estado inicial. Pulsa Guardar en Estados.');
+  notice('«'+currentState().name+'» será el estado inicial. Confirma con Guardar al finalizar.');
  }catch(error){notice(error.message,true);}
 }
 function createSelectedModuleState(){
@@ -108,20 +152,20 @@ function notice(message,error=false){
  syncStatus(error);
 }
 function syncStatus(error=false){
- $("saveStatus").textContent=error?"Revisar datos":hasDraft?"Sin guardar":"Guardado";
- $("saveStatus").style.color=error?"#ffb2ad":hasDraft?"#ffd38c":"#9fe6cc";
+ const failed=error||draftStoreError;
+ $("saveStatus").textContent=failed?"Revisar borrador":hasDraft?"Borrador pendiente":"Confirmado";
+ $("saveStatus").style.color=failed?"#ffb2ad":hasDraft?"#ffd38c":"#9fe6cc";
+ $("lastConfirmedSave").textContent=confirmationTime();
+ $("saveAll").disabled=saving||!hasDraft;
  for(const tab of SECTIONS){
   const label=$(tab+"Dirty"),btn=$(tab+"Save");
-  if(label){
-   label.textContent=hasDraft&&tab===activeTab?"Cambios pendientes":"Sin cambios pendientes";
-   label.classList.toggle("pending",hasDraft&&tab===activeTab);
-  }
-  if(btn)btn.disabled=saving||!currentSong()||!(hasDraft&&tab===activeTab);
+  if(label){label.textContent=hasDraft?"Borrador protegido; guardar al finalizar":"Sin cambios pendientes";label.classList.toggle("pending",hasDraft);}
+  if(btn)btn.disabled=saving||!hasDraft;
  }
 }
 function dirty(){
- hasDraft=true;syncStatus();
- $("editorNotice").textContent="Cambios pendientes. Pulsa «Guardar» en "+LABELS[activeTab]+".";
+ hasDraft=true;persistDraft();syncStatus();
+ if(!draftStoreError)$("editorNotice").textContent="Borrador protegido. Cambia de pestaña libremente; pulsa «Guardar» al finalizar.";
 }
 function selected(){
  if(!working.repertoires.some(x=>x.id===activeRep))activeRep=working.repertoires[0].id;
@@ -132,20 +176,14 @@ function selected(){
  else if(activeModule!==null&&(!Number.isInteger(activeModule)||activeModule<0||activeModule>=(currentSong()?.displaySlots?.length||0)))activeModule=null;
 }
 function discard(){
- working=copy(committed);hasDraft=false;
- selected();
- leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
+ working=copy(committed);hasDraft=false;clearDrafts();selected();refreshLeadSource();
 }
 function allowLeaving(){
  if(!hasDraft)return true;
- if(!window.confirm("Hay cambios sin guardar en «"+LABELS[activeTab]+"». ¿Descartarlos y continuar?"))return false;
+ if(!window.confirm("Esta acción reemplazará tu borrador. ¿Descartar cambios sin confirmar?"))return false;
  discard();return true;
 }
-function updateTab(tab){
- if(tab===activeTab)return;
- if(!allowLeaving())return;
- activeTab=tab;render();
-}
+function updateTab(tab){if(tab!==activeTab){activeTab=tab;render();}}
 function toggleLibrary(force){
  const sidebar=$("editorSidebar"),toggle=$("libraryToggle");
  const open=force===undefined?!sidebar.classList.contains("is-open"):!!force;
@@ -159,17 +197,17 @@ function toggleLibrary(force){
  else if(sidebar.contains(document.activeElement))toggle.focus();
 }
 function useSong(id){
- if(!currentRep().songIds.includes(id)||!allowLeaving())return;
+ if(!currentRep().songIds.includes(id))return;
  catalogMode=false;activeSong=id;activeState=currentSong()?.stateIds[0]??null;
  activeModule=currentState()?.displayIndex??0;
- leadSource=formatLeadSheetText(currentSheet()?.leadSheet);toggleLibrary(false);render();
+ refreshLeadSource();toggleLibrary(false);render();
 }
 function useRepertoire(id){
- if(!working.repertoires.some(x=>x.id===id)||!allowLeaving()){$("repSelect").value=activeRep;return;}
+ if(!working.repertoires.some(x=>x.id===id)){$("repSelect").value=activeRep;return;}
  catalogMode=false;activeRep=id;activeSong=currentRep().songIds[0];
  activeState=currentSong()?.stateIds[0]??null;
  activeModule=currentState()?.displayIndex??0;
- leadSource=formatLeadSheetText(currentSheet()?.leadSheet);toggleLibrary(false);render();
+ refreshLeadSource();toggleLibrary(false);render();
 }
 function persistLibrary(next,message){
  validateLibrary(next);
@@ -183,8 +221,8 @@ function persistLibrary(next,message){
  if(raw&&JSON.parse(raw).songs?.some(song=>!song.leadSheets)&&!localStorage.getItem('midiHudLeadSheetsMigrationV1'))
   localStorage.setItem('midiHudLeadSheetsMigrationV1',raw);
  replaceLibrary(localStorage,written,committed);
- committed=written;working=copy(written);hasDraft=false;selected();
- leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
+ committed=written;working=copy(written);hasDraft=false;clearDrafts();selected();
+ refreshLeadSource();
  render();notice(message);
  window.dispatchEvent?.(new Event('hud-library-saved'));
 }
@@ -232,39 +270,39 @@ function awaitNotationChoice(){
 }
 async function save(){
  if(!hasDraft||saving)return;
- let failed=false;
- saving=true;syncStatus();
+ let failed=false;saving=true;syncStatus();
  try{
-  const next=copy(working),song=next.songs.find(s=>s.id===activeSong);
-  if(activeTab==="sheet"&&leadSource!==formatLeadSheetText(currentSheet().leadSheet)){
-   const sheet=song.leadSheets.find(s=>s.id===currentSheet().id);
-   if(!leadSource.trim()&&sheet.leadSheet&&!window.confirm("¿Eliminar la partitura de este lead sheet?"))return;
-   if(sheet.notation==='grados'){
-    const prepared=prepareLeadSheetText(sheet.leadSheet,leadSource);
-    if(prepared.errors.length)throw Error('Corrige los errores de la partitura.');
+  const next=copy(working);
+  for(const [sheetId,source] of leadDrafts){
+   const song=next.songs.find(s=>s.leadSheets?.some(x=>x.id===sheetId));
+   if(!song)continue;
+   const sheet=song.leadSheets.find(x=>x.id===sheetId);
+   if(source===formatLeadSheetText(sheet.leadSheet))continue;
+   if(!source.trim()&&sheet.leadSheet&&!window.confirm("¿Eliminar la partitura «"+sheet.name+"»?"))return;
+   if(sheet.notation==="grados"){
+    const prepared=prepareLeadSheetText(sheet.leadSheet,source);
+    if(prepared.errors.length)throw Error("Corrige los errores del lead sheet «"+sheet.name+"».");
     sheet.leadSheet=prepared.leadSheet;
    }else{
-    const prepared=await prepareLeadSheetSave(leadSource,{preferredNotation:sheet.chordNotation||song.chordNotation,chooseNotation:awaitNotationChoice});
+    const prepared=await prepareLeadSheetSave(source,{preferredNotation:sheet.chordNotation||song.chordNotation,chooseNotation:awaitNotationChoice});
     if(!prepared)return;
-    Object.assign(sheet,prepared);if(sheet.id===song.defaultLeadSheetId)song.chordNotation=prepared.chordNotation;
+    Object.assign(sheet,prepared);
+    if(sheet.id===song.defaultLeadSheetId)song.chordNotation=prepared.chordNotation;
    }
   }
-  syncDefaultLeadSheet(song);
-  persistLibrary(next,"Cambios guardados. Actualiza LIVE para verlos.");
+  for(const song of next.songs)syncDefaultLeadSheet(song);
+  persistLibrary(next,"Cambios confirmados. LIVE se actualiza solo con «Actualizar repertorios».");
  }catch(error){failed=true;notice("No se guardó: "+error.message,true);}
- finally{saving=false;syncStatus(failed);if(!hasDraft&&!failed)window.dispatchEvent?.(new Event('hud-library-saved'));}
+ finally{saving=false;syncStatus(failed);}
 }
 function immediate(action,message){
- if(!allowLeaving())return;
+ const old=copy(working);
  try{
-  const next=copy(committed);
-  const result=action(next);
-  persistLibrary(next,message);
+  const result=action(working);
+  selected();refreshLeadSource();dirty();render();
+  notice(message+" Quedó en borrador; confirmar con «Guardar».");
   return result;
- }catch(e){
-  working=copy(committed);selected();render();
-  notice("No se completó: "+e.message,true);
- }
+ }catch(e){working=old;selected();refreshLeadSource();render();notice("No se completó: "+e.message,true);}
 }
 function sidebar(){
  entries("repSelect",working.repertoires.map(x=>[x.id,x.name]),activeRep);
@@ -931,7 +969,7 @@ function register(){
  };
  $("statesSave").onclick=save;
  $("leadText").oninput=()=>{
-  leadSource=$("leadText").value;dirty();paintLead();
+  leadSource=$("leadText").value;leadDrafts.set(currentSheet().id,leadSource);dirty();paintLead();
  };
  $("leadText").onscroll=()=>{
   $("leadGutter").style.transform="translateY(-"+$("leadText").scrollTop+"px)";
@@ -945,7 +983,7 @@ function register(){
   try{
    leadSource=convertLeadSheetDraft(leadSource,target);
    currentSheet().chordNotation=target;
-   $("leadText").value=leadSource;dirty();paintLead();
+   $("leadText").value=leadSource;leadDrafts.set(currentSheet().id,leadSource);dirty();paintLead();
    notice("Cifrado convertido a "+target+". Pulsa Guardar para publicarlo.");
   }catch(e){notice("No se convirtió: "+e.message,true);}
  };
@@ -1047,9 +1085,9 @@ function register(){
    validateLibrary(incoming);
    if(!window.confirm("¿Importar y reemplazar la biblioteca actual? Se guarda una copia previa."))return;
    const written=migrateCatalog(incoming);replaceLibrary(localStorage,written,committed);
-   committed=written;working=copy(written);activeRep=working.repertoires[0].id;activeSong=currentRep().songIds[0]??null;
+   committed=written;working=copy(written);clearDrafts();activeRep=working.repertoires[0].id;activeSong=currentRep().songIds[0]??null;
    activeState=currentSong()?.initialStateId??null;activeModule=currentState()?.displayIndex??null;
-   hasDraft=false;leadSource=formatLeadSheetText(currentSheet()?.leadSheet);render();notice('Biblioteca importada.');window.dispatchEvent?.(new Event('hud-library-saved'));
+   hasDraft=false;refreshLeadSource();render();notice('Biblioteca importada.');window.dispatchEvent?.(new Event('hud-library-saved'));
 
   }catch(e){notice("No se pudo importar: "+e.message,true);}
  };
@@ -1075,12 +1113,19 @@ function register(){
   try{
    const last=normalizeLibrary(JSON.parse(backup));validateLibrary(last);
    const written=replaceLibrary(localStorage,last,committed);
-   committed=migrateCatalog(written);working=copy(committed);hasDraft=false;selected();leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
+   committed=migrateCatalog(written);working=copy(committed);hasDraft=false;clearDrafts();selected();refreshLeadSource();
    render();notice("Se ha recuperado el guardado anterior.");window.dispatchEvent?.(new Event('hud-library-saved'));
   }catch(e){notice("Error al deshacer: "+e.message,true);}
  };
+ $("saveAll").onclick=save;
+ document.addEventListener("click",event=>{
+  const anchor=event.target.closest?.("a[href]");
+  if(!anchor||!hasDraft||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||anchor.hasAttribute("download"))return;
+  if(anchor.target&&anchor.target!=="_self")return;
+  event.preventDefault();confirmEditorExit(anchor.href);
+ });
  window.addEventListener("beforeunload",event=>{
-  if(hasDraft){event.preventDefault();event.returnValue="";}
+  if(hasDraft&&!isLeaving){event.preventDefault();event.returnValue="";}
  });
 }
 function downloadRecovery(raw,name){
@@ -1127,8 +1172,8 @@ function renderCatalog(){
  for(const item of searchCatalog(working,$("masterSearch").value,{includeArchived:$("masterArchived").checked})){
   const row=make("div",undefined,"group");
   row.append(button(item.label+(item.archived?" · Archivada":""),()=>{
-   if(!allowLeaving())return;catalogMode=true;masterSheetId=null;activeSong=item.id;activeState=currentSong().initialStateId;
-   activeModule=currentState().displayIndex??0;leadSource=formatLeadSheetText(currentSheet()?.leadSheet);render();
+   catalogMode=true;masterSheetId=null;activeSong=item.id;activeState=currentSong().initialStateId;
+   activeModule=currentState().displayIndex??0;refreshLeadSource();render();
   },"small"));
   const song=working.songs.find(s=>s.id===item.id),included=currentRep().songIds.includes(item.id);
   const choice=make("select");choice.setAttribute("aria-label","Lead sheet de "+song.title);
@@ -1164,8 +1209,7 @@ function registerCatalog(){
  },"Canción creada en el maestro. Puedes prepararla y añadirla a una playlist después.");
  $("leadSheetSelect").onchange=()=>{
   const id=$("leadSheetSelect").value;
-  if(!allowLeaving()){renderLeadSheetFields();return;}
-  if(catalogMode){masterSheetId=id;leadSource=formatLeadSheetText(currentSheet()?.leadSheet);render();}
+  if(catalogMode){masterSheetId=id;refreshLeadSource();render();}
   else immediate(db=>selectPlaylistLeadSheet(db,activeRep,activeSong,id),"Lead sheet seleccionado solo para esta playlist.");
  };
  for(const [id,key] of [["leadSheetName","name"],["songTone","tono"],["leadNotation","notation"]]){
@@ -1177,11 +1221,11 @@ function registerCatalog(){
   try{
    const parsed=prepareLeadSheetText(currentSheet().leadSheet,leadSource);
    if(leadSource.trim()&&parsed.errors.length)throw Error("Corrige la partitura antes de crear la variante.");
-   const next=copy(committed),song=next.songs.find(s=>s.id===activeSong),draft=currentSheet();
+   const next=copy(working),song=next.songs.find(s=>s.id===activeSong),draft=currentSheet();
    const id=createLeadSheetVariant(song,{name:$("newVariantName").value,sourceId:draft.id,
     leadSheet:parsed.leadSheet,tono:draft.tono,notation:draft.notation});
    if(catalogMode)masterSheetId=id;else selectPlaylistLeadSheet(next,activeRep,activeSong,id);
-   persistLibrary(next,"Nueva variante de lead sheet creada. La anterior y los controles se conservan.");
+   working=next;refreshLeadSource();dirty();render();notice("Nueva variante preparada como borrador. La anterior se conserva.");
    $("newVariantName").value="";
   }catch(error){masterSheetId=previousMaster;notice("No se creó el lead sheet: "+error.message,true);}
  };
@@ -1213,8 +1257,8 @@ async function boot(){
  committed=migrateCatalog(library);working=copy(committed);
  activeRep=working.repertoires[0].id;activeSong=currentRep().songIds[0];
  activeState=currentSong()?.stateIds[0]??null;activeModule=currentState()?.displayIndex??0;
- leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
- render();notice(saved?"Biblioteca local cargada. Pulsa Guardar tras editar una sección.":"Editor listo con datos de ejemplo.");
+ const recovered=restoreDraft();selected();refreshLeadSource();
+ render();notice(recovered?"Borrador recuperado. LIVE mantiene la última versión confirmada.":saved?"Biblioteca confirmada. Cambios libres entre pestañas; Guardar al finalizar.":"Editor listo con datos de ejemplo.");
  installCloudSync({
   host:$("cloudSync"),storage:localStorage,mode:"editor",
   // Nunca publicar el repertorio de demostración como si fuera una biblioteca guardada.
@@ -1226,8 +1270,8 @@ async function boot(){
   onApplied:next=>{
    // No persistir de nuevo: el controlador ya guardó y respaldó la versión recibida.
    committed=migrateCatalog(next);validateLibrary(committed);
-   working=copy(committed);hasDraft=false;
-   selected();leadSource=formatLeadSheetText(currentSheet()?.leadSheet);
+   working=copy(committed);hasDraft=false;clearDrafts();
+   selected();refreshLeadSource();
    render();notice("Repertorios y configuraciones recibidos desde Google Drive.");
   }
  });
