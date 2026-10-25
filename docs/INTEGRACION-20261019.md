@@ -51,6 +51,20 @@ Guardado local primero, debounce 350 ms, inicio/reconexión/primer plano y consu
 
 Fusión conservadora por canción: editar lead sheets distintos de la misma canción puede pedir resolución, preservando ambas versiones completas; no se elige por reloj de dispositivo. Historial/ancestros están separados por cuenta. No se promete ejecución iOS suspendida ni prueba real de Google con mocks.
 
+## Ajuste de flujo del Editor — 25/10/2026 (rama v6, pendiente de publicación)
+
+**Decisión aprobada:** la navegación entre Canción, Estados, Lead sheet, MIDI, repertorios y canciones no exige guardar ni descarta modificaciones. Cada edición se mantiene como borrador local recuperable bajo `midiHudEditorDraftV6`, con asociación a la revisión de biblioteca confirmada. Las importaciones aditivas de catálogo se incorporan al borrador, no publican automáticamente. Las acciones destructivas/importaciones de reemplazo conservan confirmaciones explícitas.
+
+**Guardado global:** botón «Guardar» en cabecera. Confirma en una operación los datos y lead sheets modificados de todas las secciones/canciones, aplicando validación y elección de cifrado cuando proceda. Los botones de guardado por sección quedan ocultos. Se muestra «Último guardado» con fecha y hora locales del `updatedAt` confirmado; el autoguardado de borrador no modifica esa fecha ni dispara sincronización. Los guardados confirmados disparan el evento de biblioteca para sincronización.
+
+**Separación LIVE:** `committed` y biblioteca persistida/sincronizada permanecen invariantes durante la edición. LIVE solo lee la biblioteca confirmada y mantiene snapshot hasta actualización explícita. La alerta de salida a LIVE/LAB/otros enlaces ofrece «Guardar y salir», «Seguir editando» y «Salir sin confirmar»; cierre/recarga directa conserva la confirmación nativa del navegador. «Salir sin confirmar» preserva el borrador local para recuperación, pero no lo publica.
+
+**Archivos cambiados en la rama:** `editor/v3.mjs`, `editor/v3.html` y espejos idénticos `beta-v3.4/editor/`; prueba nueva `tests/editor-draft-v6.test.mjs`. Ninguna modificación de `main`, `gh-pages`, Cloudflare ni datos de Drive.
+
+**Comprobación ejecutada:** lecturas posteriores verificaron igualdad exacta de ambos archivos con sus espejos. Análisis sintáctico del controlador y prueba de ejecución aislada completados: navegación entre pestañas, persistencia/recuperación de borrador, aislamiento de biblioteca confirmada, confirmación de dos lead sheets y fecha/hora. El archivo de regresión se añadió al repositorio; pendiente obtener evidencia de ejecución de CI y prueba manual en navegador/iPhone, incluida confirmación de navegación y sincronización. **No declarar desplegada ni validada en dispositivo** esta mejora: el enlace GitHub Pages /pruebas/v6 sigue publicando el código anterior.
+
+**Precaución:** exportar copia JSON de biblioteca antes de utilizar datos reales en pruebas. Los borradores locales están ligados al origen del navegador y a la revisión base; ante discrepancia no se sobrescriben bibliotecas automáticamente.
+
 ## Validación y entrega
 
 Consultar CI de la rama para resultados finales de Node, navegador y XCTest/IPA. Pruebas locales: `node --test tests/*.test.mjs`, `node --test worker/tests/*.test.mjs`, `node scripts/check-site.mjs`, `python3 scripts/sync-web-resources.py --check`, `python3 native/ios/prepare_web.py`.
