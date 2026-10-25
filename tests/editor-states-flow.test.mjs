@@ -84,7 +84,7 @@ test('se pueden construir todos los estados y guardarlos una sola vez al final',
  }
  // Visitar estados pendientes no descarta ni escribe los demás.
  t.context.api.selectState(ids[0]);t.context.api.selectState(ids[2]);
- assert.equal(t.writes.length,0);assert.equal(t.snapshot().hasDraft,true);
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);assert.equal(t.snapshot().hasDraft,true);
  await t.context.api.save();
  assert.deepEqual(t.writes.filter(k=>!k.startsWith("midiHud")),[storageAPI.BACKUP_KEY,storageAPI.LIBRARY_KEY]);
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY));
@@ -103,7 +103,7 @@ test('referencias U01-1 y P50-5 se guardan y se recuperan como texto por estado'
   ids.push(t.snapshot().activeState);
   t.elements.get('statePatch').value=patch;t.elements.get('statePatch').oninput();
  }
- assert.equal(t.writes.length,0);
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
  await t.context.api.save();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY));
  assert.deepEqual(ids.map(id=>saved.states.find(st=>st.id===id).gtPatch),patches);
@@ -129,7 +129,7 @@ test('nombrar un módulo vacío crea su estado y conserva el estado anterior',()
  assert.equal(t.snapshot().working.states.find(st=>st.id===initial).name,'Intro');
  const state=t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState);
  assert.equal(state.name,'Verso');assert.equal(state.displayIndex,1);
- assert.equal(t.snapshot().hasDraft,true);assert.equal(t.writes.length,0);
+ assert.equal(t.snapshot().hasDraft,true);assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
 });
 test('crear más estados no usa Morph ni vuelve a editar el módulo anterior',()=>{
  const t=setup();for(let i=0;i<3;i++)t.elements.get('stateAdd').onclick();
@@ -141,7 +141,7 @@ test('crear más estados no usa Morph ni vuelve a editar el módulo anterior',()
  assert.equal(t.snapshot().activeModule,5);
  assert.equal(t.currentSong().displaySlots[4].name,'Morph');
  assert.deepEqual(t.currentSong().stateIds.slice(0,4).map(id=>t.snapshot().working.states.find(st=>st.id===id).displayIndex),before);
- assert.equal(t.writes.length,0);
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
 });
 test('cancelar una reasignación a un módulo ocupado conserva las dos asociaciones',()=>{
  const t=setup(),intro=t.snapshot().activeState;
@@ -159,7 +159,7 @@ test('duplicar crea una asociación independiente y conserva el original',()=>{
  assert.notEqual(copy,intro);const states=t.snapshot().working.states;
  assert.equal(states.find(st=>st.id===intro).displayIndex,0);
  assert.equal(states.find(st=>st.id===copy).displayIndex,1);
- assert.equal(t.snapshot().activeModule,1);assert.equal(t.writes.length,0);
+ assert.equal(t.snapshot().activeModule,1);assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
 });
 test('un nuevo estado respeta los módulos ya usados por indicadores',()=>{
  const t=setup();
@@ -185,7 +185,7 @@ test('un módulo Intro sin estado puede convertirse en inicial sin sustituir Mor
  assert.deepEqual(t.snapshot().working.states.find(st=>st.id===morph),before.states.find(st=>st.id===morph));
  assert.deepEqual(t.currentSong().displaySlots,before.songs.find(s=>s.id===t.songId).displaySlots);
  assert.deepEqual(t.snapshot().working.bindings,before.bindings);
- assert.equal(t.writes.length,0);assert.equal(t.snapshot().hasDraft,true);
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);assert.equal(t.snapshot().hasDraft,true);
  assert.equal(t.elements.get('songInitial').value,intro);
  assert.ok(t.elements.get('stateList').children.find(p=>p.textContent==='Intro · Inicial'));
  await t.context.api.save();
@@ -208,23 +208,25 @@ test('cambiar el inicial existente no cambia módulos ni asignaciones MIDI',asyn
  t.context.api.selectState(intro);t.elements.get('stateMakeInitial').onclick();
  assert.equal(t.currentSong().initialStateId,intro);assert.equal(t.currentSong().stateIds.length,2);
 });
-test('cancelar un cambio de repertorio devuelve el selector al repertorio actual',()=>{
+test('cambiar de repertorio conserva el borrador sin publicarlo',()=>{
  let other;
  const t=setup({prepare(db){other=model.newRepertoire(db,'Otro');}});
+ const previous=t.snapshot().activeState;
  t.elements.get('moduleName').value='Intro pendiente';t.elements.get('moduleName').oninput();
  t.context.confirmResult=false;
  t.elements.get('repSelect').value=other;t.elements.get('repSelect').onchange({target:t.elements.get('repSelect')});
- assert.equal(t.snapshot().activeRep,'worship');
- assert.equal(t.elements.get('repSelect').value,'worship');
- assert.equal(t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState).name,'Intro pendiente');
- assert.equal(t.writes.length,0);
+ assert.equal(t.snapshot().activeRep,other);
+ assert.equal(t.elements.get('repSelect').value,other);
+ assert.equal(t.snapshot().working.states.find(st=>st.id===previous).name,'Intro pendiente');
+ assert.equal(t.snapshot().hasDraft,true);
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
 });
 test('CC y valor vacíos no se convierten en cero ni crean asignaciones',()=>{
  for(const field of ['midiCC','midiValue']){
   const t=setup({tab:'midi'}),before=t.snapshot().working.bindings;
   t.elements.get(field).value='';t.elements.get('actionAdd').onclick();
   assert.deepEqual(t.snapshot().working.bindings,before);
-  assert.equal(t.snapshot().hasDraft,false);assert.equal(t.writes.length,0);
+  assert.equal(t.snapshot().hasDraft,false);assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
   assert.match(t.elements.get('editorNotice').textContent,/CC y valor/);
  }
 });
@@ -263,12 +265,12 @@ test('guardar datos inválidos conserva el último guardado y mantiene el aviso 
  t.elements.get('statePatch').value='U01/1';t.elements.get('statePatch').oninput();
  await t.context.api.save();
  assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),before);
- assert.equal(t.snapshot().hasDraft,true);assert.equal(t.writes.length,0);
- assert.equal(t.elements.get('saveStatus').textContent,'Revisar datos');
+ assert.equal(t.snapshot().hasDraft,true);assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
+ assert.equal(t.elements.get('saveStatus').textContent,'Revisar borrador');
  assert.match(t.elements.get('editorNotice').textContent,/No se guardó/);
  t.elements.get('statePatch').value='U01-1';t.elements.get('statePatch').oninput();
  await t.context.api.save();
- assert.equal(t.snapshot().hasDraft,false);assert.equal(t.elements.get('saveStatus').textContent,'Guardado');
+ assert.equal(t.snapshot().hasDraft,false);assert.equal(t.elements.get('saveStatus').textContent,'Confirmado');
 });
 test('recorrido completo: Canción, Estados, Lead sheet y MIDI conservan los guardados anteriores',async()=>{
  const t=setup({tab:'song'});
@@ -276,16 +278,16 @@ test('recorrido completo: Canción, Estados, Lead sheet y MIDI conservan los gua
  t.elements.get('songTone').value='Dm';t.elements.get('songTone').listeners.input();
  t.elements.get('songBpm').value='70';t.elements.get('songBpm').listeners.input();
  t.elements.get('songBank').value='C1';t.elements.get('songBank').listeners.input();
- await t.elements.get('songSave').onclick();
+ 
  t.context.api.updateTab('states');
  t.elements.get('stateAdd').onclick();const verse=t.snapshot().activeState;
  t.elements.get('moduleName').value='Verso';t.elements.get('moduleName').oninput();
  t.elements.get('statePatch').value='U01-2';t.elements.get('statePatch').oninput();
  t.elements.get('stateMakeInitial').onclick();
- await t.elements.get('statesSave').onclick();
+ 
  t.context.api.updateTab('sheet');
  t.elements.get('leadText').value='A - Intro\n| Do | Sol |';t.elements.get('leadText').oninput();
- await t.elements.get('sheetSave').onclick();
+ 
  t.context.api.updateTab('midi');
  const selectMessage=(cc,value)=>{
   t.elements.get('midiCC').value=String(cc);t.elements.get('midiCC').onchange();
@@ -294,8 +296,8 @@ test('recorrido completo: Canción, Estados, Lead sheet y MIDI conservan los gua
  selectMessage(100,64);t.elements.get('actionTarget').value=verse;t.elements.get('actionAdd').onclick();
  selectMessage(101,0);t.elements.get('actionType').value='SELECT_SONG';t.elements.get('actionType').onchange();
  t.elements.get('actionTarget').value=t.songId;t.elements.get('actionAdd').onclick();
- assert.equal(t.writes.filter(k=>!k.startsWith("midiHud")).length,6);
- await t.elements.get('midiSave').onclick();
+ assert.equal(t.writes.filter(k=>!k.startsWith("midiHud")).length,0);
+ await t.elements.get('saveAll').onclick();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),song=saved.songs.find(s=>s.id===t.songId);
  assert.equal(song.title,'Canción de prueba');assert.equal(song.tono,'Dm');assert.equal(song.tempoBpm,70);assert.equal(song.bank,'C1');
  assert.equal(song.initialStateId,verse);assert.equal(saved.states.find(st=>st.id===verse).gtPatch,'U01-2');
@@ -303,31 +305,34 @@ test('recorrido completo: Canción, Estados, Lead sheet y MIDI conservan los gua
  assert.equal(song.midiBindings.find(b=>b.cc===100&&b.value===64).actions[0].stateId,verse);
  assert.equal(song.midiBindings.find(b=>b.cc===101&&b.value===0).actions[0].songId,t.songId);
  assert.equal(engine.createEngine(saved,{songId:t.songId,repertoireId:'worship'}).dispatch({type:'MIDI_CC',cc:100,value:64,channel:1}).view.state.id,verse);
- assert.equal(t.writes.filter(k=>!k.startsWith("midiHud")).length,8);assert.equal(t.snapshot().hasDraft,false);
+ assert.equal(t.writes.filter(k=>!k.startsWith("midiHud")).length,2);assert.equal(t.snapshot().hasDraft,false);
 });
-test('cancelar la salida de una pestaña conserva el borrador; confirmar solo descarta lo pendiente',async()=>{
+test('navegación entre pestañas mantiene el borrador y no altera LIVE',async()=>{
  const t=setup();
  t.elements.get('statePatch').value='P50-5';t.elements.get('statePatch').oninput();
  await t.context.api.save();
  t.elements.get('moduleName').value='Pendiente';t.elements.get('moduleName').oninput();
  t.context.confirmResult=false;t.context.api.updateTab('sheet');
- assert.equal(t.snapshot().activeTab,'states');assert.equal(t.snapshot().hasDraft,true);
- assert.equal(t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState).name,'Pendiente');
- t.context.confirmResult=true;t.context.api.updateTab('sheet');
- assert.equal(t.snapshot().activeTab,'sheet');assert.equal(t.snapshot().hasDraft,false);
- const state=t.snapshot().working.states.find(st=>st.id===t.snapshot().activeState);
- assert.equal(state.name,'Intro');assert.equal(state.gtPatch,'P50-5');assert.equal(t.writes.filter(k=>!k.startsWith("midiHud")).length,2);
+ assert.equal(t.snapshot().activeTab,'sheet');
+ assert.equal(t.snapshot().hasDraft,true);
+ const stateId=t.snapshot().activeState;
+ assert.equal(t.snapshot().working.states.find(st=>st.id===stateId).name,'Pendiente');
+ assert.equal(t.snapshot().committed.states.find(st=>st.id===stateId).name,'Intro');
+ t.context.api.updateTab('states');
+ assert.equal(t.snapshot().working.states.find(st=>st.id===stateId).name,'Pendiente');
+ assert.equal(t.snapshot().hasDraft,true);
+ assert.equal(t.writes.filter(k=>!k.startsWith("midiHud")).length,2);
 });
 test('un Lead Sheet inválido no reemplaza al anterior; convertir y guardar conserva el cifrado elegido',async()=>{
  const t=setup({tab:'sheet'}),stored=t.storage.getItem(storageAPI.LIBRARY_KEY);
  t.elements.get('leadText').value='A - Intro\n| Q | G |';t.elements.get('leadText').oninput();
  await t.elements.get('sheetSave').onclick();
  assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),stored);
- assert.equal(t.snapshot().hasDraft,true);assert.equal(t.elements.get('saveStatus').textContent,'Revisar datos');
+ assert.equal(t.snapshot().hasDraft,true);assert.equal(t.elements.get('saveStatus').textContent,'Revisar borrador');
  t.elements.get('leadText').value='A - Intro\n| Do | Sol/Si | Lam7 |';t.elements.get('leadText').oninput();
  t.elements.get('sheetNotation').value='americano';t.elements.get('sheetConvert').onclick();
  assert.equal(t.elements.get('leadText').value,'A - Intro\n| C | G/B | Am7 |');
- assert.equal(t.writes.length,0);
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
  await t.elements.get('sheetSave').onclick();
  const song=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)).songs.find(s=>s.id===t.songId);
  assert.equal(song.leadSheet.sourceText,'A - Intro\n| C | G/B | Am7 |');assert.equal(song.chordNotation,'americano');
@@ -363,7 +368,7 @@ test('rechazar importar y cancelar exportación con borradores no escribe ni des
  t.context.confirmResult=false;
  const file={size:1000,text:async()=>JSON.stringify(before)};
  await t.elements.get('importFile').onchange({target:{files:[file],value:'test.json'}});
- assert.equal(t.writes.length,0);assert.deepEqual(t.snapshot().committed,before);
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);assert.deepEqual(t.snapshot().committed,before);
  t.elements.get('moduleName').value='Solo borrador';t.elements.get('moduleName').oninput();
  t.elements.get('exportBtn').onclick();assert.equal(t.downloads.length,0);
  t.context.confirmResult=true;t.elements.get('exportBtn').onclick();
@@ -412,7 +417,7 @@ test('el menú de asociación permite crear Intro conservando Morph y su estado 
  assert.equal(t.snapshot().working.states.find(st=>st.id===intro).displayIndex,0);
  assert.deepEqual(t.snapshot().working.states.find(st=>st.id===morph),before.states.find(st=>st.id===morph));
  assert.deepEqual(t.currentSong().displaySlots,before.songs.find(s=>s.id===t.songId).displaySlots);
- assert.deepEqual(t.snapshot().working.bindings,before.bindings);assert.equal(t.writes.length,0);
+ assert.deepEqual(t.snapshot().working.bindings,before.bindings);assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
  t.elements.get('stateMakeInitial').onclick();assert.equal(t.currentSong().initialStateId,intro);
 });
 test('cancelar mover un estado a un módulo libre mantiene su asociación original',()=>{
@@ -432,7 +437,7 @@ test('añadir módulo, escribir un nombre y guardar crea el estado y su asociaci
   t.elements.get('moduleName').value=name;t.elements.get('moduleName').oninput();
   assert.equal(t.snapshot().activeState,id);
  }
- assert.equal(t.writes.length,0);
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
  await t.elements.get('statesSave').onclick();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),state=saved.states.find(st=>st.id===id),song=saved.songs.find(s=>s.id===t.songId);
  assert.equal(state.name,'Coro');assert.equal(state.displayIndex,index);assert.equal(song.displaySlots[index].name,'Coro');
@@ -541,7 +546,7 @@ test('Morph, Wah y Whammy se configuran una vez y responden encima de Intro sin 
   expressions.push({name,index,id:t.currentSong().displaySlots[index].indicatorId});
  }
  assert.deepEqual(t.currentSong().stateIds,[intro,coro]);assert.equal(t.currentSong().initialStateId,intro);
- assert.equal(t.writes.length,0);await t.elements.get('statesSave').onclick();
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);await t.elements.get('statesSave').onclick();
  t.context.api.updateTab('midi');
  const assign=(cc,value,type,target)=>{
   t.elements.get('midiCC').value=String(cc);t.elements.get('midiCC').onchange();
