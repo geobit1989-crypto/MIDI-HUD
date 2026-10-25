@@ -14,7 +14,7 @@ try{
  await page.route('https://**',route=>route.abort());
  await page.goto('http://127.0.0.1:8766/editor/v3.html');
  await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
- await page.locator('#songTitle').fill('Prueba integrada iPhone');await page.locator('#songSave').click();
+ await page.locator('#songTitle').fill('Prueba integrada iPhone');await page.locator('#saveAll').click();
  await page.waitForFunction(()=>!window.MIDIHUD_EDITOR.hasDraft());
  await page.reload();await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  assert.equal(await page.locator('#songTitle').inputValue(),'Prueba integrada iPhone');
@@ -24,7 +24,7 @@ try{
  await page.locator('#libraryClose').click();
  await page.locator('[data-tab="sheet"]').click();
  await page.locator('#newVariantName').fill('Grados');await page.locator('#leadNotation').selectOption('grados');await page.locator('#songTone').fill('G');
- await page.locator('#leadText').fill('A - Intro\n| I | V | vi | IV |');await page.locator('#versionNew').click();
+ await page.locator('#leadText').fill('A - Intro\n| I | V | vi | IV |');await page.locator('#versionNew').click();await page.locator('#saveAll').click();
  await page.waitForFunction(()=>window.MIDIHUD_EDITOR.getLibrary().songs.some(s=>s.leadSheets?.some(v=>v.name==='Grados')));
  await mkdir('build/browser',{recursive:true});await page.screenshot({path:'build/browser/editor-portrait.png',fullPage:true});
  await page.locator('#liveLink').click();await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
