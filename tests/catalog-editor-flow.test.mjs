@@ -34,7 +34,7 @@ class Element{
  select(){}
  setCustomValidity(){}
  reportValidity(){}
- click(){this.onclick?.();}
+ click(){return this.onclick?.();}
  remove(){}
  showModal(){this.open=true;}
  close(){this.open=false;this.listeners.close?.();}
@@ -93,28 +93,37 @@ test('crear, reabrir y llenar una lista vacía ejecuta handlers reales sin borra
  assert.equal(saved.committed.songs.length,count);assert.equal(saved.activeSong,null);
 });
 
-test('editar una maestra sin lista, guardar, archivar y recuperar historial usa controles reales',()=>{
+test('editar una maestra sin lista, guardar, archivar y recuperar historial usa controles reales',async()=>{
  const t=setup({tab:'song'});t.elements.get('masterNew').onclick();
  const id=t.snapshot().activeSong;
+ assert(!t.snapshot().committed.songs.some(s=>s.id===id));
+ await t.elements.get('saveAll').onclick();
  assert(!t.snapshot().committed.repertoires.some(r=>r.songIds.includes(id)));
  t.elements.get('songTitle').value='Maestra preparada';t.elements.get('songTitle').listeners.input();
- t.elements.get('versionSave').onclick();
+ await t.elements.get('saveAll').onclick();
  let song=t.snapshot().committed.songs.find(s=>s.id===id);
  assert.equal(song.title,'Maestra preparada');assert.equal(song.catalog.history.length,1);
  t.elements.get('versionArchive').onclick();
+ assert.equal(t.snapshot().committed.songs.find(s=>s.id===id).catalog.archived,false);
+ await t.elements.get('saveAll').onclick();
  song=t.snapshot().committed.songs.find(s=>s.id===id);assert.equal(song.catalog.archived,true);
  t.elements.get('versionHistory').value=song.catalog.history[0].id;t.elements.get('versionRestore').onclick();
+ await t.elements.get('saveAll').onclick();
  song=t.snapshot().committed.songs.find(s=>s.id===id);assert.equal(song.title,'Nueva canción');
  assert.equal(song.catalog.history.length,3);
 });
 
-test('duplicar lista y guardar nota no cambia versiones musicales ni otras listas',()=>{
+test('duplicar lista y guardar nota no cambia versiones musicales ni otras listas',async()=>{
  const t=setup({tab:'song'}),before=t.snapshot();
  t.elements.get('repDuplicate').onclick();t.elements.get('repNameInput').value='Copia';
  t.elements.get('repForm').listeners.submit({preventDefault(){}});
+ assert.deepEqual(t.snapshot().committed,before.committed);
+ await t.elements.get('saveAll').onclick();
  const after=t.snapshot();assert.equal(after.committed.repertoires.length,before.committed.repertoires.length+1);
  assert.deepEqual(after.committed.songs,before.committed.songs);
  t.elements.get('occasionNote').value='Intro corta';t.elements.get('occasionSave').onclick();
+ assert.equal(t.snapshot().committed.repertoires.find(r=>r.name==='Copia').entryNotes,undefined);
+ await t.elements.get('saveAll').onclick();
  const written=t.snapshot().committed;
  assert.equal(written.repertoires.find(r=>r.name==='Copia').entryNotes[after.activeSong],'Intro corta');
  assert.equal(written.repertoires.find(r=>r.id==='worship').entryNotes,undefined);
@@ -133,20 +142,24 @@ test('primer guardado conserva JSON original de migración y fallo de cuota no c
  assert.match(t.elements.get('editorNotice').textContent,/No se guardó/);
 });
 
-test('variante de grados guarda partitura literal y no realiza conversión automática',()=>{
+test('variante de grados guarda partitura literal y no realiza conversión automática',async()=>{
  const t=setup({tab:'sheet'});
  t.elements.get('leadText').value='A - INTRO\n| I | IV | V | vi |';t.elements.get('leadText').oninput();
  t.elements.get('newVariantName').value='Grados';t.elements.get('versionNew').onclick();
+ assert.equal(t.snapshot().committed.songs.find(s=>s.id===t.songId).leadSheets.length,1);
+ await t.elements.get('saveAll').onclick();
  const saved=t.snapshot(),song=saved.committed.songs.find(s=>s.id===saved.activeSong);
  const selected=sheets.resolveLeadSheet(song,saved.committed.repertoires.find(r=>r.id===saved.activeRep));assert.equal(selected.name,'Grados');assert.equal(selected.leadSheet.sourceText,'A - INTRO\n| I | IV | V | vi |');
 });
 
-test('crear lead sheet desde borrador conserva canción, controles y variante anterior',()=>{
+test('crear lead sheet desde borrador conserva canción, controles y variante anterior',async()=>{
  const t=setup({tab:'sheet'}),before=t.snapshot(),source=before.committed.songs.find(s=>s.id===before.activeSong);
  t.elements.get('leadText').value='A - Intro\n| I | IV |';t.elements.get('leadText').oninput();
  t.elements.get('songTone').value='La mayor';t.elements.get('songTone').listeners.input();
  t.elements.get('leadNotation').value='grados';t.elements.get('leadNotation').listeners.change();
  t.elements.get('newVariantName').value='Grados — La';t.elements.get('versionNew').onclick();
+ assert.deepEqual(t.snapshot().committed,before.committed);
+ await t.elements.get('saveAll').onclick();
  const after=t.snapshot(),song=after.committed.songs.find(s=>s.id===after.activeSong),rep=after.committed.repertoires.find(r=>r.id===after.activeRep),sheet=sheets.resolveLeadSheet(song,rep);
  assert.equal(after.activeSong,before.activeSong);assert.equal(after.committed.songs.length,before.committed.songs.length);
  assert.deepEqual(after.committed.states,before.committed.states);assert.deepEqual(song.midiBindings,source.midiBindings);
@@ -154,13 +167,16 @@ test('crear lead sheet desde borrador conserva canción, controles y variante an
  assert.equal(sheet.notation,'grados');assert.equal(sheet.leadSheet.sections[0].bars[0][0],'I');
 });
 
-test('puente añade la canción y el lead sheet elegido a una playlist ya creada',()=>{
+test('puente añade la canción y el lead sheet elegido a una playlist ya creada',async()=>{
  const t=setup({tab:'sheet'});
  t.elements.get('newVariantName').value='Alternativa';t.elements.get('versionNew').onclick();
- const songId=t.snapshot().activeSong,source=t.snapshot().committed.songs.find(s=>s.id===songId),sheetId=source.leadSheets.at(-1).id;
+ const original=t.storage.getItem(storageAPI.LIBRARY_KEY);
+ const songId=t.snapshot().activeSong,source=t.snapshot().working.songs.find(s=>s.id===songId),sheetId=source.leadSheets.at(-1).id;
  t.elements.get('repAdd').onclick();t.elements.get('repNameInput').value='Nueva lista';t.elements.get('repForm').listeners.submit({preventDefault(){}});
  const row=t.elements.get('masterResults').children.find(row=>row.children[0].textContent===source.title);
  row.children[1].value=sheetId;row.children.at(-1).onclick();
+ assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),original);
+ await t.elements.get('saveAll').onclick();
  const after=t.snapshot(),rep=after.committed.repertoires.find(r=>r.id===after.activeRep);
  assert.deepEqual(rep.songIds,[songId]);assert.equal(rep.leadSheetIds[songId],sheetId);
  assert.equal(after.committed.songs.length,t.snapshot().working.songs.length);
@@ -183,12 +199,49 @@ test('guardar solo tonalidad conserva una partitura previa con compases vacíos 
 });
 const copyScore=value=>JSON.parse(JSON.stringify(value));
 
-test('fallo al guardar nueva variante conserva selección, borrador y versión compartida',()=>{
+test('guardado global rechaza título vacío sin publicar cambios de otras secciones',async()=>{
+ const t=setup({tab:'song'}),original=t.storage.getItem(storageAPI.LIBRARY_KEY);
+ t.elements.get('songTitle').value='';t.elements.get('songTitle').listeners.input();
+ t.elements.get('songTone').value='La';t.elements.get('songTone').listeners.input();
+ await t.elements.get('saveAll').onclick();
+ assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),original);
+ assert.equal(t.snapshot().hasDraft,true);
+ assert.match(t.elements.get('editorNotice').textContent,/No se guardó/);
+});
+
+test('otra sesión no puede ser sobrescrita por la confirmación de un borrador antiguo',async()=>{
+ const t=setup({tab:'song'});
+ t.elements.get('songTitle').value='Edición local';t.elements.get('songTitle').listeners.input();
+ const remote=t.snapshot().committed;remote.revision=(remote.revision||0)+1;
+ remote.songs.find(s=>s.id===t.songId).title='Edición de otra sesión';
+ const raw=JSON.stringify(remote);t.storage.setItem(storageAPI.LIBRARY_KEY,raw);
+ await t.elements.get('saveAll').onclick();
+ assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),raw);
+ assert.equal(t.currentSong().title,'Edición local');assert.equal(t.snapshot().hasDraft,true);
+ assert.match(t.elements.get('editorNotice').textContent,/otra sesión/);
+});
+
+test('fallar la limpieza del borrador no invalida una confirmación ya persistida',async()=>{
+ const t=setup({tab:'song'});
+ t.elements.get('songTitle').value='Confirmada';t.elements.get('songTitle').listeners.input();
+ t.storage.removeItem=()=>{throw Error('Almacenamiento bloqueado');};
+ await t.elements.get('saveAll').onclick();
+ assert.equal(t.snapshot().hasDraft,false);
+ assert.equal(JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)).songs.find(s=>s.id===t.songId).title,'Confirmada');
+ assert.doesNotMatch(t.elements.get('editorNotice').textContent,/No se guardó/);
+});
+
+test('fallo al guardar nueva variante conserva selección, borrador y versión compartida',async()=>{
  const t=setup({tab:'song'}),before=t.snapshot(),original=t.storage.getItem(storageAPI.LIBRARY_KEY);
  t.elements.get('songTitle').value='Borrador pendiente';t.elements.get('songTitle').listeners.input();
  const set=t.storage.setItem;t.storage.setItem=(k,v)=>{if(k===storageAPI.LIBRARY_KEY)throw Error('Sin espacio');set(k,v);};
  t.elements.get('newVariantName').value='Sol mayor';t.elements.get('versionNew').onclick();
+ const draft=t.snapshot().working;
+ assert.equal(draft.songs.find(s=>s.id===t.songId).leadSheets.length,2);
+ await t.elements.get('saveAll').onclick();
  assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),original);
  assert.equal(t.snapshot().activeSong,before.activeSong);assert.equal(t.currentSong().title,'Borrador pendiente');
- assert.equal(t.snapshot().hasDraft,true);assert.match(t.elements.get('editorNotice').textContent,/No se creó/);
+ assert.deepEqual(t.snapshot().working,draft);
+ assert.deepEqual(t.snapshot().committed,before.committed);
+ assert.equal(t.snapshot().hasDraft,true);assert.match(t.elements.get('editorNotice').textContent,/No se guardó/);
 });

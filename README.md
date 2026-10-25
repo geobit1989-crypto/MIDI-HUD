@@ -36,7 +36,15 @@ Verificación: tests del motor, parser, editor y LIVE mediante GitHub Actions; p
 
 ---
 
-# Motor MIDI HUD v1.0 — beta de desarrollo
+# MIDI HUD v6 — estado de integración (25/10/2026)
+
+Rama autorizada: `integration/ios-unified-20261019`. El Editor conserva borradores locales entre pestañas, canciones y repertorios; un único **Guardar** confirma toda la configuración. LIVE y Drive utilizan solamente la biblioteca confirmada. Crear variantes y recuperar repertorios añade cambios al borrador; importar una biblioteca completa o deshacer son operaciones administrativas con confirmación explícita.
+
+El guardado rechaza cambios concurrentes de otra sesión y conserva el borrador para revisión. No fusiona automáticamente esos cambios. Crear un lead sheet desde un borrador conserva la variante original confirmada. Fecha visible: último guardado confirmado. Salida: Guardar y salir / Seguir editando / Salir sin confirmar.
+
+Estado técnico y evidencias vigentes: [integración y auditoría](docs/INTEGRACION-20261019.md). Producción no publicada por esta intervención; Google real y BLE/iPhone físico requieren aceptación separada. Las secciones siguientes conservan documentación histórica; el antiguo guardado por pestaña queda sustituido por este flujo global.
+
+# Motor MIDI HUD v1.0 — beta de desarrollo (histórico)
 
 Esta rama implementa el motor de **visualización** MIDI basado en los acuerdos del 14/10/2026. Se mantiene el prototipo visual LIVE v0.3 y el código v0.2 como respaldo. **No envía mensajes a la GT-1000CORE.**
 

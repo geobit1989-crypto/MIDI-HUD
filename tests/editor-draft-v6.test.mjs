@@ -20,7 +20,7 @@ function fixture(){
    {id:'song2',title:'Ambient',leadSheets:[{id:'sheet2',name:'Principal',notation:'americano',leadSheet:'| D |'}]}
   ],states:[],bindings:[]};
 }
-function session(storage,committedLibrary=fixture()){
+function session(storage,committedLibrary=fixture(),overrides={}){
  const elements=new Map();
  const document={getElementById(id){
   if(!elements.has(id))elements.set(id,{textContent:'',style:{},disabled:false,classList:{toggle(){}}});
@@ -36,7 +36,7 @@ function session(storage,committedLibrary=fixture()){
   syncDefaultLeadSheet:()=>{},
   formatLeadSheetText:x=>x||'',
   prepareLeadSheetSave:async source=>({leadSheet:source,chordNotation:'americano'}),
-  prepareLeadSheetText:(_old,source)=>({leadSheet:source,errors:[]})
+  prepareLeadSheetText:(_old,source)=>({leadSheet:source,errors:[]}),...overrides
  };
  const script=editorSource+`
  render=()=>{};selected=()=>{};
@@ -103,4 +103,26 @@ test('UI incorpora un único Guardar global y oculta acciones por sección',()=>
  assert.match(html,/id="saveAll"/);
  assert.match(html,/id="lastConfirmedSave"/);
  assert.match(html,/#songSave,#statesSave,#sheetSave,#midiSave,#versionSave\{display:none\}/);
+});
+
+test('edición durante confirmación asíncrona conserva todo el borrador y bloquea otro Guardar',async()=>{
+ const store=makeStorage();let finish,calls=0;
+ const {api}=session(store,fixture(),{prepareLeadSheetSave:()=>{calls++;return new Promise(resolve=>{finish=resolve;});}});
+ api.stageLead('sheet1','| G |');
+ const pending=api.confirm();await api.confirm();assert.equal(calls,1);
+ api.editTitle('Cambio durante validación');finish({leadSheet:'| G |',chordNotation:'americano'});
+ await pending;
+ assert.equal(api.snapshot().hasDraft,true);
+ assert.equal(api.snapshot().working.songs[0].title,'Cambio durante validación');
+ assert.equal(api.snapshot().committed.songs[0].title,'Clean');
+ assert.equal(store.getItem('hudLibraryV34'),null);
+});
+
+test('cancelar validación de una partitura impide confirmar las otras secciones',async()=>{
+ const store=makeStorage(),{api}=session(store,fixture(),{prepareLeadSheetSave:async()=>null});
+ api.editTitle('Pendiente');api.stageLead('sheet1','| C D |');await api.confirm();
+ assert.equal(api.snapshot().hasDraft,true);
+ assert.equal(api.snapshot().committed.songs[0].title,'Clean');
+ assert.equal(store.getItem('hudLibraryV34'),null);
+ assert.ok(store.getItem('midiHudEditorDraftV6'));
 });

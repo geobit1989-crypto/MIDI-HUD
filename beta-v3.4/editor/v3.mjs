@@ -24,8 +24,8 @@ import {
 /**
  * Editor MIDI HUD v3
  * - Cuatro secciones: Canción, Estados, Lead sheet y MIDI.
- * - Una copia de trabajo local en memoria. Nada escrito por tecleo.
- * - Un botón "Guardar" por sección valida y persiste la copia completa.
+ * - Borrador local recuperable, separado de la biblioteca confirmada.
+ * - Un único "Guardar" global valida y confirma la copia completa.
  * - Color e icono se configuran en Estados junto al módulo asociado.
  * - Compatibilidad con la misma clave y biblioteca del editor v2.
  */
@@ -40,7 +40,12 @@ let leadSource="",leadParse=null,catalogMode=false,masterSheetId=null;
 let saving=false,leadDrafts=new Map(),isLeaving=false,draftStoreError=false,editSequence=0;
 const DRAFT_KEY="midiHudEditorDraftV6";
 function draftBase(){return [committed.libraryId??null,committed.revision??0,committed.updatedAt??null];}
-function clearDrafts(){leadDrafts.clear();draftStoreError=false;localStorage.removeItem(DRAFT_KEY);}
+function clearDrafts(){
+ leadDrafts.clear();draftStoreError=false;
+ // La confirmación ya escrita sigue siendo válida si falla la limpieza.
+ // Su nueva revisión impide recuperar el borrador anterior.
+ try{localStorage.removeItem(DRAFT_KEY);}catch{draftStoreError=true;}
+}
 function persistDraft(){
  if(!committed||!working)return;
  try{
@@ -56,7 +61,8 @@ function persistDraft(){
 }
 function refreshLeadSource(){const sheet=currentSheet();leadSource=sheet?(leadDrafts.get(sheet.id)??formatLeadSheetText(sheet.leadSheet)):"";}
 function restoreDraft(){
- const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return false;
+ let raw;try{raw=localStorage.getItem(DRAFT_KEY);}catch{draftStoreError=true;return false;}
+ if(!raw)return false;
  let data;try{data=JSON.parse(raw);}catch{return false;}
  if(data.version!==1||JSON.stringify(data.base)!==JSON.stringify(draftBase())||!data.working||!Array.isArray(data.leadDrafts))return false;
  working=data.working;leadDrafts=new Map(data.leadDrafts);
@@ -210,6 +216,9 @@ function useRepertoire(id){
  refreshLeadSource();toggleLibrary(false);render();
 }
 function persistLibrary(next,message){
+ const current=readLibrarySource(localStorage);
+ if(current&&JSON.stringify(migrateCatalog(JSON.parse(current)))!==JSON.stringify(committed))
+  throw Error("La biblioteca confirmada cambió en otra sesión. Conserva el borrador y revisa los cambios antes de reemplazarla.");
  validateLibrary(next);
  const written=migrateCatalog(next);
  recordCatalogChanges(committed,written);
@@ -1153,17 +1162,17 @@ function scanOldLibraries(){
   item.append(button("Guardar copia JSON",()=>downloadRecovery(found.raw,found.repertoire.name),"small"));
   item.append(document.createTextNode(" "));
   item.append(button("Recuperar",()=>{
-   if(!allowLeaving())return;
    if(!window.confirm("¿Añadir «"+found.repertoire.name+"» sin borrar repertorios actuales? Las asignaciones MIDI globales no se fusionarán."))return;
    try{
-    const result=mergeRecoveredRepertoire(committed,found.library,found.repertoire.id);
+    const result=mergeRecoveredRepertoire(working,found.library,found.repertoire.id);
     // Conservar copia original independiente del backup de deshacer.
     const archiveKey="hudRecoverySnapshot:"+Date.now();
     localStorage.setItem(archiveKey,found.raw);
     activeRep=result.repertoireId;
     activeSong=result.library.repertoires.find(r=>r.id===activeRep).songIds[0];
     activeState=result.library.songs.find(x=>x.id===activeSong).initialStateId;
-    persistLibrary(result.library,"Repertorio recuperado. El original se conservó en Safari; exporta un JSON de seguridad.");
+    working=result.library;selected();refreshLeadSource();dirty();render();
+    notice("Repertorio recuperado en el borrador. El original se conservó; confirma con Guardar.");
     toggleLibrary(false);
    }catch(e){notice("No se pudo recuperar: "+e.message,true);}
   },"small primary"));
@@ -1228,6 +1237,11 @@ function registerCatalog(){
    const next=copy(working),song=next.songs.find(s=>s.id===activeSong),draft=currentSheet();
    const id=createLeadSheetVariant(song,{name:$("newVariantName").value,sourceId:draft.id,
     leadSheet:parsed.leadSheet,tono:draft.tono,notation:draft.notation});
+   // Crear desde borrador bifurca las ediciones hacia la nueva variante.
+   // El guardado global no debe aplicarlas también al original confirmado.
+   const original=committed.songs.find(s=>s.id===song.id)?.leadSheets?.find(s=>s.id===draft.id);
+   if(original)song.leadSheets=song.leadSheets.map(s=>s.id===draft.id?copy(original):s);
+   leadDrafts.delete(draft.id);
    if(catalogMode)masterSheetId=id;else selectPlaylistLeadSheet(next,activeRep,activeSong,id);
    working=next;refreshLeadSource();dirty();render();notice("Nueva variante preparada como borrador. La anterior se conserva.");
    $("newVariantName").value="";

@@ -34,7 +34,13 @@ final class MIDIHUDTests: XCTestCase {
         try await until("!!window.MIDIHUD_EDITOR", in: web)
         let midiType = try await web.evaluateJavaScript("typeof navigator.requestMIDIAccess") as? String
         XCTAssertEqual(midiType, "function")
-        _ = try await web.evaluateJavaScript("document.getElementById('songTitle').value='Prueba iOS sin red'; document.getElementById('songTitle').dispatchEvent(new Event('input')); document.getElementById('songSave').click();")
+        let confirmedTitle = try await web.evaluateJavaScript("window.MIDIHUD_EDITOR.getLibrary().songs[0].title") as? String
+        _ = try await web.evaluateJavaScript("document.getElementById('songTitle').value='Prueba iOS sin red'; document.getElementById('songTitle').dispatchEvent(new Event('input')); for (const tab of ['states','sheet','midi','song']) document.querySelector('[data-tab=\"'+tab+'\"]').click();")
+        let draftTitle = try await web.evaluateJavaScript("document.getElementById('songTitle').value") as? String
+        XCTAssertEqual(draftTitle, "Prueba iOS sin red")
+        let unchangedTitle = try await web.evaluateJavaScript("window.MIDIHUD_EDITOR.getLibrary().songs[0].title") as? String
+        XCTAssertEqual(unchangedTitle, confirmedTitle)
+        _ = try await web.evaluateJavaScript("document.getElementById('saveAll').click()")
         try await until("!window.MIDIHUD_EDITOR.hasDraft()", in: web)
         _ = try await web.evaluateJavaScript("document.getElementById('liveLink').click()")
         try await until("!!window.MIDIHUD_LIVE", in: web)
