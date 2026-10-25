@@ -28,7 +28,7 @@ function session(storage,committedLibrary=fixture()){
  }};
  const window={dispatchEvent(){}};
  const sandbox={
-  document,window,localStorage:storage,
+  document,window,localStorage:storage,Event:class Event{constructor(type){this.type=type;}},
   LIBRARY_KEY:'hudLibraryV34',BACKUP_KEY:'hudLibraryV34Backup',
   readLibrarySource:()=>storage.getItem('hudLibraryV34'),
   replaceLibrary:(s,next)=>{s.setItem('hudLibraryV34',JSON.stringify(next));return next;},
