@@ -25,10 +25,10 @@ test('unified engine accepts channel 2, preserves overlays on duplicate state, a
 test('explicit library update preserves full operational session and clock; incompatible edits are rejected atomically',()=>{
  const e=createEngine(fixture(),{midiChannel:2});e.dispatch(cc(80,2));e.dispatch(cc(81,0));e.dispatch(cc(91,75));
  for(let i=0;i<60;i++)e.dispatch({type:'MIDI_CLOCK',timestampMs:i*20});const before=e.getState();
- const edited=e.getLibrary();edited.songs[0].title='Título guardado';e.updateLibrary(edited);
- assert.deepEqual(e.getState(),before);assert.equal(e.getViewModel().song.title,'Título guardado');
+ const edited=e.getLibrary();edited.songs[0].title='T�tulo guardado';e.updateLibrary(edited);
+ assert.deepEqual(e.getState(),before);assert.equal(e.getViewModel().song.title,'T�tulo guardado');
  const broken=e.getLibrary(),song=broken.songs.find(s=>s.id===before.activeSongId);song.stateIds=song.stateIds.filter(id=>id!==before.activeStateId);broken.states=broken.states.filter(s=>s.id!==before.activeStateId);
- assert.throws(()=>e.updateLibrary(broken));assert.deepEqual(e.getState(),before);assert.equal(e.getViewModel().song.title,'Título guardado');
+ assert.throws(()=>e.updateLibrary(broken));assert.deepEqual(e.getState(),before);assert.equal(e.getViewModel().song.title,'T�tulo guardado');
 });
 test('selected port alone feeds the parser; hot-unplug/reconnect and stale listeners preserve state',async t=>{
  const original=Object.getOwnPropertyDescriptor(globalThis,'navigator');t.after(()=>original?Object.defineProperty(globalThis,'navigator',original):delete globalThis.navigator);
@@ -40,4 +40,14 @@ test('selected port alone feeds the parser; hot-unplug/reconnect and stale liste
  const stale=a.onmidimessage,before=e.getState();access.inputs.delete('a');a.state='disconnected';access.onstatechange();assert.equal(session.status,'disconnected');stale({data:[0xb1,80,0]});assert.deepEqual(e.getState(),before);
  a.state='connected';access.inputs.set('a',a);access.onstatechange();await new Promise(r=>setImmediate(r));assert.equal(session.status,'connected');assert.deepEqual(e.getState(),before);
  await session.select('b');assert.equal(a.onmidimessage,null);assert.equal(storage.getItem('hudMidiPreferredDevice'),'b');await session.close();assert.equal(b.onmidimessage,null);
+});
+test('a slow obsolete input open cannot detach the newer selection',async t=>{
+ const original=Object.getOwnPropertyDescriptor(globalThis,'navigator');t.after(()=>original?Object.defineProperty(globalThis,'navigator',original):delete globalThis.navigator);
+ let release;const opening=new Promise(r=>{release=r;});
+ const a={id:'slow',state:'connected',open:()=>opening,onmidimessage:null},b={id:'fast',state:'connected',open:async()=>{},onmidimessage:null};
+ const access={inputs:new Map([['slow',a],['fast',b]]),onstatechange:null};Object.defineProperty(globalThis,'navigator',{configurable:true,value:{requestMIDIAccess:async()=>access}});
+ const received=[],session=createBrowserMidiSession({storage:memory(),onMessage:e=>received.push(e)});
+ const first=session.select('slow');await new Promise(r=>setImmediate(r));
+ assert.equal(await session.select('fast'),true);release();assert.equal(await first,false);
+ assert.equal(a.onmidimessage,null);assert.equal(typeof b.onmidimessage,'function');b.onmidimessage({data:[0xb1,80,2]});assert.equal(received.length,1);assert.equal(session.status,'connected');await session.close();
 });
