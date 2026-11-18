@@ -7,6 +7,10 @@ import {scopeStorage,isTestEnvironment} from '../core/environment.mjs';
 import {createBrowserMidiSession} from '../core/midi-session-browser.mjs';
 const fixture=()=>migrateCatalog(JSON.parse(readFileSync(new URL('./fixtures/main-v04.json',import.meta.url))));
 const cc=(cc,value,channel=2)=>({type:'MIDI_CC',cc,value,channel});
+test('LAB reads the confirmed current library and links to the current Editor and actual legacy backup',()=>{
+ const source=readFileSync(new URL('../lab/midi-v1.html',import.meta.url),'utf8');
+ assert.match(source,/readLibrarySource\(localStorage\)/);assert.match(source,/href="\.\.\/editor\/v3\.html"/);assert.match(source,/href="\.\/legacy\.html"/);assert.doesNotMatch(source,/getItem\(EDITOR\)/);
+});
 function memory(){const map=new Map();return {getItem:k=>map.get(k)??null,setItem:(k,v)=>map.set(k,String(v)),removeItem:k=>map.delete(k),key:i=>[...map.keys()][i]??null,get length(){return map.size;}};}
 test('test environment separates libraries, auth, preferences, recovery and draft keys from stable',()=>{
  const base=memory(),staging=scopeStorage(base);
