@@ -5,11 +5,15 @@ import {createEngine} from '../core/engine-v1.mjs';
 import {migrateCatalog} from '../core/catalog-v1.mjs';
 import {scopeStorage,isTestEnvironment} from '../core/environment.mjs';
 import {createBrowserMidiSession} from '../core/midi-session-browser.mjs';
+import {readLibrarySource} from '../core/library-storage.mjs';
 const fixture=()=>migrateCatalog(JSON.parse(readFileSync(new URL('./fixtures/main-v04.json',import.meta.url))));
 const cc=(cc,value,channel=2)=>({type:'MIDI_CC',cc,value,channel});
-test('LAB reads the confirmed current library and links to the current Editor and actual legacy backup',()=>{
- const source=readFileSync(new URL('../lab/midi-v1.html',import.meta.url),'utf8');
- assert.match(source,/readLibrarySource\(localStorage\)/);assert.match(source,/href="\.\.\/editor\/v3\.html"/);assert.match(source,/href="\.\/legacy\.html"/);assert.doesNotMatch(source,/getItem\(EDITOR\)/);
+test('a rehearsal copy uses the current confirmed library, preserving the draft and legacy original',()=>{
+ const storage=memory(),current=fixture(),legacy=fixture();current.songs[0].title='Confirmada actual';legacy.songs[0].title='Anterior';
+ const original=JSON.stringify(legacy),draft=JSON.stringify({title:'Borrador sin confirmar'});
+ storage.setItem('hudLibraryV1',original);storage.setItem('hudLibraryV34',JSON.stringify(current));storage.setItem('hudEditorDraft',draft);
+ const rehearsal=createEngine(JSON.parse(readLibrarySource(storage)));assert.equal(rehearsal.getViewModel().song.title,'Confirmada actual');
+ assert.equal(storage.getItem('hudLibraryV1'),original);assert.equal(storage.getItem('hudEditorDraft'),draft);
 });
 function memory(){const map=new Map();return {getItem:k=>map.get(k)??null,setItem:(k,v)=>map.set(k,String(v)),removeItem:k=>map.delete(k),key:i=>[...map.keys()][i]??null,get length(){return map.size;}};}
 test('test environment separates libraries, auth, preferences, recovery and draft keys from stable',()=>{
