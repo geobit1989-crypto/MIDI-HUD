@@ -1,9 +1,10 @@
+import {IS_TEST_ENVIRONMENT} from './environment.mjs';
 import {checkedLibrary,clone,canonical,sameLibrary,mergeLibraries} from './sync-merge.mjs';
 import {readLibrarySource,replaceLibrary} from './library-storage.mjs';
 
 export const SYNC_KEY='midiHudDriveSyncV1';
 export const SYNC_SCOPE='https://www.googleapis.com/auth/drive.appdata';
-export const COMMIT_KIND='midi-hud-sync-v1';
+export const COMMIT_KIND=IS_TEST_ENVIRONMENT?'midi-hud-test-sync-v1':'midi-hud-sync-v1';
 const MAX_BYTES=2_000_000,MAX_FILES=5000,ID=/^[a-zA-Z0-9_-]{8,100}$/;
 export const newId=()=>crypto.randomUUID();
 const fail=message=>{throw Error(message);};

@@ -1,3 +1,4 @@
+import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs";
 /**
  * Importación no destructiva del catálogo de canciones/autor.
  * No usa red, DOM ni localStorage; seguro para pruebas fuera del navegador.

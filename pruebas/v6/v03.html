@@ -401,6 +401,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 
 <!-- Integracion funcional v1: el diseno de LIVE v0.3 permanece sin alteraciones estructurales. -->
 <script type="module">
+import {appStorage as localStorage} from "./core/environment.mjs";
 import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261016-repertoires1";
 import {resolveLiveSelection} from "./core/live-selection-v34.mjs?v=20261016-repertoires1";
 import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261016-repertoires1";
@@ -410,11 +411,11 @@ import {installNativeMidiControls} from "./core/native-controls.mjs?v=20261016-n
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261016-overlays1";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
-import {openBrowserMidi} from "./core/midi-browser.mjs?v=20261015-ble1";
+import {createBrowserMidiSession} from "./core/midi-session-browser.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
 const SETTINGS=readSettings(localStorage);
 const $=s=>document.querySelector(s);
-let engine,library,midiPort,initialSelection,usingSavedLibrary=false;
+let engine,library,midiPort,libraryPicker,initialSelection,usingSavedLibrary=false;
 const adaptiveSheet=installAdaptiveLeadSheet(document.querySelector(".lead-sheet"));
 const gear=$(".topbar .settings");
 gear.tabIndex=0;gear.setAttribute("role","button");
@@ -447,6 +448,7 @@ dialog.innerHTML=`
         <select id="hud-repertoire"></select>
       </label>
       <p id="hud-library-status" class="hud-config-readout" role="status"></p>
+      <button id="hud-library-update" type="button">Actualizar repertorios locales</button>
       <p>La selección se recuerda en este navegador. Para traer tus guardados de otro navegador, usa allí «Enlace para navegador MIDI» en el Editor. Después puedes seguir editando desde aquí.</p>
     </section>
     <section class="hud-config-group" aria-labelledby="hud-midi-heading">
@@ -458,6 +460,7 @@ dialog.innerHTML=`
       <div class="hud-config-actions">
         <button id="hud-midi-btn" type="button" class="hud-primary">Autorizar entrada MIDI</button>
       </div>
+      <label for="hud-midi-input">Entrada MIDI<select id="hud-midi-input"><option value="">Autoriza MIDI para elegir una entrada</option></select></label>
       <p id="hud-midi-status" role="status" class="hud-config-readout">Entrada MIDI no solicitada. La simulación manual funciona sin hardware.</p>
     </section>
     <section class="hud-config-group" aria-labelledby="hud-nav-heading">
@@ -486,8 +489,10 @@ dialog.innerHTML=`
 `;
 overlay.append(dialog);document.body.append(overlay);
 function popup(open){overlay.hidden=!open;overlay.style.display=open?"flex":"none";if(open)dialog.querySelector("#hud-repertoire").focus();else gear.focus();}
+function applyLiveLibrary(next){engine.updateLibrary(next);library=engine.getLibrary();prepare();render();}
 function prepare(){
  const ch=dialog.querySelector("#hud-channel");
+ ch.replaceChildren();
  for(let i=1;i<=16;i++)ch.add(new Option("Canal "+i,i));
  ch.value=String(SETTINGS.midiChannel);
  ch.onchange=()=>{
@@ -503,29 +508,24 @@ function prepare(){
    engine.dispatch({type:"RETURN_TO_ACTIVE"});popup(false);
  };
  dialog.querySelector("#hud-close-btn").onclick=()=>popup(false);
- installNativeMidiControls(dialog.querySelector('[aria-labelledby="hud-midi-heading"]'));
- installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
-   missingRequestedRepertoire:initialSelection.missingRequestedRepertoire,onUse:()=>popup(false)});
- dialog.querySelector("#hud-midi-btn").onclick=async()=>{
-   try{
-     if(midiPort)midiPort.close();
-     const status=dialog.querySelector("#hud-midi-status");
-     midiPort=await openBrowserMidi(e=>{
-       const result=engine.dispatch(e);
-       status.textContent="RX canal "+e.channel+" · CC "+e.cc+" · valor "+e.value+
-         " → "+(result.matched?(result.changed?"estado actualizado":"reconocido, sin cambio"):"sin asignación");
-     },names=>{
-       status.textContent=names.length
-         ?"Entradas detectadas: "+names.join(", ")+". Esperando mensajes CC…"
-         :"Acceso MIDI disponible, pero no se detectan entradas. Comprueba el enlace BLE del navegador.";
-     });
-     status.textContent=midiPort.supported
-       ?(midiPort.inputCount
-         ?"Entrada MIDI preparada: "+midiPort.inputNames.join(", ")+". Pulsa un switch."
-         :"Acceso MIDI disponible, pero ninguna entrada detectada. Comprueba el enlace BLE dentro del navegador.")
-       :midiPort.reason;
-   }catch(error){dialog.querySelector("#hud-midi-status").textContent="No se pudo abrir MIDI: "+error.message;}
+ dialog.querySelector('#hud-library-update').onclick=()=>{
+  try{const raw=readLibrarySource(localStorage);if(!raw)throw Error('No hay una biblioteca confirmada. Guarda primero en el Editor.');applyLiveLibrary(JSON.parse(raw));dialog.querySelector('#hud-library-status').textContent='Repertorios actualizados. Estado musical conservado.';}
+  catch(error){dialog.querySelector('#hud-library-status').textContent='Actualización aplazada: '+error.message;}
  };
+ installNativeMidiControls(dialog.querySelector('[aria-labelledby="hud-midi-heading"]'));
+ libraryPicker?.destroy();libraryPicker=installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
+   missingRequestedRepertoire:initialSelection.missingRequestedRepertoire,onUse:()=>popup(false)});
+ const inputSelect=dialog.querySelector('#hud-midi-input'),status=dialog.querySelector('#hud-midi-status');
+ if(!midiPort)midiPort=createBrowserMidiSession({storage:localStorage,
+   onMessage:event=>{const result=engine.dispatch(event);status.textContent=event.type==='MIDI_CLOCK'?'RX MIDI Clock':`RX canal ${event.channel} · ${event.type} · ${result.matched?'reconocido':'sin asignación'}`;},
+   onStatus:({status:connection})=>{status.dataset.connection=connection;status.textContent={connected:'Entrada MIDI conectada.',connecting:'Conectando entrada MIDI.',disconnected:'Entrada MIDI desconectada. El estado musical se conserva.'}[connection];},
+   onDevices:devices=>{inputSelect.replaceChildren(...devices.map(d=>new Option(d.name,d.id)));if(!devices.length)inputSelect.add(new Option('No hay entradas MIDI',''));inputSelect.value=devices.some(d=>d.id===midiPort?.preferredId)?midiPort.preferredId:devices[0]?.id||'';}});
+ inputSelect.onchange=async()=>{if(inputSelect.value)await midiPort.select(inputSelect.value);};
+ dialog.querySelector('#hud-midi-btn').onclick=async()=>{
+  try{const devices=await midiPort.discover();const id=inputSelect.value||midiPort.preferredId||devices[0]?.id;if(id)await midiPort.select(id);else status.textContent='No hay entradas MIDI disponibles.';}
+  catch(error){status.textContent='No se pudo abrir MIDI: '+error.message;}
+ };
+
 }
 // Toque corto: Configuración. Pulsación sostenida de dos segundos: Editor.
 // Una pulsación larga no debe abrir además el menú de Configuración.
@@ -668,7 +668,7 @@ function render(){
   }
   const cloud=installCloudSync({host:dialog.querySelector('#hud-sync-root'),mode:'live',
    canApply:()=>true,
-   onApplied:next=>{if(engine)window.location.reload();else data=next;}});
+   onApplied:next=>{if(engine)applyLiveLibrary(next);else data=next;}});
   // La conexión lenta nunca impide abrir el repertorio local para tocar.
   // Local copy opens immediately; automatic sync only updates storage.
   const saved=readLibrarySource(localStorage);
@@ -681,6 +681,7 @@ function render(){
   initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
   library=engine.getLibrary();prepare();
+  void midiPort.start();
   window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
   setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
   engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
