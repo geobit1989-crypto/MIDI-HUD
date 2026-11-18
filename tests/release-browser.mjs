@@ -37,9 +37,9 @@ try{
  await page.evaluate(()=>{testMidi.inputs.get('Other').send([0xb1,80,1]);testMidi.inputs.get('Chocolate').send([0xb1,80,2]);testMidi.inputs.get('Chocolate').send([0xb1,81,0]);testMidi.inputs.get('Chocolate').send([0xb1,91,77]);});
  const before=await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState());assert.equal(before.activeStateId,'preset-solo');
  await page.evaluate(()=>testMidi.inputs.get('Chocolate').send([0xb1,80,2]));assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
- await page.evaluate(()=>{const key='midiHudTest:hudLibraryV34',db=JSON.parse(localStorage.getItem(key));db.songs[0].title='Actualizaci�n compatible';localStorage.setItem(key,JSON.stringify(db));window.dispatchEvent(new Event('storage'));});
+ await page.evaluate(()=>{const key='midiHudTest:hudLibraryV34',db=JSON.parse(localStorage.getItem(key));db.songs[0].title='Actualización compatible';localStorage.setItem(key,JSON.stringify(db));window.dispatchEvent(new Event('storage'));});
  assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
- await page.locator('#hud-library-update').click();assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);assert.equal(await page.locator('#song-title').innerText(),'Actualizaci�n compatible');
+ await page.locator('#hud-library-update').click();assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);assert.equal(await page.locator('#song-title').innerText(),'Actualización compatible');
  await page.evaluate(()=>{const input=testMidi.inputs.get('Chocolate');input.state='disconnected';testMidi.inputs.delete('Chocolate');window.disconnectedInput=input;testMidi.onstatechange();});
  await page.waitForFunction(()=>document.querySelector('#hud-midi-status').dataset.connection==='disconnected');assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
  await page.evaluate(()=>{disconnectedInput.state='connected';testMidi.inputs.set('Chocolate',disconnectedInput);testMidi.onstatechange();});await page.waitForFunction(()=>document.querySelector('#hud-midi-status').dataset.connection==='connected');

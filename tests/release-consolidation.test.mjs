@@ -33,10 +33,10 @@ test('unified engine accepts channel 2, preserves overlays on duplicate state, a
 test('explicit library update preserves full operational session and clock; incompatible edits are rejected atomically',()=>{
  const e=createEngine(fixture(),{midiChannel:2});e.dispatch(cc(80,2));e.dispatch(cc(81,0));e.dispatch(cc(91,75));
  for(let i=0;i<60;i++)e.dispatch({type:'MIDI_CLOCK',timestampMs:i*20});const before=e.getState();
- const edited=e.getLibrary();edited.songs[0].title='T�tulo guardado';e.updateLibrary(edited);
- assert.deepEqual(e.getState(),before);assert.equal(e.getViewModel().song.title,'T�tulo guardado');
+ const edited=e.getLibrary();edited.songs[0].title='Título guardado';e.updateLibrary(edited);
+ assert.deepEqual(e.getState(),before);assert.equal(e.getViewModel().song.title,'Título guardado');
  const broken=e.getLibrary(),song=broken.songs.find(s=>s.id===before.activeSongId);song.stateIds=song.stateIds.filter(id=>id!==before.activeStateId);broken.states=broken.states.filter(s=>s.id!==before.activeStateId);
- assert.throws(()=>e.updateLibrary(broken));assert.deepEqual(e.getState(),before);assert.equal(e.getViewModel().song.title,'T�tulo guardado');
+ assert.throws(()=>e.updateLibrary(broken));assert.deepEqual(e.getState(),before);assert.equal(e.getViewModel().song.title,'Título guardado');
 });
 test('selected port alone feeds the parser; hot-unplug/reconnect and stale listeners preserve state',async t=>{
  const original=Object.getOwnPropertyDescriptor(globalThis,'navigator');t.after(()=>original?Object.defineProperty(globalThis,'navigator',original):delete globalThis.navigator);
