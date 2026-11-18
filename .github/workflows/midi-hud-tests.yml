@@ -1,8 +1,9 @@
 name: MIDI HUD · Motor tests
 on:
   push:
-    branches: [main]
+    branches: [main, feature/midi-connection-session]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -17,6 +18,9 @@ jobs:
         run: |
           node --check core/engine.mjs
           node --check core/midi-input.mjs
+          node --check core/midi-connection-session.mjs
           node --check tests/midi-v04.test.mjs
-      - name: Run MIDI v0.4 regression suite
-        run: node --test tests/midi-v04.test.mjs
+          node --check tests/midi-connection-session.test.mjs
+          node --check tests/sig-live-channel2.test.mjs
+      - name: Run MIDI HUD regression suite
+        run: node --test tests/*.test.mjs
