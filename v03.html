@@ -328,8 +328,10 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
   <script type="module">
   import {createEngine,normalizeLibrary,validateLibrary} from "./core/engine.mjs";
   import {createMidiInputHandler} from "./core/midi-input.mjs";
+  import {createMidiConnectionSession} from "./core/midi-connection-session.mjs";
   const $m = id=>document.getElementById(id);
-  let engine=null,midiAccess=null,selectedInput=null;
+  let engine=null,midiAccess=null,selectedInput=null,midiSession=null;
+  const midiStorageKey="hudMidiPreferredDevice";
   const dialog=$m("midi-settings-dialog");
   $m("open-midi-settings").addEventListener("click",()=>dialog.showModal());
   $m("close-midi-settings").addEventListener("click",()=>dialog.close());
@@ -417,25 +419,69 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
   function pickInput(id) {
     if(selectedInput)selectedInput.onmidimessage=null;
     selectedInput=midiAccess?.inputs.get(id)||null;
-    if(selectedInput)selectedInput.onmidimessage=createMidiInputHandler(engine);
+    if(selectedInput && engine)selectedInput.onmidimessage=createMidiInputHandler(engine);
     refreshLive();
   }
   function populateMidiInputs() {
     const select=$m("midi-input-list");
-    const inputs=midiAccess?Array.from(midiAccess.inputs.values()):[];
+    const inputs=midiAccess?Array.from(midiAccess.inputs.values()).filter(i=>i.state==="connected"):[];
     select.replaceChildren(...inputs.map(i=>new Option(i.name||"Entrada MIDI",i.id)));
-    if(inputs.length){
-      const current=inputs.some(i=>i.id===selectedInput?.id)?selectedInput.id:inputs[0].id;
-      select.value=current;pickInput(current);
-    } else {pickInput(null);select.replaceChildren(new Option("No hay entradas MIDI",""));}
+    if(!inputs.length)select.replaceChildren(new Option("No hay entradas MIDI",""));
+    else select.value=selectedInput?.id||midiSession?.preferredId||inputs[0].id;
   }
-  $m("midi-input-list").addEventListener("change",e=>pickInput(e.target.value));
-  $m("connect-midi").addEventListener("click",async()=>{
-    if(!navigator.requestMIDIAccess){$m("midi-status").textContent="Este navegador no admite Web MIDI.";return;}
-    try{
-      midiAccess=await navigator.requestMIDIAccess({sysex:false});
-      midiAccess.onstatechange=populateMidiInputs;
+  async function openMidiAccess() {
+    if(midiAccess)return midiAccess;
+    if(!navigator.requestMIDIAccess)throw Error("Este navegador no admite Web MIDI");
+    midiAccess=await navigator.requestMIDIAccess({sysex:false});
+    midiAccess.onstatechange=async event=>{
       populateMidiInputs();
+      if(selectedInput && selectedInput.state!=="connected"){
+        pickInput(null);
+        midiSession?.lost();
+      }
+      if(!selectedInput && midiSession?.preferredId &&
+          midiAccess.inputs.get(midiSession.preferredId)?.state==="connected"){
+        await midiSession.retry();
+      }
+    };
+    populateMidiInputs();
+    return midiAccess;
+  }
+  const midiAdapter={
+    async discover(){
+      const access=await openMidiAccess();
+      return Array.from(access.inputs.values()).filter(i=>i.state==="connected")
+        .map(i=>({id:i.id,name:i.name||"Entrada MIDI"}));
+    },
+    async connect(id){
+      const access=await openMidiAccess();
+      const input=access.inputs.get(id);
+      if(!input||input.state!=="connected")throw Error("Entrada MIDI no disponible");
+      await input.open();
+      pickInput(id);
+      return {disconnect:async()=>{
+        if(selectedInput?.id===id)pickInput(null);
+      }};
+    }
+  };
+  midiSession=createMidiConnectionSession({
+    adapter:midiAdapter,storage:localStorage,storageKey:midiStorageKey,
+    onStatus:({status})=>{
+      if(status==="disconnected")pickInput(null);
+      if(engine)refreshLive();
+      $m("midi-status").dataset.connection=status;
+    }
+  });
+  $m("midi-input-list").addEventListener("change",async e=>{
+    if(e.target.value)await midiSession.select(e.target.value);
+  });
+  $m("connect-midi").addEventListener("click",async()=>{
+    try{
+      await openMidiAccess();
+      const devices=await midiSession.discover();
+      const id=$m("midi-input-list").value||midiSession.preferredId||devices[0]?.id;
+      if(id)await midiSession.select(id);
+      else $m("midi-status").textContent="No hay entradas MIDI disponibles.";
     }catch(err){$m("midi-status").textContent="No fue posible abrir MIDI: "+err.message;}
   });
   function startEngine(library) {
@@ -444,7 +490,10 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
     if(selectedInput) selectedInput.onmidimessage=createMidiInputHandler(engine);
     refreshLive();
   }
-  initialLibrary().then(startEngine)
+  initialLibrary().then(async library=>{
+      startEngine(library);
+      try{await midiSession.start();}catch(err){console.warn("MIDI HUD: conexión automática no disponible",err);}
+    })
     .catch(err=>{console.error(err);$m("midi-status").textContent="Error: "+err.message;});
   window.setInterval(()=>{
     if(engine)engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});
