@@ -8,6 +8,7 @@ import {createMidiConnectionSession} from "../core/midi-connection-session.mjs";
 function setup() {
   const db=normalizeLibrary(JSON.parse(readFileSync(new URL("../config/midi-hud-data-v1.json",import.meta.url),"utf8")));
   db.midi.channel=2;
+  db.songs[0].midiAddress={cc0:0,pc:0}; // dirección de prueba, no cambia configuración real
   return createEngine(db);
 }
 const cc=(engine,n,v,ch=2)=>receiveMidiBytes(engine,[0xB0+(ch-1),n,v],0);
