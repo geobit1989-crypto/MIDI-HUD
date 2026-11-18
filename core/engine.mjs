@@ -172,7 +172,7 @@ export function normalizeLibrary(input) {
  * dispatch returns {state, intents}. Intents describe MIDI messages for a future
  * hardware adapter. The engine NEVER transmits MIDI.
  */
-export function createEngine(input) {
+export function createEngine(input, {restoreState=null}={}) {
   const db = normalizeLibrary(input);
   validateLibrary(db);
   const reps = new Map(db.repertoires.map(x => [x.id, x]));
@@ -203,6 +203,27 @@ export function createEngine(input) {
     clockStatus: "waiting",
     sequence: 0
   };
+
+  // Hot reload must not change the active song or musical state.
+  // Reject incompatible library edits instead of silently selecting another preset.
+  if (restoreState !== null) {
+    requireValid(object(restoreState), "estado a restaurar inválido");
+    const rep = reps.get(restoreState.repertoireId);
+    const song = songs.get(restoreState.songId);
+    const preset = presets.get(restoreState.presetId);
+    requireValid(rep && song && preset &&
+      rep.songIds.includes(song.id) && song.presetIds.includes(preset.id),
+      "la actualización elimina la canción o el estado activo; se conserva la biblioteca anterior");
+    const effects = new Set(song.effects.map(e=>e.id));
+    requireValid(Object.keys(restoreState.overlayStates || {}).every(id=>effects.has(id)),
+      "la actualización elimina un efecto activo; se conserva la biblioteca anterior");
+    requireValid(restoreState.morphValue >= preset.morph.min &&
+      restoreState.morphValue <= preset.morph.max,
+      "la actualización cambia los límites del Morph activo; se conserva la biblioteca anterior");
+    state = {...copy(restoreState), tempoBpm:song.tempoBpm ?? null,
+      tempoLabel:"BPM",clockBpm:null,clockStatus:"waiting"};
+    selectedSongBank = song.midiAddress?.cc0 ?? 0;
+  }
 
   function songMidiIntents(song) {
     if (!song.midiAddress) return []; // Sin asignación: nunca inventar un PC.
