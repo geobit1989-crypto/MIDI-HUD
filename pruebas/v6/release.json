@@ -2,14 +2,14 @@
   "version": "v8",
   "release_date": "2026-11-18",
   "source_branch": "integration/consolidacion-181126-v8",
-  "source_commit": "28c7a15cba2796011bf337b675fcff3c503a50ee",
+  "source_commit": "6534c31c3805680d6f0fcef9a5fd32596ab80028",
   "route": "/MIDI-HUD/pruebas/v6/",
   "application": "complete",
   "storage_prefix": "midiHudTest:",
   "drive_history_kind": "midi-hud-test-sync-v1",
   "production_unchanged": true,
-  "application_tests": 252,
+  "application_tests": 253,
   "worker_tests": 4,
   "browser_suites": 2,
-  "web_ci": "https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/44409898639"
+  "web_ci": "https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/44411784796"
 }

@@ -20,7 +20,7 @@ Los PR #1-#4 est�n cerrados sin merge. Se contrastaron contratos en Drive, �
 
 ## Cambios integrados
 
-- Inicio, LIVE, Editor v3, LAB, ajustes y p�ginas legales en un mismo paquete modular.
+- Inicio, LIVE, Editor v3, LAB, ajustes y p�ginas legales en un mismo paquete modular. LAB copia la biblioteca confirmada actual del Editor; los accesos al Editor y al respaldo anterior apuntan a sus destinos correctos.
 - Editor: cuatro secciones, borradores persistentes entre pesta�as/canciones/repertorios, un Guardar global, validaci�n transaccional, detecci�n de ediciones concurrentes, fecha del guardado confirmado y tres opciones de salida.
 - Cat�logo maestro, canciones compartidas por playlists, orden/notas por repertorio, lead sheets y tonalidades por variante; se conserva la variante confirmada al crear otra desde un borrador.
 - Estados/efectos/expresiones, m�dulos adaptativos, notaci�n textual y por grados, vista m�vil vertical/horizontal y navegaci�n de consulta.
@@ -36,9 +36,9 @@ La prueba usa el prefijo local/sessionStorage `midiHudTest:` y el tipo de histor
 
 ## Validaci�n local
 
-- 252 pruebas de aplicaci�n, cero fallos, omisiones o cancelaciones. Incluyen las regresiones de v6 y de la rama del 18/11, pruebas de esfuerzo con 1.000 cambios, reconexi�n y selecci�n concurrente de entradas con transporte simulado.
+- 253 pruebas de aplicaci�n, cero fallos, omisiones o cancelaciones. Incluyen las regresiones de v6 y de la rama del 18/11, pruebas de esfuerzo con 1.000 cambios, reconexi�n, selecci�n concurrente de entradas y copia EditorLAB con transporte simulado.
 - 4 pruebas del Worker, cero fallos; ejecuci�n de tests sin despliegue del Worker.
-- 45 scripts y 139 referencias locales sin errores; 65 recursos compartidos/espejo iguales; 67 recursos offline iOS preparados.
+- 45 scripts y 140 referencias locales sin errores; 65 recursos compartidos/espejo iguales; 67 recursos offline iOS preparados.
 - Navegador local Windows: no ejecutable en el sandbox. GitHub Actions ejecuta la interacci�n completa existente y una prueba adicional del entorno aislado con Editor, MIDI simulado, actualizaci�n y reconexi�n. Registrar sus resultados finales antes de anunciar la publicaci�n como verificada.
 
 ## Pendientes de aceptaci�n
