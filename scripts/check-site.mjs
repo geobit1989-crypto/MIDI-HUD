@@ -19,7 +19,8 @@ function checkRef(file,ref){
 }
 for(const file of ['core','editor','live','lab','config'].flatMap(dir=>walk(join(root,dir))).concat(['index.html','v03.html'].map(name=>join(root,name)))){
  if(!/\.(?:html|m?js)$/.test(file))continue;
- const source=readFileSync(file,'utf8');
+ const source=new TextDecoder('utf-8',{fatal:true}).decode(readFileSync(file));
+ if(source.includes('\uFFFD'))throw Error(file+': texto dañado por transcodificación');
  if(/\.html$/.test(file)){
   for(const match of source.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
    if(/\bsrc=/.test(match[1]))continue;
