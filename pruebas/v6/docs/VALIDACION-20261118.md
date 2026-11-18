@@ -1,23 +1,29 @@
-# Validación de la aplicación de pruebas — 18/11/2026
+# Validación de MIDI HUD de pruebas — 18/11/2026
 
-Fuente: `6534c31c3805680d6f0fcef9a5fd32596ab80028`, rama `integration/consolidacion-181126-v8`.
+Rama: `integration/consolidacion-181126-v8`.
+Fuente exacta: `a435f8c2c875ca378af61e388b98b62ee89bee71`.
+URL: https://geobit1989-crypto.github.io/MIDI-HUD/pruebas/v6/ . [Manifiesto de versión](../release.json).
 
-URL: https://geobit1989-crypto.github.io/MIDI-HUD/pruebas/v6/ . El manifiesto [release.json](../release.json) identifica la fuente del sitio desplegado. El documento oficial de Drive registra la verificación final y el commit de publicación.
+## Aplicación consolidada
 
-## Pruebas de la misma fuente
+Inicio, LIVE, Editor completo, catálogo maestro, playlists/repertorios, variantes y tonalidades de lead sheet, ajustes, LAB, motor MIDI, persistencia y sincronización. Guardar global y borradores protegidos del 25/10; conexión MIDI persistente y reconexión del 18/11; conservación del estado musical al actualizar bibliotecas; CC80 repetido sin apagar efectos; selección de entradas concurrentes protegida; copia de la biblioteca confirmada Editor→LAB y enlaces corregidos.
 
-[CI web](https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/44411784796): 253 pruebas de aplicación y 4 del Worker. Dos suites Chromium: Editor completo con borradores, salida/guardado, catálogo y variantes; aplicación de pruebas aislada con Editor→Guardar→LAB→Copiar, canal 2, entrada seleccionada, conservación de estados/efectos/expresiones, actualización explícita, desconexión y reconexión. Capturas vertical/horizontal en el artefacto unified-browser-evidence de esa ejecución. Consultar su conclusión final, registrada también en Drive.
+Se corrigió la transcodificación de textos en la transferencia final y se incorporó validación UTF-8 estricta que bloquea caracteres de sustitución en el sitio. No quedan textos dañados en los recursos corregidos.
 
-65 recursos espejo, 45 scripts y 140 referencias locales; 67 recursos offline preparados. [CI iOS](https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/44411788692) verifica parser, Editor/LIVE offline, build e IPA sin firma. No equivale a instalación física.
+## Evidencias
 
-## Cambios y aislamiento
+[CI web de esta fuente](https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/44413145045): 253 pruebas de aplicación y 4 del Worker; dos recorridos Chromium (Editor/guardado/catálogo/variantes y entorno aislado/Editor→LAB/MIDI/reconexión). Capturas vertical/horizontal en su artefacto unified-browser-evidence. [CI iOS de esta fuente](https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/44413144946): XCTest, build e IPA sin firma. Las conclusiones finales y verificación pública se registran en el documento oficial de enlaces de Google Drive.
 
-Inicio, LIVE, Editor, catálogo, playlists, lead sheets, ajustes, LAB, motor MIDI, persistencia y sincronización consolidados. Incluye borradores/Guardar global del 25/10, mejoras MIDI del 18/11, protección ante actualización incompatible y selección concurrente de entradas, y corrección de copia/enlaces Editor↔LAB.
+Comprobaciones: 45 scripts, 140 referencias, 65 recursos espejo y 67 recursos offline preparados. El fallo inicial de Chromium en Ubuntu 26.04 se resolvió fijando Ubuntu 24.04 compatible.
 
-Solo cambia el subárbol `pruebas/v6/`; todos los blobs exteriores y la rama main se conservan. La ruta v6 es histórica y mantiene los callbacks OAuth existentes. Almacenamiento de pruebas `midiHudTest:`; historial Drive `midi-hud-test-sync-v1`. Importar una copia JSON para probar un repertorio propio. No se importan ni sobrescriben datos existentes automáticamente. No hay cambios de Worker, secretos, Chocolate Plus, GT-1000CORE o audio.
+## Aislamiento
+
+Solo cambia `pruebas/v6/` en gh-pages. Todos los blobs exteriores, main y Worker se conservan. No se programó Chocolate Plus ni GT-1000CORE y no se envía MIDI. La ruta v6 se conserva por los callbacks OAuth existentes, aunque el código corresponda a v8.
+
+Almacenamiento de pruebas `midiHudTest:`; historial Drive `midi-hud-test-sync-v1`. Las bibliotecas y sesiones existentes no se importan ni sobrescriben automáticamente: importar una copia JSON para ensayar un repertorio propio.
 
 ## Pendientes
 
-Google y sincronización entre dispositivos reales, permisos/MIDI USB y BLE físicos, iPhone/Android reales, firma e instalación iOS, latencia/Clock y ensayo musical. La incompatibilidad inicial Ubuntu 26.04/Playwright antiguo se resolvió fijando Ubuntu 24.04.
+Google y sincronización reales entre dispositivos; iPhone/Android físicos; MIDI USB/BLE, permisos, latencia y Clock reales; firma e instalación de IPA y ensayo musical. Las pruebas automáticas no acreditan estos puntos.
 
-[Auditoría de ramas y cambios integrados](CONSOLIDACION-20261118.md).
+[Auditoría de ramas y cambios](CONSOLIDACION-20261118.md).
