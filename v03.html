@@ -485,7 +485,8 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
     }catch(err){$m("midi-status").textContent="No fue posible abrir MIDI: "+err.message;}
   });
   function startEngine(library) {
-    engine=createEngine(library);
+    const nextEngine=createEngine(library,{restoreState:engine?.getState()??null});
+    engine=nextEngine;
     engine.subscribe(()=>refreshLive());
     if(selectedInput) selectedInput.onmidimessage=createMidiInputHandler(engine);
     refreshLive();
@@ -504,7 +505,10 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
       const data=normalizeLibrary(JSON.parse(event.newValue));
       validateLibrary(data);
       startEngine(data);  // El Editor actualizó el mismo origen/navegador.
-    }catch(err){console.warn("Biblioteca actualizada inválida",err);}
+    }catch(err){
+      console.warn("Actualización de biblioteca aplazada para proteger el estado LIVE",err);
+      $m("midi-status").textContent="Actualización aplazada: "+err.message;
+    }
   });
   // Los compases siguen siendo un ejemplo gráfico. No hay sincronización de compás.
   </script>
