@@ -122,6 +122,8 @@
     <small>Los valores MIDI de ejemplo son provisionales. No se abre ningún puerto MIDI.</small>
   </section>
   <script type="module">
+import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs";
+
     import {createEngine,normalizeLibrary,validateLibrary,ENGINE_VERSION} from "../core/engine.mjs";
     const $ = id => document.getElementById(id);
     // Estado de ensayo exclusivamente local en LAB; no existe comunicación física.

@@ -1,5 +1,13 @@
 # MIDI HUD — Registro de ramas y numeración global
 
+## Registro vigente — 18/11/2026
+
+La auditoría encuentra `feature/midi-connection-session`, creada después de las seis ramas registradas: se asigna v7 retrospectivamente, sin renombrarla. Nueva rama de consolidación: `integration/consolidacion-181126-v8` (v8, fecha 18/11/2026), única línea activa para esta entrega. Integra v6 y las correcciones del 18/11; las ramas anteriores se conservan como fuentes e histórico. No se renombra ni modifica `main`.
+
+La URL histórica `/pruebas/v6/` se mantiene por compatibilidad de retornos OAuth; su ruta no determina la versión del código. El commit exacto publicado se registra en `release.json` y en el documento oficial de enlaces de Drive. La siguiente rama genuinamente nueva será v9.
+
+## Registro histórico — 19/10/2026
+
 **Estado:** PR #1–#4 cerrados y conservados; renombrado remoto pendiente de autorización/herramienta.
 **Fecha de registro:** 19/10/2026.
 **Rama de trabajo única:** `integration/ios-unified-20261019` (versión asignada **v6**).

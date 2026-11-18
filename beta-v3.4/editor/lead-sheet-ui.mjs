@@ -1,3 +1,4 @@
+import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 
 /**

@@ -1,3 +1,4 @@
+import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs";
 import {normalizeLibrary,validateLibrary,SCHEMA_VERSION} from "../core/engine-v1.mjs";
 import {createLeadSheetEditor} from "./lead-sheet-ui.mjs";
 import {

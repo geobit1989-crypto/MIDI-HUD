@@ -229,15 +229,15 @@ export function decodeMidiCC(data) {
  * El mensaje MIDI reconocido ejecuta sus acciones en orden configurado y vuelve
  * a mostrar la vista operativa. La GT nunca es controlada por este modulo.
  */
-export function createEngine(source, {midiChannel=1,repertoireId=null,songId=null}={}) {
-  const db = normalizeLibrary(source);
+export function createEngine(source, {midiChannel=1,repertoireId=null,songId=null,restoreState=null}={}) {
+  let db = normalizeLibrary(source);
   validateLibrary(db);
   insist(integer(midiChannel,1,16), "canal global fuera de 1..16");
   const reps = new Map(db.repertoires.map(x=>[x.id,x]));
   const songs = new Map(db.songs.map(x=>[x.id,x]));
   const states = new Map(db.states.map(x=>[x.id,x]));
   const bindings = new Map(db.bindings.map(x=>[x.cc+":"+x.value,x.actions]));
-  const initialRep = reps.get(repertoireId)||db.repertoires[0];
+  let initialRep = reps.get(repertoireId)||db.repertoires[0];
   const versionBindings=new Map(db.songs.filter(s=>Array.isArray(s.midiBindings)).map(s=>[s.id,new Map(s.midiBindings.map(b=>[b.cc+":"+b.value,b.actions]))]));
   const initialSong = songs.get(initialRep.songIds.includes(songId)?songId:initialRep.songIds[0]);
   const listeners = new Set();
@@ -254,6 +254,40 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
     indicatorOverrides:{},expressions:{},tempo:clock.getView(),
     sequence:0
   };
+  function validateRestored(state,library) {
+    insist(isObject(state),'estado a restaurar inválido');
+    const rep=library.repertoires.find(r=>r.id===state.activeRepertoireId);
+    const song=library.songs.find(s=>s.id===state.activeSongId);
+    const current=library.states.find(s=>s.id===state.activeStateId);
+    if(state.activeSongId===null){insist(rep&&!rep.songIds.length,'la actualización cambia el repertorio activo');return;}
+    insist(rep&&song&&current&&rep.songIds.includes(song.id)&&song.stateIds.includes(current.id),'la actualización elimina la canción o el estado activo; se conserva la biblioteca anterior');
+    const indicators=new Set((current.indicators||[]).map(i=>i.id));
+    insist(Object.keys(state.indicatorOverrides||{}).every(id=>indicators.has(id)),'la actualización elimina un efecto activo; se conserva la biblioteca anterior');
+    for(const [songId,stateId] of Object.entries(state.rememberedStates||{})){
+      if(!library.songs.some(s=>s.id===songId&&s.stateIds.includes(stateId)))delete state.rememberedStates[songId];
+    }
+    if(state.previewSongId&&!library.songs.some(s=>s.id===state.previewSongId))state.previewSongId=null;
+    if(state.previewStateId&&!library.states.some(s=>s.id===state.previewStateId))state.previewStateId=null;
+  }
+  if(restoreState!==null){const restored=duplicate(restoreState);validateRestored(restored,db);session=restored;selectedBank=songs.get(session.activeSongId)?.midiAddress?.cc0??0;}
+  function updateLibrary(source){
+    const next=normalizeLibrary(source);validateLibrary(next);
+    const restored=duplicate(session);validateRestored(restored,next);
+    const before=states.get(session.activeStateId),after=next.states.find(s=>s.id===session.activeStateId);
+    if(before&&after){
+      const defaults=st=>(st.indicators||[]).map(i=>[i.id,i.active]);
+      insist(JSON.stringify(defaults(before))===JSON.stringify(defaults(after)),'la actualización cambia los efectos de entrada del estado activo; se conserva la biblioteca anterior');
+      const oldSlots=songs.get(session.activeSongId).displaySlots||[],newSlots=next.songs.find(s=>s.id===session.activeSongId).displaySlots||[];
+      insist(oldSlots.filter(s=>s.expressionCC).every(s=>newSlots.some(n=>n.expressionCC===s.expressionCC)),'la actualización elimina una expresión activa; se conserva la biblioteca anterior');
+    }
+    db=next;session=restored;
+    for(const [map,items] of [[reps,db.repertoires],[songs,db.songs],[states,db.states]]){map.clear();for(const item of items)map.set(item.id,item);}
+    bindings.clear();for(const b of db.bindings)bindings.set(b.cc+':'+b.value,b.actions);
+    versionBindings.clear();for(const s of db.songs)if(Array.isArray(s.midiBindings))versionBindings.set(s.id,new Map(s.midiBindings.map(b=>[b.cc+':'+b.value,b.actions])));
+    initialRep=reps.get(initialRep.id)||db.repertoires[0];
+    for(const fn of listeners)fn(getState(),getViewModel(),{type:'LIBRARY_UPDATED'});
+    return getLibrary();
+  }
   function repertoireFor(songId,preferred=session.activeRepertoireId) {
     const selected=reps.get(preferred);
     return selected?.songIds.includes(songId)?selected:db.repertoires.find(x=>x.songIds.includes(songId)) || initialRep;
@@ -271,6 +305,7 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
   function activateState(next,stateId) {
     const st=states.get(stateId);
     insist(st,"estado desconocido: "+stateId);
+    if(next.activeStateId===stateId&&next.activeSongId===st.songId)return;
     next.activeSongId=st.songId;
     next.activeRepertoireId=repertoireFor(st.songId,next.activeRepertoireId).id;
     next.activeStateId=stateId;
@@ -423,5 +458,5 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
     listeners.add(listener);
     return ()=>listeners.delete(listener);
   }
-  return Object.freeze({dispatch,subscribe,getState,getLibrary,getViewModel});
+  return Object.freeze({dispatch,subscribe,getState,getLibrary,getViewModel,updateLibrary});
 }

@@ -6,6 +6,8 @@
 <div class="card"><h2>Presets de la canción</h2><div class="row"><button id="addPreset">+ Añadir preset</button><button id="removePreset">Eliminar preset</button></div><label>Preset seleccionado<select id="presetSelect"></select></label><label>Nombre del estado<input id="presetName"></label><label>Program Change (0–127, provisional)<input id="pc" type="number" min="0" max="127"></label><label>Función Morph<select id="assignment"><option value="ambient">Ambiente (reverb/delay)</option><option value="none">Sin asignación</option><option value="soloBoost">Boost solo</option></select></label><small>Al cambiar de preset, el indicador Morph se reinicia a cero. Los números MIDI deben verificarse con la GT-1000CORE.</small></div>
 <div class="card"><h2>Archivos</h2><button id="import">Importar JSON</button><button id="export">Exportar JSON</button><input id="file" type="file" accept=".json,application/json" hidden><p id="notice" role="status"></p><small>Los cambios se guardan en este navegador. Para ensayarlos, abre LAB y pulsa «Copiar editor → LAB». La maqueta LIVE v0.3 todavía es visual.</small><p><a href="../lab/">Probar en LAB</a> · <a href="../v03.html">Ver LIVE v0.3</a></p></div>
 <script type="module">
+import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs";
+
 import {normalizeLibrary,validateLibrary} from "../core/engine.mjs";
 let db=null,si=0,pi=0;const $=s=>document.querySelector(s),uid=()=>('id-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9));
 function check(x){try{validateLibrary(normalizeLibrary(x));return true}catch{return false}}

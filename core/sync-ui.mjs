@@ -1,3 +1,4 @@
+import {appStorage as localStorage,appSessionStorage as sessionStorage} from "./environment.mjs";
 import {DriveHistory,createSyncController} from './drive-sync.mjs';
 import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-autosync1';
 import {readLibrarySource} from './library-storage.mjs';

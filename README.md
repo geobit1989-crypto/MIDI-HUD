@@ -1,3 +1,15 @@
+# MIDI HUD — Aplicación de pruebas consolidada al 18/11/2026
+
+Rama vigente: `integration/consolidacion-181126-v8`. Aplicación completa: Inicio, LIVE, Editor, catálogo, repertorios, lead sheets, LAB, ajustes, motor, persistencia y sincronización. [Auditoría y cambios de esta entrega](docs/CONSOLIDACION-20261118.md).
+
+Pruebas web: https://geobit1989-crypto.github.io/MIDI-HUD/pruebas/v6/ . Se mantiene la ruta histórica autorizada de OAuth. Las claves `midiHudTest:` y el historial Drive de pruebas separan esta entrega de los datos de producción. Importar una copia JSON para probar repertorios existentes. `release.json` identifica el commit de fuente.
+
+Editor: un Guardar global, borradores protegidos, cuatro secciones y catálogo compartido. LIVE conserva su sesión ante cambios de repertorios y solo actualiza por acción explícita. MIDI recibe de una sola entrada seleccionada, recuerda el dispositivo y reconecta sin cambiar el estado musical. No transmite MIDI.
+
+Verificación: `node --test tests/*.test.mjs`, `node --test worker/tests/*.test.mjs`, `node scripts/check-site.mjs`, `python3 scripts/sync-web-resources.py --check`. CI añade `tests/browser-integration.mjs` y `tests/release-browser.mjs`, además de compilación iOS. Hardware y Google real siguen pendientes.
+
+Las secciones siguientes se conservan como histórico; no sustituyen el estado vigente anterior.
+
 ## LIVE v3.2 — Lead sheet adaptable, controles +5 % y títulos delimitados (15/10/2026)
 
 - Se asignan **cinco puntos porcentuales adicionales de altura de pantalla** al bloque de controles respecto a la distribución previa. En iPhone, crece la matriz 3×3, preservando encabezado y EXP; el lead sheet utiliza el resto.

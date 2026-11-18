@@ -1,3 +1,4 @@
+import {appStorage as localStorage,appSessionStorage as sessionStorage} from "./environment.mjs";
 import {validateDriveRequest} from "./google-drive-auth.mjs";
 const AUTH_KEY="midiHudTrustedDeviceSessionV1";
 const PROOF_KEY="midiHudOAuthHandoffProofV1";
@@ -12,8 +13,8 @@ const parse=raw=>{try{return JSON.parse(raw);}catch{return null;}};
 export class PersistentDriveAuth {
  constructor({
   workerUrl=DEFAULT_WORKER,
-  store=()=>globalThis.localStorage,
-  transient=()=>globalThis.sessionStorage,
+  store=()=>localStorage,
+  transient=()=>sessionStorage,
   fetcher=(...args)=>globalThis.fetch(...args),
   location=()=>globalThis.location,
   history=()=>globalThis.history,
@@ -110,6 +111,7 @@ export class PersistentDriveAuth {
   const proof=random(),proofHash=await digest(proof);
   let returnPath="/MIDI-HUD/editor/v3.html";
   if(this.location().pathname==="/MIDI-HUD/v03.html")returnPath="/MIDI-HUD/v03.html";
+  if(this.location().pathname.startsWith('/MIDI-HUD/pruebas/v6/'))returnPath=this.location().pathname.endsWith('/v03.html')?'/MIDI-HUD/pruebas/v6/v03.html':'/MIDI-HUD/pruebas/v6/editor/v3.html';
   const pending=JSON.stringify({value:proof,created:now()});
   try{this.transient()?.setItem(PROOF_KEY,pending);}catch{}
   this.store()?.setItem(PROOF_KEY,pending);

@@ -1,3 +1,4 @@
+import {appStorage as localStorage,appSessionStorage as sessionStorage} from "./environment.mjs";
 import {SYNC_SCOPE} from './drive-sync.mjs';
 export const DRIVE_ORIGIN='https://www.googleapis.com';
 const SCOPE='openid email '+SYNC_SCOPE;
@@ -17,7 +18,7 @@ function requestError(status,body){
  return Error(status===401?'Vuelve a conectar tu cuenta de Google.':status===403?'Drive no autorizó la sincronización. Revisa el permiso de MIDI HUD.':'No se pudo sincronizar con Drive ('+status+').'+(detail?' '+detail:''));
 }
 export class GoogleDriveAuth{
- constructor({clientId='',native=globalThis.MidiHudNative,fetcher=(...args)=>globalThis.fetch(...args),google=()=>globalThis.google,session=()=>{try{return globalThis.sessionStorage;}catch{return null;}}}={}){
+ constructor({clientId='',native=globalThis.MidiHudNative,fetcher=(...args)=>globalThis.fetch(...args),google=()=>globalThis.google,session=()=>{try{return sessionStorage;}catch{return null;}}}={}){
   this.clientId=clientId;this.native=native;this.fetcher=fetcher;this.google=google;this.session=session;this.token=null;this.account=null;
  }
  sessionStore(){try{return typeof this.session==='function'?this.session():this.session;}catch{return null;}}
