@@ -62,7 +62,7 @@ export async function connectBleMidi(onMessage, options = {}) {
   if (!bluetooth?.requestDevice) throw new Error("Web Bluetooth no disponible en este navegador");
   if (typeof onMessage !== "function") throw new TypeError("onMessage debe ser una función");
   const device = await bluetooth.requestDevice({
-    filters: [{services: [BLE_MIDI_SERVICE]}],
+    filters: [{name: "FOOTCTRLPLUS"}],
     optionalServices: [BLE_MIDI_SERVICE]
   });
   const server = await device.gatt.connect();
