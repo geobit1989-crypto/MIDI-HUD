@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIDI HUD · Diagnóstico BLE Android</title>
+<style>body{font:16px system-ui;background:#101820;color:#fff;max-width:720px;margin:24px auto;padding:16px}button{padding:12px 18px;margin-right:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#202c36;padding:12px;min-height:180px}</style>
+</head><body>
+<h1>Diagnóstico BLE MIDI · Android</h1>
+<p>Prueba aislada. No modifica LIVE, Editor, presets ni configuración del Chocolate Plus.</p>
+<button id="connect">Conectar FOOTCTRLPLUS</button><button id="disconnect" disabled>Desconectar</button>
+<p id="status" role="status">Sin conexión</p><pre id="events" aria-live="polite">Sin mensajes recibidos.</pre>
+<script type="module">
+import {connectBleMidi} from "../core/midi-ble-android.mjs";
+const status=document.querySelector("#status"),events=document.querySelector("#events");
+const connect=document.querySelector("#connect"),disconnect=document.querySelector("#disconnect");
+let session=null,count=0;
+function setStatus(message){status.textContent=message;}
+connect.onclick=async()=>{
+ connect.disabled=true;setStatus("Solicitando conexión BLE…");
+ try{
+  session=await connectBleMidi(message=>{
+   if(!count++)events.textContent="";
+   events.textContent+=JSON.stringify(message)+"\n";
+  },{onDisconnected:()=>{setStatus("BLE desconectado");disconnect.disabled=true;connect.disabled=false;}});
+  setStatus("Conectado a "+session.name+"; esperando MIDI");
+  disconnect.disabled=false;
+ }catch(error){setStatus("Error: "+(error?.message||String(error)));connect.disabled=false;}
+};
+disconnect.onclick=()=>{
+ session?.disconnect();session=null;
+ disconnect.disabled=true;connect.disabled=false;setStatus("Desconectado");
+};
+</script></body></html>
