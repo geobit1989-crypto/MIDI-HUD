@@ -1,10 +1,10 @@
 PRODUCT_BUNDLE_IDENTIFIER = io.midihud.app.iosqa
 MARKETING_VERSION = 0.2.0
-CURRENT_PROJECT_VERSION = 2
+CURRENT_PROJECT_VERSION = 3
 IPHONEOS_DEPLOYMENT_TARGET = 16.0
 SWIFT_VERSION = 5.0
 TARGETED_DEVICE_FAMILY = 1,2
-// Identificadores públicos del cliente OAuth iOS, del mismo proyecto que la web.
+// Identificadores públicos del cliente OAuth iOS del proyecto Google Cloud de pruebas.
 // Para configurar una instalación, crear Local.xcconfig con estos valores.
 GOOGLE_IOS_CLIENT_ID =
 GOOGLE_REVERSED_CLIENT_ID = io.midihud.unconfigured

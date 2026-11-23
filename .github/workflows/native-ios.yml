@@ -19,7 +19,8 @@ jobs:
     needs: web
     runs-on: macos-latest
     env:
-      HUD_GOOGLE_IOS_CLIENT_ID: ${{ vars.HUD_GOOGLE_IOS_QA_CLIENT_ID }}
+      HUD_IOS_QA: ${{ github.ref == 'refs/heads/test/ios-midi-hud-20261123' }}
+      HUD_GOOGLE_IOS_CLIENT_ID: ${{ github.ref == 'refs/heads/test/ios-midi-hud-20261123' && vars.HUD_GOOGLE_IOS_QA_CLIENT_ID || '' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +33,8 @@ jobs:
 
           client = os.environ.get("HUD_GOOGLE_IOS_CLIENT_ID", "").strip()
           if not client:
+              if os.environ["HUD_IOS_QA"] == "true":
+                  raise SystemExit("Set the GitHub Actions variable HUD_GOOGLE_IOS_QA_CLIENT_ID to the dedicated iOS OAuth client ID for io.midihud.app.iosqa.")
               print("Google OAuth iOS is not configured: building an offline-capable IPA.")
           else:
               suffix = ".apps.googleusercontent.com"
@@ -72,16 +75,21 @@ jobs:
           ditto build/ios-device/Build/Products/Release-iphoneos/MIDIHUD.app build/ios-unsigned-ipa/Payload/MIDIHUD.app
           (cd build/ios-unsigned-ipa && zip -qry ../MIDIHUD-iOS-unsigned.ipa Payload)
           unzip -t build/MIDIHUD-iOS-unsigned.ipa
-      - name: Verify embedded iOS OAuth configuration
+      - name: Verify the unsigned IPA and embedded iOS OAuth configuration
         run: |
           python3 - <<'PY'
           import os
           import plistlib
-          from pathlib import Path
+          from zipfile import ZipFile
 
-          plist_path = Path("build/ios-device/Build/Products/Release-iphoneos/MIDIHUD.app/Info.plist")
-          with plist_path.open("rb") as stream:
-              info = plistlib.load(stream)
+          app = "Payload/MIDIHUD.app/"
+          with ZipFile("build/MIDIHUD-iOS-unsigned.ipa") as ipa:
+              info = plistlib.loads(ipa.read(app + "Info.plist"))
+              executable = ipa.getinfo(app + "MIDIHUD")
+              if info.get("CFBundleExecutable") != "MIDIHUD" or not executable.file_size:
+                  raise SystemExit("The IPA is missing its application executable.")
+              if any("/_CodeSignature/" in name or name.endswith("/embedded.mobileprovision") for name in ipa.namelist()):
+                  raise SystemExit("The IPA contains signing resources or a provisioning profile.")
           client = os.environ.get("HUD_GOOGLE_IOS_CLIENT_ID", "").strip()
           embedded = info.get("GIDClientID", "")
           if info.get("CFBundleIdentifier") != "io.midihud.app.iosqa":
@@ -92,17 +100,23 @@ jobs:
               if embedded != client or expected_scheme not in schemes:
                   raise SystemExit("OAuth iOS configuration was not embedded correctly.")
               print("Verified embedded Google OAuth iOS configuration.")
-          elif embedded:
+          elif os.environ["HUD_IOS_QA"] == "true" or embedded:
               raise SystemExit("Unexpected Google OAuth identifier in unconfigured IPA.")
           else:
               print("Verified offline-only IPA with no Google OAuth credentials.")
           PY
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: midi-hud-ios-build-and-tests
           path: |
             build/MIDIHUD-iOS-unsigned.zip
             build/MIDIHUD-iOS-unsigned.ipa
             build/iOS-Tests.xcresult
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: midi-hud-ios-test-diagnostics
+          path: build/iOS-Tests.xcresult
+          if-no-files-found: ignore
           retention-days: 14

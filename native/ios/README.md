@@ -16,10 +16,10 @@ Pruebas web: `node --test tests/*.test.mjs`, `node --test worker/tests/*.test.mj
 
 Esta integración no reutiliza la conexión de Google Drive de ChatGPT ni contiene credenciales de otro servicio. Necesita identificadores OAuth propios de MIDI HUD. Los identificadores de cliente son públicos; no se introduce ningún secreto de cliente en la web ni en la app.
 
-1. En un proyecto de Google Cloud, habilitar Google Drive API y configurar Google Auth Platform. Si está en modo de prueba, añadir la cuenta de Google que se usará como usuario de prueba.
-2. Crear un cliente OAuth de tipo **Aplicación web**. Añadir `https://geobit1989-crypto.github.io` como origen JavaScript autorizado. Colocar su identificador en `beta-v3.4/config/cloud-sync.json`, campo `googleWebClientId`.
-3. En Google Cloud, crear un cliente OAuth **iOS** para el identificador de paquete efectivo de la edición de pruebas (por defecto `io.midihud.app.iosqa`). La acción de GitHub lee `HUD_GOOGLE_IOS_QA_CLIENT_ID` si está configurado; de otro modo el IPA funciona sin Drive. Para sincronizar entre dos instalaciones de prueba, usar la misma cuenta de ensayo y el mismo proyecto OAuth.
-4. Crear `Config/Local.xcconfig` junto a `App.xcconfig`, con los valores:
+1. En un proyecto de Google Cloud dedicado a iOS de pruebas, habilitar Google Drive API y configurar Google Auth Platform. En modo de prueba, añadir la cuenta de ensayo a la lista de usuarios autorizados.
+2. Crear un cliente OAuth de tipo **iOS** con el bundle ID `io.midihud.app.iosqa`. Conservar ese identificador al firmar en Sideloadly. Para sincronizar entre dos instalaciones de prueba, usar la misma cuenta de ensayo y el mismo cliente iOS.
+3. Guardar el ID público del cliente en **Settings → Secrets and variables → Actions → Variables** del repositorio como `HUD_GOOGLE_IOS_QA_CLIENT_ID`. Ejecutar **MIDI HUD iOS and synchronization** en `test/ios-midi-hud-20261123`. El flujo exige la variable en esa rama y publica el IPA solo después de verificar el bundle ID, el cliente OAuth y el esquema de retorno dentro del archivo.
+4. Para compilaciones locales con Xcode, crear `Config/Local.xcconfig` junto a `App.xcconfig`, con los valores:
 
    ```xcconfig
    GOOGLE_IOS_CLIENT_ID = IDENTIFICADOR_IOS.apps.googleusercontent.com
@@ -27,13 +27,11 @@ Esta integración no reutiliza la conexión de Google Drive de ChatGPT ni contie
    DEVELOPMENT_TEAM = EQUIPO_APPLE
    ```
 
-   Si se cambia el paquete, añadir también `PRODUCT_BUNDLE_IDENTIFIER = paquete.elegido` y usar exactamente ese paquete en el cliente OAuth iOS. El cliente web y el cliente iOS son distintos y deben pertenecer al mismo proyecto.
-
-5. Para comprobar Drive, compilar e instalar en dos dispositivos de prueba. Tras guardar una copia JSON del repertorio, importar una copia en el primer Editor mediante el selector de archivos y pulsar **Guardar global**. En **Sincronización → Conectar con Google**, elegir la misma cuenta de ensayo en ambos. Comprobar que en el segundo dispositivo aparecen las canciones y variantes esperadas y abrir LIVE para comprobar el repertorio activo. El maestro de Google Sheets se consulta por separado. La app carga bibliotecas JSON y su historial privado de Drive.
+5. Para comprobar Drive, instalar el IPA en un iPhone de pruebas y conectar la cuenta de ensayo desde **Sincronización → Conectar con Google**. Guardar un cambio en una biblioteca de ensayo y verificar que Drive registra la sincronización. Cerrar y volver a abrir la app para comprobar la restauración de sesión. Con un segundo dispositivo de prueba, conectar la misma cuenta y comprobar que se recupera el cambio.
 
 El permiso de Drive es únicamente `drive.appdata`, para los datos privados de MIDI HUD. La web utiliza Google Identity Services y guarda el token solo en memoria; al caducar solicita reconectar. iOS utiliza el SDK oficial y su almacenamiento seguro de sesión. La autorización se abre mediante el flujo del sistema, fuera del WKWebView del editor. Los tokens no se entregan a JavaScript en iOS.
 
-Hasta completar estos identificadores, la app funciona localmente y con MIDI; la interfaz indica que la conexión de Drive necesita configurarse. No simula una cuenta conectada ni muestra que esté sincronizada.
+Una compilación local sin estos identificadores funciona en modo local y con MIDI. La interfaz indica que la conexión de Drive necesita configurarse.
 
 Documentación oficial: [Google Sign-In iOS](https://developers.google.com/identity/sign-in/ios/start-integrating), [datos privados de Drive](https://developers.google.com/workspace/drive/api/guides/appdata), [Google Identity Services web](https://developers.google.com/identity/oauth2/web/guides/use-token-model).
 

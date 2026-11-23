@@ -21,8 +21,15 @@ final class GoogleDriveService {
     }()
     let configured: Bool
     init() {
-        let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String ?? ""
-        configured = clientID.range(of: "^[a-zA-Z0-9_-]+\\.apps\\.googleusercontent\\.com$", options: .regularExpression) != nil
+        let bundle = Bundle.main
+        let clientID = bundle.object(forInfoDictionaryKey: "GIDClientID") as? String ?? ""
+        let clientSuffix = ".apps.googleusercontent.com"
+        let callbackScheme = "com.googleusercontent.apps." + String(clientID.dropLast(clientSuffix.count))
+        let urlTypes = bundle.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? []
+        let schemes = urlTypes.flatMap { $0["CFBundleURLSchemes"] as? [String] ?? [] }
+        configured = bundle.bundleIdentifier == "io.midihud.app.iosqa"
+            && clientID.range(of: #"^[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com\z"#, options: .regularExpression) != nil
+            && schemes.contains(callbackScheme)
         if configured { GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID) }
     }
     private func problem(_ message: String) -> Error { NSError(domain: "MIDI HUD Drive", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
