@@ -13,7 +13,7 @@ function setup(existing){
   webkit:{messageHandlers:{hud:{postMessage:async body=>{calls.push(body);return {ports:[{id:'123',name:'Chocolate Plus'}],selected:''};}}}},
   window:{dispatchEvent:event=>events.push(event.type)},console});
  vm.runInContext(readFileSync(new URL('../core/native-bridge.js',import.meta.url),'utf8'),context);
- const adapter=readFileSync(new URL('../core/midi-browser.mjs',import.meta.url),'utf8').replace(/^import .*;\n/m,'').replace('export async function','async function');vm.runInContext(adapter,context);
+ const adapter=readFileSync(new URL('../core/midi-browser.mjs',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'').replace('export async function','async function');vm.runInContext(adapter,context);
  return {context,events,calls,listeners};
 }
 test('el puente Core MIDI alimenta el adaptador existente sin modificarlo',async()=>{
@@ -36,4 +36,13 @@ test('el puente no reemplaza una implementación Web MIDI ya disponible',()=>{
 test('el puente rechaza SysEx y solo se instala dentro de la app',async()=>{
  const t=setup();await assert.rejects(vm.runInContext('navigator.requestMIDIAccess({sysex:true})',t.context),{name:'NotSupportedError'});
  const context=vm.createContext({navigator:{}});vm.runInContext(readFileSync(new URL('../core/native-bridge.js',import.meta.url),'utf8'),context);assert.equal(context.navigator.requestMIDIAccess,undefined);assert.equal(context.MidiHudNative,undefined);
+});
+test('enumerar MIDI y recibir Clock no cuentan como pulsaciones CC o PC',async()=>{
+ const {context,events}=setup();
+ await vm.runInContext('navigator.requestMIDIAccess()',context);
+ vm.runInContext("MidiHudNative.receive({type:'midi.message',portId:'123',data:[0xF8]}); MidiHudNative.receive({type:'midi.message',portId:'other',data:[0xB1,80,2]})",context);
+ assert.equal(vm.runInContext('MidiHudNative.lastReceived',context),null);
+ vm.runInContext("MidiHudNative.receive({type:'midi.message',portId:'123',data:[0xB1,80,2]}); MidiHudNative.receive({type:'midi.message',portId:'123',data:[0xC1,4]})",context);
+ assert.equal(events.filter(type=>type==='hud-native-midi-received').length,2);
+ assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(MidiHudNative.lastReceived)',context)),{count:2,source:'Chocolate Plus',type:'PC',channel:2,number:4});
 });

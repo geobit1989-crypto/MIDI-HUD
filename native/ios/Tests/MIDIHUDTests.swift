@@ -47,6 +47,14 @@ final class MIDIHUDTests: XCTestCase {
         let title = try await web.evaluateJavaScript("window.MIDIHUD_LIVE.getEngine().getViewModel().song.title") as? String
         XCTAssertEqual(title, "Prueba iOS sin red")
         XCTAssertEqual(web.url?.scheme, "hud")
+        XCTAssertEqual(web.url?.host, "ios-test.localhost")
+        let isolated = try await web.callAsyncJavaScript("""
+            const {appStorage} = await import('/core/environment.mjs');
+            const {COMMIT_KIND} = await import('/core/drive-sync.mjs');
+            return COMMIT_KIND === 'midi-hud-ios-test-sync-v1' &&
+                !!appStorage.getItem('hudLibraryV34') && localStorage.getItem('hudLibraryV34') === null;
+            """, arguments: [:], in: nil, contentWorld: .page) as? Bool
+        XCTAssertEqual(isolated, true)
         _ = window // Mantener visible durante toda la prueba del WKWebView real.
     }
 }

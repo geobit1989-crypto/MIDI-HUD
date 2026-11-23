@@ -1,6 +1,6 @@
 # MIDI HUD para iPhone y iPad
 
-Aplicación iOS con Core MIDI de entrada, Editor y LIVE compartiendo almacenamiento local, recursos web incluidos y sincronización privada mediante Google Drive. El motor y la interfaz proceden directamente de `beta-v3.4`; no se mantiene otra implementación del editor. No hay salida MIDI ni telemetría de la GT.
+Aplicación iOS con Core MIDI de entrada, Editor y LIVE compartiendo almacenamiento local, recursos web incluidos y sincronización privada mediante Google Drive. El motor y la interfaz se empaquetan desde la raíz del repositorio. La edición **MIDI HUD Pruebas** usa el identificador `io.midihud.app.iosqa`, el origen `hud://ios-test.localhost`, las claves `midiHudTest:` y el historial Drive `midi-hud-ios-test-sync-v1`. El transporte MIDI es solo de entrada.
 
 ## Construir y probar
 
@@ -8,9 +8,9 @@ Abrir `MIDIHUD.xcodeproj` en un Mac con Xcode y seleccionar el esquema MIDIHUD. 
 
 Para reconstruir el proyecto después de añadir archivos Swift: `python3 native/ios/generate_project.py` desde la raíz del repositorio. El proyecto generado está incluido, de modo que este paso no es necesario para abrirlo.
 
-La acción de GitHub **MIDI HUD iOS and synchronization** compila y prueba en un simulador de iPhone y produce una aplicación para dispositivo **sin firma**. Ese ZIP sirve para comprobar la compilación: no es un instalador utilizable en un iPhone. Para instalar se necesita firmar con la cuenta de Apple correspondiente, desde Xcode o mediante una distribución configurada en App Store Connect/TestFlight.
+La acción de GitHub **MIDI HUD iOS and synchronization** compila y prueba en un simulador de iPhone y genera un IPA de dispositivo sin firma. Para instalar en el iPhone 14 Pro desde un Mac, abre `MIDIHUD.xcodeproj`, inicia sesión con tu cuenta Apple en Xcode y selecciona tu equipo con firma automática en **Signing & Capabilities**. Conecta el iPhone, acepta la confianza, habilita **Modo de desarrollador** en Privacidad y seguridad si se solicita, elige el iPhone como destino de `MIDIHUD` y pulsa **Run**. Consulta la guía de [Apple para ejecutar en un dispositivo físico](https://developer.apple.com/documentation/Xcode/running-your-app-on-simulated-or-physical-devices). Desde Windows, descarga el artefacto `midi-hud-ios-build-and-tests` de la ejecución de esta rama y usa su IPA en el paso de firma de la [guía Windows](../../windows/README.md). Selecciona un identificador exclusivo para pruebas y usa tu cuenta Apple localmente.
 
-Pruebas web: `node --test beta-v3.4/tests/*.test.mjs` y `node beta-v3.4/tests/check-site.mjs`.
+Pruebas web: `node --test tests/*.test.mjs`, `node --test worker/tests/*.test.mjs` y `node scripts/check-site.mjs`.
 
 ## Activar Google Drive
 
@@ -18,7 +18,7 @@ Esta integración no reutiliza la conexión de Google Drive de ChatGPT ni contie
 
 1. En un proyecto de Google Cloud, habilitar Google Drive API y configurar Google Auth Platform. Si está en modo de prueba, añadir la cuenta de Google que se usará como usuario de prueba.
 2. Crear un cliente OAuth de tipo **Aplicación web**. Añadir `https://geobit1989-crypto.github.io` como origen JavaScript autorizado. Colocar su identificador en `beta-v3.4/config/cloud-sync.json`, campo `googleWebClientId`.
-3. En el **mismo proyecto Google Cloud**, crear un cliente OAuth **iOS**, con el identificador de paquete elegido para la app (por defecto `io.midihud.app`).
+3. En Google Cloud, crear un cliente OAuth **iOS** para el identificador de paquete efectivo de la edición de pruebas (por defecto `io.midihud.app.iosqa`). La acción de GitHub lee `HUD_GOOGLE_IOS_QA_CLIENT_ID` si está configurado; de otro modo el IPA funciona sin Drive. Para sincronizar entre dos instalaciones de prueba, usar la misma cuenta de ensayo y el mismo proyecto OAuth.
 4. Crear `Config/Local.xcconfig` junto a `App.xcconfig`, con los valores:
 
    ```xcconfig
@@ -29,7 +29,7 @@ Esta integración no reutiliza la conexión de Google Drive de ChatGPT ni contie
 
    Si se cambia el paquete, añadir también `PRODUCT_BUNDLE_IDENTIFIER = paquete.elegido` y usar exactamente ese paquete en el cliente OAuth iOS. El cliente web y el cliente iOS son distintos y deben pertenecer al mismo proyecto.
 
-5. Compilar, instalar y pulsar **Sincronización → Conectar con Google** tanto en el editor web como en la app. Elegir la misma cuenta.
+5. Para comprobar Drive, compilar e instalar en dos dispositivos de prueba. Tras guardar una copia JSON del repertorio, importar una copia en el primer Editor mediante el selector de archivos y pulsar **Guardar global**. En **Sincronización → Conectar con Google**, elegir la misma cuenta de ensayo en ambos. Comprobar que en el segundo dispositivo aparecen las canciones y variantes esperadas y abrir LIVE para comprobar el repertorio activo. El maestro de Google Sheets se consulta por separado. La app carga bibliotecas JSON y su historial privado de Drive.
 
 El permiso de Drive es únicamente `drive.appdata`, para los datos privados de MIDI HUD. La web utiliza Google Identity Services y guarda el token solo en memoria; al caducar solicita reconectar. iOS utiliza el SDK oficial y su almacenamiento seguro de sesión. La autorización se abre mediante el flujo del sistema, fuera del WKWebView del editor. Los tokens no se entregan a JavaScript en iOS.
 
@@ -42,7 +42,7 @@ Documentación oficial: [Google Sign-In iOS](https://developers.google.com/ident
 - Al abrir la app aparece el Editor. Guardar una sección conserva la biblioteca local y programa la sincronización cuando la cuenta está conectada. Abrir LIVE utiliza la misma biblioteca y los mismos recursos, sin exportar archivos.
 - En LIVE, Configuración contiene **Sincronización**, el canal MIDI, la selección de entrada y **Conectar Bluetooth MIDI**. Autorizar entrada MIDI abre Core MIDI y enumera las fuentes conectadas. USB depende de que iOS reconozca el dispositivo y la conexión; el selector Bluetooth es el de Apple.
 - LIVE intenta actualizar antes de iniciar el motor, con una espera máxima de tres segundos. Si la conexión tarda, abre la biblioteca local. Una sesión ya iniciada conserva sus canciones y estados; **Actualizar repertorios** aplica los cambios por elección explícita y vuelve a abrir LIVE.
-- El MIDI de entrada tiene el mismo contrato CC + valor + canal que la web. Se respetan running status, mensajes fragmentados y bytes de reloj intercalados. Program Change y Note no se interpretan como acciones de HUD.
+- El motor compartido interpreta CC, Program Change asociado al banco CC0 y Clock F8. En **LIVE → Configuración** queda visible la última recepción CC/PC con entrada, canal y datos. Para probar el Chocolate Plus, abre el selector Bluetooth de Apple, conecta FootCtrlPlus, vuelve a LIVE, habilita MIDI y selecciona su entrada. Pulsa A, B, C y D con la programación habitual y anota si aumenta el contador y si LIVE cambia según el mapa SIG. Comprueba aparte si la GT responde simultáneamente. Los nombres de puertos y el selector de Apple describen la conexión. El contador mide mensajes CC/PC que llegaron al puente antes de aplicar el mapa y el filtro de canal de LIVE.
 - Al desconectar Google, las canciones locales permanecen. Los ajustes de canal y la entrada MIDI seleccionada pertenecen al dispositivo y no se sincronizan.
 
 ## Protección de cambios

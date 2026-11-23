@@ -21,11 +21,22 @@
   const event={target:access};for(const callback of accessListeners)callback(event);access.onstatechange?.(event);
   window.dispatchEvent(new Event('hud-native-ports'));
  }
+ let lastReceived=null, receivedCount=0;
  const receive=event=>{
   if(event.type==='midi.ports')portsChanged(event.ports,event.selected);
-  if(event.type==='midi.message'){if(Number.isFinite(event.timestampMs)&&hostOffset===null)hostOffset=performance.now()-event.timestampMs;inputs.get(event.portId)?.receive(event.data,Number.isFinite(event.timestampMs)?event.timestampMs+hostOffset:undefined);}
+  if(event.type==='midi.message'){
+   const port=inputs.get(event.portId);
+   if(!port)return;
+   if(Number.isFinite(event.timestampMs)&&hostOffset===null)hostOffset=performance.now()-event.timestampMs;
+   const type=event.data[0]&0xf0;
+   if(type===0xb0||type===0xc0){
+    lastReceived=Object.freeze({count:++receivedCount,source:port.name,type:type===0xb0?'CC':'PC',channel:(event.data[0]&15)+1,number:event.data[1],value:event.data[2]});
+    window.dispatchEvent(new Event('hud-native-midi-received'));
+   }
+   port.receive(event.data,Number.isFinite(event.timestampMs)?event.timestampMs+hostOffset:undefined);
+  }
  };
- Object.defineProperty(globalThis,'MidiHudNative',{value:Object.freeze({call,receive}),writable:false,configurable:false});
+ Object.defineProperty(globalThis,'MidiHudNative',{value:Object.freeze({call,receive,get lastReceived(){return lastReceived;}}),writable:false,configurable:false});
  if(typeof navigator.requestMIDIAccess!=='function'){
   Object.defineProperty(navigator,'requestMIDIAccess',{value:async options=>{
    if(options?.sysex)throw new DOMException('La aplicación solo recibe CC MIDI.','NotSupportedError');

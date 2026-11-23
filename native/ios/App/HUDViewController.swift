@@ -3,6 +3,7 @@ import WebKit
 import CoreAudioKit
 
 final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply {
+    private let webHost = "ios-test.localhost"
     private(set) var webView: WKWebView!
     private let midi = MIDIManager()
     private let drive = GoogleDriveService()
@@ -13,7 +14,7 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         guard let root = Bundle.main.url(forResource: "Web", withExtension: nil) else { fatalError("Faltan los recursos web de MIDI HUD") }
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
-        let scheme = BundleSchemeHandler(root: root); self.scheme = scheme
+        let scheme = BundleSchemeHandler(root: root, host: webHost); self.scheme = scheme
         configuration.setURLSchemeHandler(scheme, forURLScheme: "hud")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "hud")
         if let script = try? String(contentsOf: root.appendingPathComponent("core/native-bridge.js"), encoding: .utf8) {
@@ -26,7 +27,7 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         view.addSubview(webView)
         NSLayoutConstraint.activate([webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), webView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor), webView.leadingAnchor.constraint(equalTo: view.leadingAnchor), webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)])
         midi.onEvent = { [weak self] event in self?.send(event) }
-        webView.load(URLRequest(url: URL(string: "hud://localhost/editor/v3.html")!))
+        webView.load(URLRequest(url: URL(string: "hud://\(webHost)/editor/v3.html")!))
     }
     func becameActive() {
         guard webView != nil else { return }
@@ -41,13 +42,13 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { becameActive() }
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else { decisionHandler(.cancel); return }
-        if url.scheme == "hud" && url.host == "localhost" { decisionHandler(.allow); return }
+        if url.scheme == "hud" && url.host == webHost { decisionHandler(.allow); return }
         decisionHandler(.cancel)
         // El contenido externo nunca se ejecuta con acceso al puente nativo.
         if navigationAction.navigationType == .linkActivated && url.scheme == "https" { UIApplication.shared.open(url) }
     }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
-        guard message.frameInfo.isMainFrame, message.frameInfo.securityOrigin.protocol == "hud", message.frameInfo.securityOrigin.host == "localhost", let body = message.body as? [String: Any], let command = body["command"] as? String else { replyHandler(nil, "Origen no autorizado."); return }
+        guard message.frameInfo.isMainFrame, message.frameInfo.securityOrigin.protocol == "hud", message.frameInfo.securityOrigin.host == webHost, let body = message.body as? [String: Any], let command = body["command"] as? String else { replyHandler(nil, "Origen no autorizado."); return }
         let payload = body["payload"] as? [String: Any] ?? [:]
         Task { @MainActor in
             do {
