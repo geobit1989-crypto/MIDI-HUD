@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Publicar recuperación de MIDI HUD PRUEBAS</title>
+<style>
+  body { font: 1.1rem/1.5 system-ui; max-width: 44rem; margin: 3rem auto; padding: 1rem; }
+  label { display: block; margin: 1rem 0; }
+  button, input { font: inherit; }
+</style>
+<h1>Publicar recuperación de MIDI HUD PRUEBAS</h1>
+<p>Selecciona el respaldo verificado y la biblioteca de recuperación. Se añadirá una versión a PRUEBAS cuando el historial coincida con el respaldo.</p>
+<label>Respaldo de Drive <input id="backup" type="file" accept=".json"></label>
+<label>Biblioteca de recuperación <input id="candidate" type="file" accept=".json"></label>
+<button id="authorize" disabled>Autorizar en Google</button>
+<button id="publish" disabled>Publicar en PRUEBAS</button>
+<p id="status" role="status">Cargando Google…</p>
+<a id="receipt" hidden download="MIDI-HUD-PRUEBAS-publicacion-verificada.json">Descargar comprobante</a>
+<script type="module">
+  import { GoogleDriveAuth, loadGoogleIdentity } from './core/google-drive-auth.mjs';
+  import { COMMIT_KIND, DriveHistory, validateCommit } from './core/drive-sync.mjs';
+  import { canonical, checkedLibrary } from './core/sync-merge.mjs';
+
+  const backup = document.querySelector('#backup');
+  const candidate = document.querySelector('#candidate');
+  const authorize = document.querySelector('#authorize');
+  const publish = document.querySelector('#publish');
+  const status = document.querySelector('#status');
+  const receipt = document.querySelector('#receipt');
+  const kind = 'midi-hud-test-sync-v1';
+  const expectedBackup = '24f25dc28ce70583821e1c5765154d1f82fb9cd21d54fdf789c94578eddfa9e7';
+  const expectedCandidate = '41e12489a57d6b7ac01539aff338e805b8a406f8b5d6c8d5682f1b7b221d85c0';
+  let plan;
+  let writeStarted = false;
+
+  async function verifiedFile(input, expected) {
+    if (!input.files.length) throw Error('Selecciona ambos archivos JSON.');
+    const bytes = await input.files[0].arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const hex = [...new Uint8Array(digest)].map(n => n.toString(16).padStart(2, '0')).join('');
+    if (hex !== expected) throw Error('El archivo no coincide con la copia verificada: ' + input.files[0].name);
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+
+  async function compare(history, auth, archive) {
+    const {graph, heads} = await history.list();
+    if (graph.size !== archive.versions.length || canonical(heads) !== canonical(archive.heads)) {
+      throw Error('El historial cambió o pertenece a otra cuenta. Obtén un respaldo nuevo.');
+    }
+    for (const {fileId, commit} of archive.versions) {
+      const entry = graph.get(commit.id);
+      if (entry?.fileId !== fileId) throw Error('El archivo de Drive no coincide con el respaldo.');
+      const remote = await auth.request({
+        method:'GET', path:'/drive/v3/files/' + encodeURIComponent(fileId), query:{alt:'media'},
+      });
+      validateCommit(remote, entry);
+      if (canonical(remote) !== canonical(commit)) throw Error('Una versión de Drive difiere del respaldo.');
+    }
+    const current = await history.list();
+    if (canonical([...current.graph].sort()) !== canonical([...graph].sort())) throw Error('El historial acaba de cambiar.');
+    return heads;
+  }
+
+  try {
+    if (COMMIT_KIND !== kind) throw Error('Esta página solo puede usarse en PRUEBAS.');
+    const config = await fetch('./config/cloud-sync.json', {cache:'no-store'});
+    if (!config.ok) throw Error('No se pudo leer la configuración de PRUEBAS.');
+    const {googleWebClientId} = await config.json();
+    await loadGoogleIdentity();
+    authorize.disabled = false;
+    status.textContent = 'Selecciona los dos JSON y autoriza tu cuenta de PRUEBAS.';
+    authorize.onclick = () => {
+      authorize.disabled = true;
+      publish.disabled = true;
+      const auth = new GoogleDriveAuth({clientId:googleWebClientId, session:() => null});
+      auth.connect().then(async account => {
+        const [archive, library] = await Promise.all([
+          verifiedFile(backup, expectedBackup), verifiedFile(candidate, expectedCandidate),
+        ]);
+        if (archive.kind !== kind) throw Error('El respaldo no corresponde a PRUEBAS.');
+        checkedLibrary(library);
+        if (library.repertoires.length !== 3 || library.songs.length !== 140) throw Error('La biblioteca tiene un conteo inesperado.');
+        const history = new DriveHistory(request => auth.request(request));
+        const parents = await compare(history, auth, archive);
+        plan = {archive, library, auth, history, parents};
+        status.textContent = 'Cuenta autorizada: ' + account.email + '. Respaldo cotejado. Listos 3 repertorios y 140 canciones.';
+        publish.disabled = false;
+      }).catch(error => { status.textContent = error.message; })
+        .finally(() => { authorize.disabled = false; });
+    };
+    publish.onclick = async () => {
+      if (!plan || writeStarted) return;
+      publish.disabled = true;
+      authorize.disabled = true;
+      try {
+        status.textContent = 'Revisando el historial antes de guardar…';
+        const {archive, library, auth, history} = plan;
+        const parents = await compare(history, auth, archive);
+        const commit = {
+          format:kind, version:1, id:crypto.randomUUID(), parents,
+          deviceId:crypto.randomUUID(), createdAt:new Date().toISOString(), library,
+        };
+        writeStarted = true;
+        const result = await history.append(commit);
+        const entry = {id:commit.id, parents, fileId:result.id};
+        const readback = await history.read(entry);
+        if (canonical(readback.library) !== canonical(checkedLibrary(library))) throw Error('La biblioteca leída no coincide.');
+        const current = await history.list();
+        if (!current.graph.has(commit.id) || archive.versions.some(({commit: previous}) => !current.graph.has(previous.id))) {
+          throw Error('Drive aún no muestra el historial completo.');
+        }
+        const summary = {
+          kind, fileId:result.id, revisionId:commit.id, parents, heads:current.heads,
+          candidateSha256:expectedCandidate, songCount:readback.library.songs.length,
+          repertoires:readback.library.repertoires.map(r => ({name:r.name, songCount:r.songIds.length})),
+          worshipStates:readback.library.songs.find(s => s.id === 'quao-grande').stateIds,
+          retainedVersions:archive.versions.length,
+        };
+        receipt.href = URL.createObjectURL(new Blob([JSON.stringify(summary, null, 2)], {type:'application/json'}));
+        receipt.hidden = false;
+        status.textContent = current.heads.length === 1 && current.heads[0] === commit.id
+          ? 'Publicado y leído de nuevo en Drive: 3 repertorios, 140 canciones. Descarga el comprobante.'
+          : 'Versión guardada y releída. Drive detectó otra versión simultánea. Descarga el comprobante.';
+      } catch (error) {
+        status.textContent = error.message + (writeStarted ? ' La escritura pudo haberse iniciado. Descarga un respaldo nuevo antes de repetir.' : '');
+        if (!writeStarted) authorize.disabled = false;
+      }
+    };
+  } catch (error) {
+    status.textContent = error.message;
+  }
+</script>
+</html>
+
