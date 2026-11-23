@@ -681,7 +681,10 @@ function render(){
   initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
   library=engine.getLibrary();prepare();
-  void midiPort.start();
+  void midiPort.start().catch(error=>{
+   const status=dialog.querySelector('#hud-midi-status');
+   if(status)status.textContent='Error al iniciar Core MIDI: '+error.message;
+  });
   window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
   setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
   engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
