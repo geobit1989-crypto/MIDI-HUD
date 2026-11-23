@@ -4,7 +4,6 @@ export function installNativeMidiControls(host,native=globalThis.MidiHudNative){
  const group=document.createElement('div');group.className='hud-config-actions';
  const bluetooth=document.createElement('button');bluetooth.type='button';bluetooth.textContent='Conectar Bluetooth MIDI';
  const status=document.createElement('p');status.setAttribute('role','status');
- const reception=document.createElement('p');
  const select=document.createElement('select');select.setAttribute('aria-label','Entrada MIDI de la aplicación');
  const update=async()=>{
   try{
@@ -30,14 +29,7 @@ export function installNativeMidiControls(host,native=globalThis.MidiHudNative){
    status.textContent=active.length?'Core MIDI activo: '+active.map(port=>port.name).join(', '):'Entrada seleccionada, sin conexión Core MIDI.';
   }catch(error){status.textContent='Error Core MIDI: '+error.message;}
  };
- const showReception=()=>{
-  const message=native.lastReceived;
-  reception.textContent=message
-   ?'Última recepción · '+message.source+' · canal '+message.channel+' · '+message.type+' '+message.number+(message.value===undefined?'':' = '+message.value)+' · '+message.count+' CC/PC en esta vista'
-   :'Aún no se han recibido mensajes CC/PC en esta vista.';
- };
- group.append(bluetooth,select);host.append(group,status,reception);void update();showReception();
+ group.append(bluetooth,select);host.append(group,status);void update();
  window.addEventListener('hud-native-ports',update);
- window.addEventListener('hud-native-midi-received',showReception);
  window.addEventListener('hud-native-error',()=>{status.textContent=native.lastError||'Error desconocido de Core MIDI.';});
 }

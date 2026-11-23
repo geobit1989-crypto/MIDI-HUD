@@ -47,7 +47,7 @@ Documentación oficial: [Google Sign-In iOS](https://developers.google.com/ident
 
 La compilación iOS de pruebas inicia Core MIDI antes de seleccionar una entrada, reenumera los endpoints al cerrar el selector Bluetooth de Apple e informa del estado real del puerto y de los errores. Si LIVE encuentra una sola fuente, la selecciona automáticamente; si hay varias se utiliza selección manual. Un único endpoint con identificador nuevo permite recuperar la selección anterior.
 
-**Validación física pendiente:** en LIVE → Configuración conectar FootCtrlPlus desde el selector Apple y pulsar Listo. Comprobar «Core MIDI activo: FootCtrlPlus», pulsar A–D, verificar el contador CC/PC y el cambio de estados. Si el contador avanza pero los estados no, comprobar canal y mapa. No modificar la programación del Chocolate ni de la GT.
+**Validación física pendiente:** en LIVE → Configuración conectar FootCtrlPlus desde el selector Apple y pulsar Listo. Comprobar «Core MIDI activo: FootCtrlPlus» y pulsar A–D para verificar que LIVE cambia los estados. Configuración informa de la conexión y de los errores, sin mostrar mensajes CC/PC. Si la entrada aparece conectada pero los estados no cambian, revisar el canal y el mapa de la canción; el puente conserva diagnósticos internos únicamente para pruebas. No modificar la programación del Chocolate ni de la GT.
 
 ## Recuperación de pruebas anteriores
 
