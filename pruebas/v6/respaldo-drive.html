@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Respaldo de MIDI HUD PRUEBAS</title>
+<style>
+  body { font: 1.1rem/1.5 system-ui; max-width: 40rem; margin: 3rem auto; padding: 1rem; }
+  button, a { font: inherit; }
+</style>
+<h1>Respaldo de MIDI HUD PRUEBAS</h1>
+<p>Elige la cuenta de Google que usas en MIDI HUD PRUEBAS. Esta página lee el historial privado y prepara un archivo para descargar.</p>
+<button id="authorize" disabled>Autorizar en Google</button>
+<p id="status" role="status">Cargando Google…</p>
+<a id="download" hidden download="MIDI-HUD-Drive-PRUEBAS-respaldo.json">Descargar respaldo JSON</a>
+<script type="module">
+  import { GoogleDriveAuth, loadGoogleIdentity } from './core/google-drive-auth.mjs';
+  import { COMMIT_KIND, DriveHistory } from './core/drive-sync.mjs';
+
+  const button = document.querySelector('#authorize');
+  const status = document.querySelector('#status');
+  const download = document.querySelector('#download');
+  const expected = 'midi-hud-test-sync-v1';
+
+  async function backup(auth) {
+    if (COMMIT_KIND !== expected) throw Error('La página debe abrirse en PRUEBAS.');
+    const history = new DriveHistory(request => {
+      if (request.method !== 'GET') throw Error('Esta página solo permite leer.');
+      return auth.request(request);
+    });
+    const {graph, heads} = await history.list();
+    const versions = [];
+    for (const entry of graph.values()) {
+      status.textContent = 'Leyendo versión ' + (versions.length + 1) + ' de ' + graph.size + '…';
+      const commit = await auth.request({
+        method:'GET', path:'/drive/v3/files/' + encodeURIComponent(entry.fileId), query:{alt:'media'},
+      });
+      if (commit.id !== entry.id || commit.format !== expected ||
+          JSON.stringify([...commit.parents].sort()) !== JSON.stringify([...entry.parents].sort())) {
+        throw Error('El historial cambió durante la lectura. Vuelve a intentarlo.');
+      }
+      versions.push({fileId:entry.fileId, commit});
+    }
+    const checked = await history.list();
+    if (JSON.stringify([...checked.graph].sort()) !== JSON.stringify([...graph].sort())) {
+      throw Error('El historial cambió durante la lectura. Vuelve a intentarlo.');
+    }
+    const archive = JSON.stringify({kind:expected, exportedAt:new Date().toISOString(), heads, versions}, null, 2);
+    if (download.href) URL.revokeObjectURL(download.href);
+    download.href = URL.createObjectURL(new Blob([archive], {type:'application/json'}));
+    download.hidden = false;
+    status.textContent = versions.length
+      ? 'Respaldo listo. Versiones leídas: ' + versions.length + '.'
+      : 'Google devolvió un historial de PRUEBAS vacío para esta cuenta. Descarga el resultado para registrarlo.';
+  }
+
+  try {
+    const config = await fetch('./config/cloud-sync.json', {cache:'no-store'});
+    if (!config.ok) throw Error('No se pudo leer la configuración de PRUEBAS.');
+    const {googleWebClientId} = await config.json();
+    await loadGoogleIdentity();
+    button.disabled = false;
+    status.textContent = 'Selecciona tu cuenta de PRUEBAS.';
+    button.onclick = () => {
+      button.disabled = true;
+      download.hidden = true;
+      const auth = new GoogleDriveAuth({clientId:googleWebClientId, session:() => null});
+      auth.connect()
+        .then(() => backup(auth))
+        .catch(error => { status.textContent = error.message; })
+        .finally(() => { button.disabled = false; });
+    };
+  } catch (error) {
+    status.textContent = error.message;
+  }
+</script>
+</html>
+
