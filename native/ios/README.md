@@ -43,6 +43,12 @@ Documentación oficial: [Google Sign-In iOS](https://developers.google.com/ident
 - El motor compartido interpreta CC, Program Change asociado al banco CC0 y Clock F8. En **LIVE → Configuración** queda visible la última recepción CC/PC con entrada, canal y datos. Para probar el Chocolate Plus, abre el selector Bluetooth de Apple, conecta FootCtrlPlus, vuelve a LIVE, habilita MIDI y selecciona su entrada. Pulsa A, B, C y D con la programación habitual y anota si aumenta el contador y si LIVE cambia según el mapa SIG. Comprueba aparte si la GT responde simultáneamente. Los nombres de puertos y el selector de Apple describen la conexión. El contador mide mensajes CC/PC que llegaron al puente antes de aplicar el mapa y el filtro de canal de LIVE.
 - Al desconectar Google, las canciones locales permanecen. Los ajustes de canal y la entrada MIDI seleccionada pertenecen al dispositivo y no se sincronizan.
 
+## Corrección de entrada MIDI BLE (23/11/2026)
+
+La compilación iOS de pruebas inicia Core MIDI antes de seleccionar una entrada, reenumera los endpoints al cerrar el selector Bluetooth de Apple e informa del estado real del puerto y de los errores. Si LIVE encuentra una sola fuente, la selecciona automáticamente; si hay varias se utiliza selección manual. Un único endpoint con identificador nuevo permite recuperar la selección anterior.
+
+**Validación física pendiente:** en LIVE → Configuración conectar FootCtrlPlus desde el selector Apple y pulsar Listo. Comprobar «Core MIDI activo: FootCtrlPlus», pulsar A–D, verificar el contador CC/PC y el cambio de estados. Si el contador avanza pero los estados no, comprobar canal y mapa. No modificar la programación del Chocolate ni de la GT.
+
 ## Recuperación de pruebas anteriores
 
 Antes de conectar la compilación nueva, exportar el JSON guardado de cada instalación de pruebas y de cualquier instalación estable que contenga cambios que se quieran recuperar. Conservar las exportaciones por separado y verificar que se abren. El historial iOS anterior `midi-hud-ios-test-sync-v1` permanece en su proyecto y se recupera mediante la instalación anterior o sus exportaciones. El historial estable `midi-hud-sync-v1` se mantiene separado. Comparar las exportaciones por ID y revisar las ediciones divergentes antes de importar una copia consolidada a pruebas. El repertorio maestro de Google Sheets es una fuente documental independiente.

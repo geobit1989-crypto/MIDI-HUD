@@ -33,6 +33,10 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         guard webView != nil else { return }
         UIApplication.shared.isIdleTimerDisabled = webView.url?.path.hasSuffix("v03.html") == true
         webView.evaluateJavaScript("window.dispatchEvent(new Event('hud-foreground'))", completionHandler: nil)
+        if webView.url?.path.hasSuffix("/v03.html") == true {
+            do { _ = try midi.start() }
+            catch { send(["type": "midi.error", "message": error.localizedDescription]) }
+        }
     }
     private func send(_ event: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: event), let json = String(data: data, encoding: .utf8) else { return }
@@ -58,6 +62,7 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
                 case "midi.list": result = midi.listing()
                 case "midi.select": result = try midi.select(payload["id"] as? String ?? "")
                 case "midi.bluetooth":
+                    _ = try midi.start()
                     let controller = CABTMIDICentralViewController()
                     let navigation = UINavigationController(rootViewController: controller)
                     controller.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(closeBluetooth))
@@ -82,7 +87,13 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             } catch { replyHandler(nil, error.localizedDescription) }
         }
     }
-    @objc private func closeBluetooth() { dismiss(animated: true) }
+    @objc private func closeBluetooth() {
+        dismiss(animated: true) { [weak self] in
+            guard let self = self else { return }
+            do { _ = try self.midi.start() }
+            catch { self.send(["type": "midi.error", "message": error.localizedDescription]) }
+        }
+    }
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
         let alert = UIAlertController(title: "MIDI HUD", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Aceptar", style: .default) { _ in completionHandler() }); present(alert, animated: true)

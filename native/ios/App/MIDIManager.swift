@@ -16,7 +16,7 @@ final class MIDIManager {
     func start() throws -> [String: Any] {
         if client == 0 {
             try check(MIDIClientCreateWithBlock("MIDI HUD" as CFString, &client) { [weak self] _ in
-                DispatchQueue.main.async { self?.refresh() }
+                DispatchQueue.main.async { _ = try? self?.refresh() }
             })
         }
         if input == 0 {
@@ -37,8 +37,7 @@ final class MIDIManager {
                 }
             })
         }
-        refresh()
-        return listing()
+        return try refresh()
     }
     private func identifier(_ endpoint: MIDIEndpointRef) -> String {
         var value: Int32 = 0
@@ -54,23 +53,55 @@ final class MIDIManager {
         (0..<MIDIGetNumberOfSources()).map { MIDIGetSource($0) }.filter { $0 != 0 }
     }
     func listing() -> [String: Any] {
-        ["ports": sources().map { ["id": identifier($0), "name": name($0)] }, "selected": selected]
+        let ports: [[String: Any]] = sources().map { endpoint in
+            ["id": identifier(endpoint), "name": name(endpoint), "connected": connected.contains(endpoint)]
+        }
+        return ["ports": ports, "selected": selected, "connectedCount": connected.count]
     }
     func select(_ id: String) throws -> [String: Any] {
-        if !id.isEmpty && !sources().contains(where: { identifier($0) == id }) { throw NSError(domain: "MIDI HUD", code: 1, userInfo: [NSLocalizedDescriptionKey: "La entrada MIDI ya no está conectada."]) }
+        // Nunca seleccionar una fuente sin inicializar primero el puerto Core MIDI.
+        _ = try start()
+        if !id.isEmpty && !sources().contains(where: { identifier($0) == id }) {
+            throw NSError(domain: "MIDI HUD", code: 1, userInfo: [NSLocalizedDescriptionKey: "La entrada MIDI ya no está disponible."])
+        }
+        let previous = selected
         UserDefaults.standard.set(id, forKey: "selectedMIDIInput")
-        refresh(); return listing()
+        do { return try refresh() }
+        catch {
+            UserDefaults.standard.set(previous, forKey: "selectedMIDIInput")
+            _ = try? refresh()
+            throw error
+        }
     }
-    private func refresh() {
-        guard input != 0 else { return }
-        let available = Set(sources().filter { selected.isEmpty || identifier($0) == selected })
+    @discardableResult
+    func refresh() throws -> [String: Any] {
+        guard input != 0 else { return listing() }
+        let found = sources()
+        // Un nuevo emparejamiento BLE puede asignar otro identificador.
+        if !selected.isEmpty && found.count == 1 && !found.contains(where: { identifier($0) == selected }) {
+            UserDefaults.standard.set("", forKey: "selectedMIDIInput")
+        }
+        let available = Set(found.filter { selected.isEmpty || identifier($0) == selected })
         for source in connected.subtracting(available) {
-            MIDIPortDisconnectSource(input, source); connected.remove(source); parsers.removeValue(forKey: source)
+            MIDIPortDisconnectSource(input, source)
+            connected.remove(source)
+            parsers.removeValue(forKey: source)
         }
+        var failures: [String] = []
         for source in available.subtracting(connected) {
-            if MIDIPortConnectSource(input, source, UnsafeMutableRawPointer(bitPattern: Int(source))) == noErr { connected.insert(source) }
+            let code = MIDIPortConnectSource(input, source, UnsafeMutableRawPointer(bitPattern: Int(source)))
+            if code == noErr { connected.insert(source) }
+            else { failures.append("\(name(source)): Core MIDI \(code)") }
         }
-        var event = listing(); event["type"] = "midi.ports"; onEvent?(event)
+        var event = listing()
+        event["type"] = "midi.ports"
+        onEvent?(event)
+        if !failures.isEmpty {
+            let message = "No se pudo abrir la entrada MIDI: " + failures.joined(separator: "; ")
+            onEvent?(["type": "midi.error", "message": message])
+            throw NSError(domain: "MIDI HUD", code: 2, userInfo: [NSLocalizedDescriptionKey: message])
+        }
+        return listing()
     }
     private func receive(_ bytes: [UInt8], from source: MIDIEndpointRef, timestamp: Double) {
         guard connected.contains(source) else { return }
