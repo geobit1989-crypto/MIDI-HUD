@@ -210,3 +210,41 @@ test('sesión caducada o de otro cliente OAuth nunca se reutiliza',async()=>{
  assert.equal(await changed.restore(),null);
  assert.equal(cache.size,0);
 });
+
+test('Windows, Android e iPhone comparten el historial de pruebas y conservan tres repertorios', async () => {
+ const platforms = [
+  {protocol:'https:',hostname:'geobit1989-crypto.github.io',pathname:'/MIDI-HUD/pruebas/v6/'},
+  {protocol:'https:',hostname:'geobit1989-crypto.github.io',pathname:'/MIDI-HUD/pruebas/v6/editor/'},
+  {protocol:'hud:',hostname:'ios-test.localhost',pathname:'/editor/v3.html'}
+ ];
+ for (const location of platforms) {
+  const {stdout} = await import('node:child_process').then(({execFileSync}) => ({
+   stdout:execFileSync(process.execPath,['--input-type=module','-e',
+    'globalThis.location='+JSON.stringify(location)+'; console.log((await import("./core/drive-sync.mjs")).COMMIT_KIND);'],
+    {cwd:new URL('../',import.meta.url),encoding:'utf8'})
+  }));
+  assert.equal(stdout.trim(),'midi-hud-test-sync-v1');
+ }
+ assert.equal(COMMIT_KIND,'midi-hud-sync-v1');
+ const original = fixture();
+ original.repertoires = ['Worship Laboratorio','Prueba 1','Repertorio Completo'].map((name,index) => ({
+  ...original.repertoires[0],name,id:'repertoire-'+(index+1),songIds:[original.songs[index % original.songs.length].id]
+ }));
+ const cloud = new MemoryHistory();
+ const windows = device(cloud,original), android = device(cloud), iphone = device(cloud);
+ await windows.sync();
+ await android.sync();
+ await iphone.sync();
+ const androidEdit = change(android,db=>{db.songs[0].title='Worship editado en Android';});
+ const iphoneEdit = change(iphone,db=>{db.songs[1].title='Segunda canción editada en iPhone';});
+ await android.sync();
+ await iphone.sync();
+ await windows.sync();
+ await android.sync();
+ assert.deepEqual(windows.get(),iphone.get());
+ assert.deepEqual(windows.get(),android.get());
+ assert.deepEqual(windows.get().repertoires,original.repertoires);
+ assert.deepEqual(windows.get().songs.map(song=>song.id),original.songs.map(song=>song.id));
+ assert.equal(windows.get().songs[0].title,androidEdit.songs[0].title);
+ assert.equal(windows.get().songs[1].title,iphoneEdit.songs[1].title);
+});

@@ -27,6 +27,7 @@ jobs:
       - name: Configure Google OAuth for the iOS IPA
         run: |
           python3 - <<'PY'
+          import json
           import os
           import re
           from pathlib import Path
@@ -40,6 +41,10 @@ jobs:
               suffix = ".apps.googleusercontent.com"
               if not re.fullmatch(r"[A-Za-z0-9_-]+\.apps\.googleusercontent\.com", client):
                   raise SystemExit("HUD_GOOGLE_IOS_CLIENT_ID has an invalid format.")
+              if os.environ["HUD_IOS_QA"] == "true":
+                  web_client = json.loads(Path("config/cloud-sync.json").read_text(encoding="utf-8"))["googleWebClientId"]
+                  if client.split("-", 1)[0] != web_client.split("-", 1)[0]:
+                      raise SystemExit("Set HUD_GOOGLE_IOS_QA_CLIENT_ID to an iOS OAuth client in the web test client's Google Cloud project.")
               reversed_client = "com.googleusercontent.apps." + client[:-len(suffix)]
               file = Path("native/ios/Config/Local.xcconfig")
               file.write_text("GOOGLE_IOS_CLIENT_ID = " + client + "\n" +

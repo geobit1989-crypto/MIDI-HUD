@@ -1,6 +1,6 @@
 # MIDI HUD para iPhone y iPad
 
-Aplicación iOS con Core MIDI de entrada, Editor y LIVE compartiendo almacenamiento local, recursos web incluidos y sincronización privada mediante Google Drive. El motor y la interfaz se empaquetan desde la raíz del repositorio. La edición **MIDI HUD Pruebas** usa el identificador `io.midihud.app.iosqa`, el origen `hud://ios-test.localhost`, las claves `midiHudTest:` y el historial Drive `midi-hud-ios-test-sync-v1`. El transporte MIDI es solo de entrada.
+Aplicación iOS con Core MIDI de entrada, Editor y LIVE compartiendo almacenamiento local, recursos web incluidos y sincronización privada mediante Google Drive. El motor y la interfaz se empaquetan desde la raíz del repositorio. La edición **MIDI HUD Pruebas** usa el identificador `io.midihud.app.iosqa`, el origen `hud://ios-test.localhost`, las claves `midiHudTest:` y el historial Drive de pruebas `midi-hud-test-sync-v1`, compartido con la web. El transporte MIDI es solo de entrada.
 
 ## Construir y probar
 
@@ -16,8 +16,8 @@ Pruebas web: `node --test tests/*.test.mjs`, `node --test worker/tests/*.test.mj
 
 Esta integración no reutiliza la conexión de Google Drive de ChatGPT ni contiene credenciales de otro servicio. Necesita identificadores OAuth propios de MIDI HUD. Los identificadores de cliente son públicos; no se introduce ningún secreto de cliente en la web ni en la app.
 
-1. En un proyecto de Google Cloud dedicado a iOS de pruebas, habilitar Google Drive API y configurar Google Auth Platform. En modo de prueba, añadir la cuenta de ensayo a la lista de usuarios autorizados.
-2. Crear un cliente OAuth de tipo **iOS** con el bundle ID `io.midihud.app.iosqa`. Conservar ese identificador al firmar en Sideloadly. Para sincronizar entre dos instalaciones de prueba, usar la misma cuenta de ensayo y el mismo cliente iOS.
+1. En el proyecto de Google Cloud del cliente web configurado en `config/cloud-sync.json`, comprobar que Google Drive API y Google Auth Platform están habilitados. En modo de prueba, añadir la cuenta de ensayo a la lista de usuarios autorizados.
+2. Crear un cliente OAuth de tipo **iOS** con el bundle ID `io.midihud.app.iosqa`. Conservar ese identificador al firmar en Sideloadly. Para sincronizar entre dos instalaciones de prueba, usar la misma cuenta de Google. Si la web utiliza el Worker, verificar que su cliente también pertenece a ese proyecto.
 3. Guardar el ID público del cliente en **Settings → Secrets and variables → Actions → Variables** del repositorio como `HUD_GOOGLE_IOS_QA_CLIENT_ID`. Ejecutar **MIDI HUD iOS and synchronization** en `test/ios-midi-hud-20261123`. El flujo exige la variable en esa rama y publica el IPA solo después de verificar el bundle ID, el cliente OAuth y el esquema de retorno dentro del archivo.
 4. Para compilaciones locales con Xcode, crear `Config/Local.xcconfig` junto a `App.xcconfig`, con los valores:
 
@@ -42,6 +42,10 @@ Documentación oficial: [Google Sign-In iOS](https://developers.google.com/ident
 - LIVE intenta actualizar antes de iniciar el motor, con una espera máxima de tres segundos. Si la conexión tarda, abre la biblioteca local. Una sesión ya iniciada conserva sus canciones y estados; **Actualizar repertorios** aplica los cambios por elección explícita y vuelve a abrir LIVE.
 - El motor compartido interpreta CC, Program Change asociado al banco CC0 y Clock F8. En **LIVE → Configuración** queda visible la última recepción CC/PC con entrada, canal y datos. Para probar el Chocolate Plus, abre el selector Bluetooth de Apple, conecta FootCtrlPlus, vuelve a LIVE, habilita MIDI y selecciona su entrada. Pulsa A, B, C y D con la programación habitual y anota si aumenta el contador y si LIVE cambia según el mapa SIG. Comprueba aparte si la GT responde simultáneamente. Los nombres de puertos y el selector de Apple describen la conexión. El contador mide mensajes CC/PC que llegaron al puente antes de aplicar el mapa y el filtro de canal de LIVE.
 - Al desconectar Google, las canciones locales permanecen. Los ajustes de canal y la entrada MIDI seleccionada pertenecen al dispositivo y no se sincronizan.
+
+## Recuperación de pruebas anteriores
+
+Antes de conectar la compilación nueva, exportar el JSON guardado de cada instalación de pruebas y de cualquier instalación estable que contenga cambios que se quieran recuperar. Conservar las exportaciones por separado y verificar que se abren. El historial iOS anterior `midi-hud-ios-test-sync-v1` permanece en su proyecto y se recupera mediante la instalación anterior o sus exportaciones. El historial estable `midi-hud-sync-v1` se mantiene separado. Comparar las exportaciones por ID y revisar las ediciones divergentes antes de importar una copia consolidada a pruebas. El repertorio maestro de Google Sheets es una fuente documental independiente.
 
 ## Protección de cambios
 
