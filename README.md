@@ -8,6 +8,16 @@ Editor: un Guardar global, borradores protegidos, cuatro secciones y catálogo c
 
 Verificación: `node --test tests/*.test.mjs`, `node --test worker/tests/*.test.mjs`, `node scripts/check-site.mjs`, `python3 scripts/sync-web-resources.py --check`. CI añade `tests/browser-integration.mjs` y `tests/release-browser.mjs`, además de compilación iOS. Hardware y Google real siguen pendientes.
 
+## LIVE UI-01 a UI-10 — Rama de pruebas del 24/11/2026
+
+`feature/live-ui-20261124` integra la aplicación v8 del 18/11 (`a435f8c`), la ruta Android BLE del 21/11 (`9be5a36`) y la rama iOS QA vigente (`7976779`, incluida la inicialización BLE nativa de `bc45c05` y el historial compartido de `888f47d`). La integración `d08894a` añade cinco archivos de Android a la base iOS sin conflictos. El receptor Android coincide con el publicado. La ruta Android con Bluetooth directo es `v03-ble-test.html`; Windows y el contenedor iOS conservan `v03.html`.
+
+- **UI-01, UI-04–07, UI-10.** LIVE ocupa la pantalla sin marco exterior. Los módulos comparten ejes de alineación y su tipografía se adapta al tamaño de cada casilla. El lead sheet conserva su algoritmo.
+- **UI-02–03.** El estado, los efectos y las expresiones usan el estado del motor. Las capas activas mantienen su color, las inactivas se atenúan, y el texto contrasta con su fondo efectivo. Las expresiones muestran porcentajes al recibir datos. Tap Tempo conserva un gris neutro y responde visualmente al pulsar; el BPM sigue procediendo del Clock existente. La consulta de módulos conserva su función visual.
+- **UI-08–09.** El botón junto al engranaje alterna Completo (lead sheet, encabezado, módulos), Estados (encabezado arriba) y Lead sheet (encabezado abajo). La preferencia `hudLiveViewMode` se guarda localmente mediante el aislamiento existente. El motor y la vista de datos siguen actualizándose mientras una sección está oculta.
+
+Regresiones locales en Windows: 264 pruebas de aplicación y 4 del Worker, validación de sintaxis y referencias, espejo web y empaquetado de recursos offline de iOS. Los recorridos con Playwright cubren navegación, persistencia, recepción simulada al ocultar módulos, cinco tamaños de pantalla y la entrada Android BLE. WebKit de escritorio sirve como comprobación visual complementaria. La aceptación física con iPhone, Android, Chocolate Plus, GT y Drive queda pendiente. La CI nativa de esta rama usa la identidad iOS QA: no instalar encima de la aplicación QA existente si se necesita mantener ambas instaladas. Las rutas públicas vigentes y sus builds se conservan.
+
 Las secciones siguientes se conservan como histórico; no sustituyen el estado vigente anterior.
 
 ## LIVE v3.2 — Lead sheet adaptable, controles +5 % y títulos delimitados (15/10/2026)

@@ -1,7 +1,7 @@
 name: MIDI HUD iOS and synchronization
 on:
   push:
-    branches: ['integration/**', 'test/ios-midi-hud-20261123']
+    branches: ['integration/**', 'test/ios-midi-hud-20261123', 'feature/live-ui-20261124']
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,8 +19,8 @@ jobs:
     needs: web
     runs-on: macos-latest
     env:
-      HUD_IOS_QA: ${{ github.ref == 'refs/heads/test/ios-midi-hud-20261123' }}
-      HUD_GOOGLE_IOS_CLIENT_ID: ${{ github.ref == 'refs/heads/test/ios-midi-hud-20261123' && vars.HUD_GOOGLE_IOS_QA_CLIENT_ID || '' }}
+      HUD_IOS_QA: ${{ github.ref == 'refs/heads/test/ios-midi-hud-20261123' || github.ref == 'refs/heads/feature/live-ui-20261124' }}
+      HUD_GOOGLE_IOS_CLIENT_ID: ${{ (github.ref == 'refs/heads/test/ios-midi-hud-20261123' || github.ref == 'refs/heads/feature/live-ui-20261124') && vars.HUD_GOOGLE_IOS_QA_CLIENT_ID || '' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4

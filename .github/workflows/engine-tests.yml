@@ -1,7 +1,7 @@
 name: MIDI HUD unified regression tests
 on:
   push:
-    branches: ['integration/**', 'test/ios-midi-hud-20261123']
+    branches: ['integration/**', 'test/ios-midi-hud-20261123', 'feature/live-ui-20261124']
   pull_request:
   workflow_dispatch:
 permissions:

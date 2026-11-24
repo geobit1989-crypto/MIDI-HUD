@@ -2,6 +2,21 @@ import {normalizeSlot,resolveModuleVisual} from '../core/module-visuals.mjs?v=20
 import {moduleRows} from '../core/layout-v3.4.mjs';
 
 const rendered=new WeakMap();
+const neutral='#b8bdc3';
+
+function paint(color, muted){
+ const rgb=color.slice(1).match(/../g).map(channel=>parseInt(channel,16));
+ const background=muted?rgb.map(channel=>Math.round(channel*.17+41)):rgb;
+ const luminance=background.reduce((sum,channel,i)=>{
+  const s=channel/255;
+  return sum+[.2126,.7152,.0722][i]*(s<=.04045?s/12.92:((s+.055)/1.055)**2.4);
+ },0);
+ return {
+  background:'#'+background.map(channel=>channel.toString(16).padStart(2,'0')).join(''),
+  foreground:luminance>=Math.sqrt(.05*1.05)-.05?'#000':'#fff'
+ };
+}
+
 function node(doc,tag,klass,text){
  const el=doc.createElement(tag);el.className=klass;
  if(text!=null)el.textContent=String(text);
@@ -11,12 +26,21 @@ function tileFor(doc,source,index){
  const cfg=normalizeSlot(source,index),visual=resolveModuleVisual(cfg,index);
  const expression=cfg.kind==='expression';
  const tile=node(doc,'div',expression?'expression adaptive-expression':'switch');
- for(const [key,value] of Object.entries({light:visual.light,dark:visual.dark,meter:visual.meter,fill:'0%',edge:visual.light,'exp-a':visual.dark,'exp-b':visual.color}))tile.style.setProperty('--'+key,value);
+ const momentary=!expression&&(cfg.action==='tap'||cfg.action==='momentary'||/^tap[\s_-]+tempo$/i.test(cfg.name.trim()));
+ for(const [key,value] of Object.entries({light:visual.light,dark:visual.dark,fill:'0%',edge:visual.light}))tile.style.setProperty('--'+key,value);
+ const on=paint(momentary?neutral:visual.color,false),off=paint(visual.color,true);
+ tile.style.setProperty('--module-bg',on.background);
+ tile.style.setProperty('--module-fg',on.foreground);
+ tile.style.setProperty('--module-muted-bg',off.background);
+ tile.style.setProperty('--module-muted-fg',off.foreground);
+ if(momentary)tile.dataset.momentary='true';
  const title=node(doc,expression?'strong':'div',expression?'exname':'name',cfg.name);
  const sub=node(doc,'div',expression?'exsub':'sub',source.sub==='GT'&&cfg.deviceTag==='GT'?'':cfg.sub);
  const tag=cfg.deviceTag?node(doc,'span','gt module-device',cfg.deviceTag):null;
  const icon=node(doc,'span',expression?'exicon':'icon-wrap',visual.glyph);
  icon.setAttribute('aria-hidden','true');
+ icon.hidden=!visual.glyph;
+ sub.hidden=!sub.textContent;
  if(expression){
   const head=node(doc,'div','exhead');
   const label=node(doc,'div','exlabel');
@@ -38,7 +62,7 @@ function tileFor(doc,source,index){
  tile.setAttribute('aria-label',cfg.name);
  return tile;
 }
-/** Cambiar estado/indicadores solo actualiza el resaltado: conserva filas, nodos y foco. */
+/** Actualiza la apariencia sin reemplazar las filas, los módulos ni el foco. */
 export function renderLiveModules(grid,vm){
  const slots=vm.song.displaySlots||[];
  const signature=JSON.stringify([vm.song.id,slots,vm.song.moduleLayout]);
@@ -63,12 +87,19 @@ export function renderLiveModules(grid,vm){
  }
  for(const tile of grid.querySelectorAll('[data-hud-index]')){
   const i=Number(tile.dataset.hudIndex);
-  const cc=slots[i]?.expressionCC,value=vm.expressions?.[cc];
+  const slot=slots[i],cc=slot?.expressionCC,value=vm.expressions?.[cc];
   const readout=tile.querySelector('.value'),meter=tile.querySelector('.exmeter');
   if(readout&&meter){const known=Number.isInteger(value);readout.hidden=!known;meter.hidden=!known;if(known){const percent=Math.round(value*100/127);readout.textContent=percent+'%';tile.style.setProperty('--fill',percent+'%');}}
-  const selected=(vm.previewModuleIndex??vm.state.displayIndex)===i;
-  const lit=vm.state.indicators.some(ind=>ind.active&&ind.displayIndex===i);
-  tile.style.boxShadow=selected?'inset 0 0 0 3px #f3ffff,0 0 14px #00d6f455':lit?'inset 0 0 0 3px #5fe9f0,0 0 12px #00d6f455':'';
-  tile.setAttribute('aria-pressed',String(selected||lit));
+  if(tile.dataset.momentary)continue;
+  const indicators=vm.state.indicators.filter(ind=>ind.displayIndex===i);
+  const lit=indicators.some(ind=>ind.active);
+  const selected=vm.state.displayIndex===i;
+  const expression=slot?.kind==='expression';
+  const active=expression
+   ? (indicators.length ? lit : selected||Number.isInteger(value)&&(cc===7||value>0))
+   : lit||selected&&slot?.stateMode!=='effect';
+  tile.dataset.activity=active?'active':'inactive';
+  tile.setAttribute('aria-pressed',String(active));
+  tile.dataset.consulted=String(vm.previewModuleIndex===i);
  }
 }

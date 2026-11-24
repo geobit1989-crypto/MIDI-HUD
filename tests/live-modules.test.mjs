@@ -60,3 +60,31 @@ test('Intro y tres expresiones pueden iluminarse juntas conservando las filas y 
  vm.song.moduleLayout='manual';vm.song.displaySlots[2].rowBreakBefore=true;
  renderLiveModules(grid,vm);assert.deepEqual(grid.children.map(row=>row.children.length),[2,3]);
 });
+test('capa activa y estado exclusivo mantienen el color; Tap es neutral y el contraste usa cada fondo',()=>{
+ const grid=new Element(document),vm=view();
+ vm.song.displaySlots=[
+  {name:'Clean',color:'#075eff'},
+  {name:'Tremolo',color:'#eac400',stateMode:'effect'},
+  {name:'Tap Tempo',color:'#ff071b'},
+  {name:'Morph',color:'#ffffff',kind:'expression',expressionCC:91}
+ ];
+ vm.state.indicators=[{id:'tremolo',displayIndex:1,active:true}];
+ vm.expressions={91:64};
+ renderLiveModules(grid,vm);
+ const [clean,effect,tap,expression]=grid.querySelectorAll();
+ assert.deepEqual([clean,effect,expression].map(tile=>tile.dataset.activity),['active','active','active']);
+ assert.equal(clean.style['--module-bg'],'#075eff');
+ assert.equal(clean.style['--module-fg'],'#fff');
+ assert.equal(effect.style['--module-fg'],'#000');
+ assert.equal(tap.style['--module-bg'],'#b8bdc3');
+ assert.equal(tap.attributes['aria-pressed'],undefined);
+ assert.equal(expression.querySelector('.value').textContent,'50%');
+ vm.state.indicators[0].active=false;
+ vm.expressions[91]=0;
+ renderLiveModules(grid,vm);
+ assert.equal(clean.dataset.activity,'active');
+ assert.equal(effect.dataset.activity,'inactive');
+ assert.equal(effect.style['--module-muted-fg'],'#fff');
+ assert.equal(expression.dataset.activity,'inactive');
+ assert.equal(expression.querySelector('.value').textContent,'0%');
+});

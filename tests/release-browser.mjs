@@ -4,7 +4,8 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import {createRequire} from 'node:module';
 import {migrateCatalog} from '../core/catalog-v1.mjs';
-const require=createRequire(import.meta.url),{chromium}=require(process.env.HUD_PLAYWRIGHT||'playwright');
+const require=createRequire(import.meta.url),browsers=require(process.env.HUD_PLAYWRIGHT||'playwright');
+const browserName=process.env.HUD_BROWSER||'chromium';
 const root=resolve('.'),prefix='/MIDI-HUD/pruebas/v6/';
 const server=createServer(async(req,res)=>{
  try{let path=new URL(req.url,'http://localhost').pathname;if(path.startsWith(prefix))path=path.slice(prefix.length);else path=path.slice(1);if(!path||path.endsWith('/'))path+='index.html';const file=resolve(root,path);if(!file.startsWith(root+sep))throw Error('path');const bytes=await readFile(file);res.setHeader('Content-Type',({'.html':'text/html','.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.json':'application/json'})[extname(file)]||'text/plain');res.end(bytes);}
@@ -12,7 +13,7 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(r=>server.listen(8767,'127.0.0.1',r));let browser;
 try{
- browser=await chromium.launch({headless:true,args:['--no-sandbox'],...(process.env.HUD_CHROMIUM?{executablePath:process.env.HUD_CHROMIUM}:{})});
+ browser=await browsers[browserName].launch({headless:true,...(browserName==='chromium'?{args:['--no-sandbox'],...(process.env.HUD_CHROMIUM?{executablePath:process.env.HUD_CHROMIUM}:{})}:{})});
  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage(),errors=[];
  page.on('pageerror',e=>errors.push(e.message));await page.route('https://**',route=>route.abort());
  await page.addInitScript(()=>{
@@ -29,7 +30,10 @@ try{
  await page.getByRole('link',{name:'LAB',exact:true}).click();await page.waitForURL('**/lab/midi-v1.html');
  page.once('dialog',dialog=>dialog.accept());await page.locator('#clone').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('midiHudTest:hudLabLibraryV1')).songs.some(s=>s.title==='Guardado completo de pruebas'));
  assert.equal(await page.getByRole('link',{name:'Editor',exact:true}).getAttribute('href'),'../editor/v3.html');
- const library=migrateCatalog(JSON.parse(await readFile(new URL('./fixtures/main-v04.json',import.meta.url),'utf8')));
+ const source=JSON.parse(await readFile(new URL('./fixtures/main-v04.json',import.meta.url),'utf8'));
+ const demo=JSON.parse(await readFile(new URL('../config/midi-hud-data-v2.json',import.meta.url),'utf8'));
+ source.songs[0].leadSheet=demo.songs[0].leadSheet;
+ const library=migrateCatalog(source);
  await page.evaluate(library=>localStorage.setItem('midiHudTest:hudLibraryV34',JSON.stringify(library)),library);
  await page.goto(base+'v03.html');await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  await page.locator('.topbar .settings').click();await page.locator('#hud-channel').selectOption('2');await page.locator('#hud-midi-btn').click();
@@ -44,8 +48,47 @@ try{
  await page.waitForFunction(()=>document.querySelector('#hud-midi-status').dataset.connection==='disconnected');assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
  await page.evaluate(()=>{disconnectedInput.state='connected';testMidi.inputs.set('Chocolate',disconnectedInput);testMidi.onstatechange();});await page.waitForFunction(()=>document.querySelector('#hud-midi-status').dataset.connection==='connected');
  assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
- await page.locator('#hud-close-btn').click();await mkdir('build/browser',{recursive:true});await page.screenshot({path:'build/browser/staging-live-portrait.png',fullPage:true});
- await page.setViewportSize({width:844,height:390});await page.screenshot({path:'build/browser/staging-live-landscape.png',fullPage:true});
+ await page.locator('#hud-close-btn').click();await mkdir('build/browser',{recursive:true});
+ const mode=page.locator('#hud-view-mode'),screen=page.locator('.screen'),sheet=page.locator('.lead-sheet');
+ const modules=page.locator('.switch-grid'),header=page.locator('.topbar');
+ const top=async locator=>(await locator.boundingBox()).y;
+ for(const [width,height] of [[1440,900],[800,1280],[412,915],[320,568],[844,390]]){
+  await page.setViewportSize({width,height});
+  assert.equal(await screen.getAttribute('data-view-mode'),'full');
+  assert.ok(await top(sheet)<await top(header)&&await top(header)<await top(modules));
+  assert.ok(await sheet.locator('.bar').count()>0);
+  assert.equal(await screen.evaluate(el=>getComputedStyle(el).borderTopWidth),'0px');
+  await page.screenshot({path:`build/browser/${browserName}-${width}-full.png`});
+  await mode.click();
+  assert.equal(await screen.getAttribute('data-view-mode'),'states');
+  assert.ok(await sheet.isHidden()&&await top(header)<await top(modules));
+  await page.screenshot({path:`build/browser/${browserName}-${width}-states.png`});
+  await mode.click();
+  assert.equal(await screen.getAttribute('data-view-mode'),'sheet');
+  assert.ok(await modules.isHidden()&&await top(sheet)<await top(header));
+  await page.screenshot({path:`build/browser/${browserName}-${width}-sheet.png`});
+  await mode.click();
+ }
+ await mode.click();
+ await mode.click();
+ await page.evaluate(()=>testMidi.inputs.get('Chocolate').send([0xb1,80,0]));
+ await page.waitForFunction(()=>MIDIHUD_LIVE.getEngine().getState().activeStateId!== 'preset-solo');
+ assert.ok(await modules.isHidden());
+ await mode.click();
+ assert.equal(await modules.locator('[data-activity="active"]').first().getAttribute('aria-pressed'),'true');
+ assert.ok(await modules.locator('[data-activity="inactive"]').count()>0);
+ await mode.click();
+ await page.locator('#hud-next').click();
+ assert.equal(await screen.getAttribute('data-view-mode'),'states');
+ await page.reload();
+ await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
+ assert.equal(await screen.getAttribute('data-view-mode'),'states');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('midiHudTest:hudLiveViewMode')),'states');
+ await page.goto(base+'v03-ble-test.html');
+ await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
+ assert.equal(await screen.getAttribute('data-view-mode'),'states');
+ await page.locator('.topbar .settings').click();
+ assert.ok(await page.locator('#hud-ble-connect').isVisible());
  assert.deepEqual(await page.evaluate(()=>['hudLibraryV34','midiHudSettingsV1','midiHudTrustedDeviceSessionV1'].map(k=>localStorage.getItem(k))),['stable-library','stable-settings','stable-auth']);
- assert.deepEqual(errors,[]);console.log('Staging browser passed: Editor save, isolated stable data, channel 2, selected input only, duplicate state, explicit library update, disconnect/reconnect, portrait/landscape, zero JS errors.');
+ assert.deepEqual(errors,[]);console.log(browserName+': Editor/LAB, isolated storage, MIDI channel 2 and reconnection, three LIVE modes at five viewport sizes, MIDI with modules hidden, persistent mode, Android BLE entry point.');
 }finally{await browser?.close();await new Promise(r=>server.close(r));}

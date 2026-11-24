@@ -40,12 +40,17 @@
     ctx.engine.dispatch({type:"RETURN_TO_ACTIVE"});
     feedback("Vista operativa restaurada");
   });
-  // Delegación: los módulos se reconstruyen tras cada cambio de canción o estado.
+  // Delegación: el motor conserva los módulos al actualizar su estado.
   const grid=document.querySelector(".switch-grid");
   function inspectNode(node){
     const ctx=context();if(!ctx)return;
     const {engine,library}=ctx;
     const vm=engine.getViewModel();
+    if(node.dataset.momentary){
+      const bpm=vm.tempo?.displayBpm;
+      feedback(bpm==null?"Tap Tempo":"Tap Tempo · "+bpm+" BPM");
+      return;
+    }
     const song=library.songs.find(s=>s.id===vm.song.id);
     const index=Number(node.dataset.hudIndex);
     if(!song||!Number.isInteger(index)||index<0||index>=song.displaySlots.length)return;
@@ -74,7 +79,7 @@
     if(event.key==="ArrowLeft"){event.preventDefault();previewSong(-1);}
     else if(event.key==="ArrowRight"){event.preventDefault();previewSong(1);}
     else if(/^[1-9]$/.test(event.key)){
-      const module=document.querySelectorAll(".switch-grid [data-hud-index]")[Number(event.key)-1];
+      const module=grid?.hidden?null:grid?.querySelectorAll("[data-hud-index]")[Number(event.key)-1];
       module?.click();
     }
   });
