@@ -16,5 +16,7 @@
   "worker_tests": 4,
   "web_ci": "https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/45468860251",
   "ci_scope": "source commit before web-only Android preload",
-  "ios_unchanged": true
+  "ios_unchanged": true,
+  "web_title": "MIDI HUD LIVE",
+  "web_title_patch": "Version-free LIVE header and browser title on Windows and Android; no runtime changes."
 }
