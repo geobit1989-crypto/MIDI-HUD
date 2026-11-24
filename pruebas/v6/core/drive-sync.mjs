@@ -108,7 +108,7 @@ export function createSyncController({storage,history,getLocal=()=>{const raw=re
   }
   // Base y cuenta son inseparables. Un cambio de cuenta nunca reutiliza el
   // antecesor de otra biblioteca.
-  let base=previous.base||null;
+  let base=previous.heads?.length&&previous.heads.every(head=>graph.has(head))?previous.base||null:null;
   if(base)checkedLibrary(base);
   let merged=captured&&remote?await merge(base,captured,remote,{kind:'local'}):clone(captured||remote);
   if(!merged){if(!captured&&!remote)status('synced','Cuenta conectada. Guarda tu primer repertorio para sincronizarlo.');return {empty:!captured&&!remote,conflict:!!(captured||remote)};}

@@ -1,15 +1,20 @@
 {
-  "version": "v8",
-  "release_date": "2026-11-18",
-  "source_branch": "integration/consolidacion-181126-v8",
-  "source_commit": "a435f8c2c875ca378af61e388b98b62ee89bee71",
+  "version": "v8-live-ui",
+  "release_date": "2026-11-24",
+  "source_branch": "feature/live-ui-20261124",
+  "source_commit": "23c32caa3e2a37d650585cbb6d245e76b2585201",
   "route": "/MIDI-HUD/pruebas/v6/",
   "application": "complete",
   "storage_prefix": "midiHudTest:",
   "drive_history_kind": "midi-hud-test-sync-v1",
   "production_unchanged": true,
-  "application_tests": 253,
+  "previous_web_commit": "325fb93a00b5280a2d4f03b32259820b13153d24",
+  "windows_entry": "v03.html",
+  "android_entry": "v03-ble-test.html",
+  "android_web_patch": "14 modulepreload links for earlier parallel loading of existing static imports. No JavaScript or MIDI changes. Physical cold/warm launch performance pending.",
+  "application_tests": 264,
   "worker_tests": 4,
-  "browser_suites": 2,
-  "web_ci": "https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/44413145045"
+  "web_ci": "https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/45468860251",
+  "ci_scope": "source commit before web-only Android preload",
+  "ios_unchanged": true
 }

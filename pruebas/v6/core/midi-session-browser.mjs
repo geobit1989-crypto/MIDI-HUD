@@ -16,7 +16,9 @@ export function createBrowserMidiSession({storage,onMessage=()=>{},onStatus=()=>
   const available=ports();
   if(active&&!available.includes(active)){detach();session.lost();}
   onDevices(available.map(p=>({id:id(p),name:p.name||id(p)})));
-  if(!active&&session.preferredId&&available.some(p=>id(p)===session.preferredId))void session.retry();
+  if(active||session.status==='connecting')return;
+  if(session.preferredId&&available.some(p=>id(p)===session.preferredId))void session.retry();
+  else if(globalThis.MidiHudNative&&available.length===1)void session.select(id(available[0]));
  }
  async function openAccess(){
   if(access)return access;
@@ -50,7 +52,16 @@ export function createBrowserMidiSession({storage,onMessage=()=>{},onStatus=()=>
   }
  };
  const session=createMidiConnectionSession({adapter,storage,onStatus});
- return {start:()=>session.start(),discover:()=>session.discover(),select:deviceId=>session.select(deviceId),retry:()=>session.retry(),
+ async function start(){
+  if(!globalThis.MidiHudNative)return session.start();
+  await openAccess();
+  if(await session.start())return true;
+  const available=ports();
+  if(available.length===1)return session.select(id(available[0]));
+  onDevices(available.map(p=>({id:id(p),name:p.name||id(p)})));
+  return false;
+ }
+ return {start,discover:()=>session.discover(),select:deviceId=>session.select(deviceId),retry:()=>session.retry(),
   get status(){return session.status;},get preferredId(){return session.preferredId;},
   async close(){closed=true;++connectionAttempt;removeStateListener?.();await session.disconnect();detach();}};
 }
