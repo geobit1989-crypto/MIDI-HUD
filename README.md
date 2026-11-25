@@ -1,3 +1,5 @@
+> **Edición iOS QA aislada — 25/11/2026.** Esta rama es `test/ios-midi-hud-20261123`, derivada de `integration/consolidacion-181126-v8`. El encabezado v8 que sigue describe la base heredada, no la rama actual. La identidad iOS es `io.midihud.app.iosqa` y el historial de prueba `midi-hud-test-sync-v1`. Para la instalación actual, OAuth, pruebas y archivos fuente nativos usar [native/ios/README.md](native/ios/README.md) y el [registro de accesos](https://docs.google.com/document/d/1fXLaabQe_0vkbvgp8KG0pZayoywnI9_lEFr17BaceXE/edit). Hay IPA compilada con CI, pero la nueva edición requiere prueba física MIDI y restauración/Drive en iPhone; una IPA anterior fue instalada/abierta. No confundir con producción ni migrar datos sin respaldo y cotejo.
+
 # MIDI HUD — Aplicación de pruebas consolidada al 18/11/2026
 
 Rama vigente: `integration/consolidacion-181126-v8`. Aplicación completa: Inicio, LIVE, Editor, catálogo, repertorios, lead sheets, LAB, ajustes, motor, persistencia y sincronización. [Auditoría y cambios de esta entrega](docs/CONSOLIDACION-20261118.md).
