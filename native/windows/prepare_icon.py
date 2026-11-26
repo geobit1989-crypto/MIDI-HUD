@@ -1,6 +1,6 @@
 """Render the existing Android four-tile vector into a Windows multi-size ICO.
 No external packages, network access or second editable copy of the artwork.
-The original approved raster is not available; this is the existing vector approximation.
+The user confirmed this exact existing Android vector as the official icon on 26/11/2026.
 """
 from pathlib import Path
 import re, struct, zlib, xml.etree.ElementTree as ET
