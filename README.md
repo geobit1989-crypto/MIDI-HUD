@@ -1,3 +1,5 @@
+> **Núcleo compartido — 26/11/2026.** Rama `integration/shared-core-20261126` (experimental), basada en la integración LIVE del 24/11. Conserva las funcionalidades existentes y añade el contrato de transporte Android al puente nativo común, aislamiento QA y pruebas de contrato. No contiene un host Kotlin ni un APK. [Contrato y pendientes](docs/SHARED-CORE-20261126.md).
+
 # MIDI HUD — Aplicación de pruebas consolidada al 18/11/2026
 
 Rama vigente: `integration/consolidacion-181126-v8`. Aplicación completa: Inicio, LIVE, Editor, catálogo, repertorios, lead sheets, LAB, ajustes, motor, persistencia y sincronización. [Auditoría y cambios de esta entrega](docs/CONSOLIDACION-20261118.md).
