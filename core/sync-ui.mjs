@@ -166,28 +166,6 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
    autoLabel.append(toggle,' Sincronización automática');
    panel.append(lastSync,autoLabel);
   }
-  const setup=make('details');setup.className='hud-sync-recovery';setup.hidden=!!auth?.isPersistent||!!globalThis.MidiHudNative;
-  setup.append(make('summary','Configuración avanzada de Google (OAuth)'));
-  const label=make('label','Identificador OAuth web de MIDI HUD (no introduzcas contraseñas)');
-  const clientInput=make('input');clientInput.type='text';clientInput.autocomplete='off';
-  clientInput.placeholder='123456789-abc.apps.googleusercontent.com';
-  clientInput.value=storage.getItem(CLIENT_STORAGE_KEY)||auth?.clientId||'';
-  label.append(clientInput);setup.append(label);
-  const saveClient=button('Guardar identificador',()=>{
-   const id=clientInput.value.trim();
-   if(!/^[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$/.test(id)){
-    status({state:'error',message:'El identificador debe terminar en .apps.googleusercontent.com. No introduzcas contraseñas ni secretos.'});return;
-   }
-   if(account){
-    status({state:'error',message:'Desconecta tu cuenta antes de cambiar el identificador OAuth.'});return;
-   }
-   auth=new GoogleDriveAuth({clientId:id});
-   storage.setItem(CLIENT_STORAGE_KEY,id);configured=auth.configured;identityReady=false;
-   status({state:'setup',message:'ID configurado. Cargando Google…'});
-   void loadGoogleIdentity().then(()=>{identityReady=true;status({state:'local',message:'Puedes conectar tu cuenta de Google.'});})
-     .catch(error=>status({state:'error',message:error.message}));
-  });
-  setup.append(saveClient,make('p','Requiere un cliente OAuth web de Google Cloud con origen autorizado https://geobit1989-crypto.github.io. El permiso solicitado es solo el almacenamiento privado de MIDI HUD.'));
   const actions=make('div');actions.className='hud-sync-actions';
   const connect=button('Conectar con Google',()=>{
    // connect() abre Google inmediatamente, dentro de esta pulsación.
@@ -223,7 +201,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   manage.hidden=!auth?.isPersistent;
   actions.append(connect,sync,disconnect,manage,button('Historial de versiones',recoveries));
   if(!inline)actions.append(button('Cerrar',()=>panel.close()));
-  panel.append(actions,setup);
+  panel.append(actions);
   if(inline){launch.hidden=true;host.append(panel);}
   else {panel.showModal();panel.scrollTop=0;}
   refresh();
