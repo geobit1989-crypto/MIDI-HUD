@@ -22,7 +22,7 @@ try{
   Object.defineProperty(navigator,'requestMIDIAccess',{configurable:true,value:async()=>access});window.testMidi=access;
  });
  const origin='http://127.0.0.1:8767',base=origin+prefix;
- await page.goto(origin);await page.evaluate(()=>{localStorage.setItem('hudLibraryV34','stable-library');localStorage.setItem('midiHudSettingsV1','stable-settings');localStorage.setItem('midiHudTrustedDeviceSessionV1','stable-auth');});
+ await page.goto(base+'privacy.html');await page.evaluate(()=>{localStorage.setItem('hudLibraryV34','stable-library');localStorage.setItem('midiHudSettingsV1','stable-settings');localStorage.setItem('midiHudTrustedDeviceSessionV1','stable-auth');});
  await page.goto(base+'index.html');
  const home=page.getByRole('dialog',{name:'MIDI HUD',exact:true});
  await home.waitFor();
