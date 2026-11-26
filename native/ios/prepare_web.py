@@ -17,7 +17,7 @@ def prepare():
             shutil.rmtree(child)
         elif child.name != "README.txt":
             child.unlink()
-    for name in ("core", "editor", "live", "lab", "config"):
+    for name in ("core", "editor", "live", "config"):
         shutil.copytree(SOURCE / name, TARGET / name)
     for name in ("index.html", "v03.html", "privacy.html", "privacy-en.html", "terms.html", "terms-en.html", "README.md"):
         shutil.copy2(SOURCE / name, TARGET / name)

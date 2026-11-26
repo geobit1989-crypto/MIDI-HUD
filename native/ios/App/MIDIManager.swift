@@ -52,9 +52,22 @@ final class MIDIManager {
     private func sources() -> [MIDIEndpointRef] {
         (0..<MIDIGetNumberOfSources()).map { MIDIGetSource($0) }.filter { $0 != 0 }
     }
+    private func transport(_ endpoint: MIDIEndpointRef) -> String {
+        var entity: MIDIEntityRef = 0
+        var device: MIDIDeviceRef = 0
+        _ = MIDIEndpointGetEntity(endpoint, &entity)
+        if entity != 0 { _ = MIDIEntityGetDevice(entity, &device) }
+        for object in [endpoint, entity, device] where object != 0 {
+            var owner: Unmanaged<CFString>?
+            if MIDIObjectGetStringProperty(object, kMIDIPropertyDriverOwner, &owner) == noErr,
+               let driver = owner?.takeRetainedValue() as String?,
+               driver.localizedCaseInsensitiveContains("Bluetooth") { return "bluetooth" }
+        }
+        return "unknown"
+    }
     func listing() -> [String: Any] {
         let ports: [[String: Any]] = sources().map { endpoint in
-            ["id": identifier(endpoint), "name": name(endpoint), "connected": connected.contains(endpoint)]
+            ["id": identifier(endpoint), "name": name(endpoint), "connected": connected.contains(endpoint), "transport": transport(endpoint)]
         }
         return ["ports": ports, "selected": selected, "connectedCount": connected.count]
     }

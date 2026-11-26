@@ -19,7 +19,7 @@
     receive(data,timestampMs){const event={data:new Uint8Array(data),target:this,timeStamp:Number.isFinite(timestampMs)?timestampMs:performance.now()};for(const callback of listeners)callback(event);this.onmidimessage?.(event);}});
   }
   const event={target:access};for(const callback of accessListeners)callback(event);access.onstatechange?.(event);
-  window.dispatchEvent(new Event('hud-native-ports'));
+  window.dispatchEvent(new CustomEvent('hud-native-ports',{detail:ports}));
  }
  let lastReceived=null, receivedCount=0, lastError=null;
  const receive=event=>{
@@ -44,7 +44,7 @@
    port.receive(event.data,Number.isFinite(event.timestampMs)?event.timestampMs+hostOffset:undefined);
   }
  };
- Object.defineProperty(globalThis,'MidiHudNative',{value:Object.freeze({call,receive,get lastReceived(){return lastReceived;},get lastError(){return lastError;}}),writable:false,configurable:false});
+ Object.defineProperty(globalThis,'MidiHudNative',{value:Object.freeze({platform:"ios",call,receive,get lastReceived(){return lastReceived;},get lastError(){return lastError;}}),writable:false,configurable:false});
  if(typeof navigator.requestMIDIAccess!=='function'){
   Object.defineProperty(navigator,'requestMIDIAccess',{value:async options=>{
    if(options?.sysex)throw new DOMException('La aplicación solo recibe CC MIDI.','NotSupportedError');

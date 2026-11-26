@@ -27,7 +27,7 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         view.addSubview(webView)
         NSLayoutConstraint.activate([webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), webView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor), webView.leadingAnchor.constraint(equalTo: view.leadingAnchor), webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)])
         midi.onEvent = { [weak self] event in self?.send(event) }
-        webView.load(URLRequest(url: URL(string: "hud://\(webHost)/editor/v3.html")!))
+        webView.load(URLRequest(url: URL(string: "hud://\(webHost)/index.html")!))
     }
     func becameActive() {
         guard webView != nil else { return }
@@ -66,6 +66,7 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
                     let controller = CABTMIDICentralViewController()
                     let navigation = UINavigationController(rootViewController: controller)
                     controller.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(closeBluetooth))
+                    navigation.isModalInPresentation = true
                     present(navigation, animated: true); result = true
                 case "cloud.config": result = ["configured": drive.configured]
                 case "cloud.restore": result = try await drive.restore() as Any? ?? NSNull()
@@ -90,6 +91,7 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     @objc private func closeBluetooth() {
         dismiss(animated: true) { [weak self] in
             guard let self = self else { return }
+            self.webView.evaluateJavaScript("window.dispatchEvent(new Event('hud-bluetooth-picker-closed'))", completionHandler: nil)
             do { _ = try self.midi.start() }
             catch { self.send(["type": "midi.error", "message": error.localizedDescription]) }
         }
