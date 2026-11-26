@@ -304,7 +304,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <link rel="modulepreload" href="./core/midi-ble-android.mjs">
 <link rel="modulepreload" href="./live/sheet-fit-v1.mjs?v=20261015-fit3">
 <link rel="modulepreload" href="./live/view-mode.mjs">
-<link rel="stylesheet" href="./live/home-qa.css">
+<link rel="stylesheet" href="./live/home-qa.css?v=esbozo06">
 </head>
 <body>
   <!-- MIDI HUD recibe mensajes para visualizar estados; no envía MIDI al hardware. -->
@@ -427,7 +427,7 @@ import {installCloudSync} from "./core/sync-ui.mjs?v=20261016-native1";
 import {installNativeMidiControls} from "./core/native-controls.mjs?v=20261016-native1";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261124";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
-import {installHome} from "./live/home-qa.mjs";
+import {installHome} from "./live/home-qa.mjs?v=esbozo06";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {createBrowserMidiSession} from "./core/midi-session-browser.mjs";
 import {connectBleMidi} from "./core/midi-ble-android.mjs";
