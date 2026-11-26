@@ -290,6 +290,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <link rel="stylesheet" href="./live/config-menu-v2.css?v=20261016-repertoires1">
 <link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261015-fit3">
 <link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261124">
+<link rel="stylesheet" href="./live/home-qa.css">
 </head>
 <body>
   <!-- MIDI HUD recibe mensajes para visualizar estados; no envía MIDI al hardware. -->
@@ -412,6 +413,7 @@ import {installCloudSync} from "./core/sync-ui.mjs?v=20261016-native1";
 import {installNativeMidiControls} from "./core/native-controls.mjs?v=20261016-native1";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261124";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
+import {installHome} from "./live/home-qa.mjs";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {createBrowserMidiSession} from "./core/midi-session-browser.mjs";
 import {connectBleMidi} from "./core/midi-ble-android.mjs";
@@ -486,14 +488,28 @@ dialog.innerHTML=`
   <h3>Ir a otra herramienta</h3>
   <div class="hud-config-links">
     <a id="hud-editor-link" href="./editor/v3.html?v=20261016-repertoires1">✎ Editor<small>Modificar canciones, estados y lead sheets</small></a>
-    <a href="./lab/">◇ LAB<small>Simular los mensajes CC y sus acciones</small></a>
-    <a href="./">▦ Inicio<small>Panel de acceso a MIDI HUD</small></a>
+    <a id="hud-home-link" href="./index.html">▦ Inicio</a>
   </div>
 </nav>
 <footer class="hud-config-foot">El HUD únicamente representa estados visuales. No transmite MIDI a la GT ni supervisa sus cambios físicos.</footer>
 `;
 overlay.append(dialog);document.body.append(overlay);
-function popup(open){overlay.hidden=!open;overlay.style.display=open?"flex":"none";if(open)dialog.querySelector("#hud-repertoire").focus();else gear.focus();}
+let returnToHome=false;
+function popup(open){
+ overlay.hidden=!open;
+ overlay.style.display=open?"flex":"none";
+ if(open)dialog.querySelector("#hud-repertoire").focus();
+ else if(returnToHome){returnToHome=false;openHome();}
+ else gear.focus();
+}
+const openHome=installHome({
+ settings:()=>{returnToHome=true;popup(true);},
+ editor:dialog.querySelector('#hud-editor-link'),
+ syncRoot:dialog.querySelector('#hud-sync-root')
+});
+dialog.querySelector('#hud-home-link').addEventListener('click',event=>{
+ event.preventDefault();popup(false);openHome();
+});
 function applyLiveLibrary(next){engine.updateLibrary(next);library=engine.getLibrary();prepare();render();}
 function prepare(){
  const ch=dialog.querySelector("#hud-channel");
@@ -521,24 +537,26 @@ function prepare(){
  libraryPicker?.destroy();libraryPicker=installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
    missingRequestedRepertoire:initialSelection.missingRequestedRepertoire,onUse:()=>popup(false)});
  const inputSelect=dialog.querySelector('#hud-midi-input'),status=dialog.querySelector('#hud-midi-status');
+ const signalBluetooth=state=>window.dispatchEvent(new CustomEvent('hud-web-bluetooth',{detail:state}));
  const bleControls=document.createElement('div');
  bleControls.style.cssText='margin-top:14px;padding:12px;border:1px solid #537489;border-radius:10px';
- bleControls.innerHTML='<strong>Android · BLE MIDI experimental</strong><p>Conexión directa con Chocolate Plus. No envía comandos al pedal.</p><button type="button" id="hud-ble-connect">Conectar Chocolate BLE</button> <button type="button" id="hud-ble-disconnect" disabled>Desconectar BLE</button><p id="hud-ble-status" role="status">Sin conexión BLE</p>';
+ bleControls.innerHTML='<strong>Android · Bluetooth MIDI experimental</strong><p>Conexión directa con Chocolate Plus. No envía comandos al pedal.</p><button type="button" id="hud-ble-connect">Conectar Chocolate Bluetooth</button> <button type="button" id="hud-ble-disconnect" disabled>Desconectar Bluetooth</button><p id="hud-ble-status" role="status">Sin conexión Bluetooth</p>';
  status.parentElement.append(bleControls);
  const bleConnect=bleControls.querySelector('#hud-ble-connect'),bleDisconnect=bleControls.querySelector('#hud-ble-disconnect'),bleStatus=bleControls.querySelector('#hud-ble-status');
  bleConnect.onclick=async()=>{
    bleConnect.disabled=true;bleStatus.textContent='Buscando Chocolate Plus…';
    try{
      if(window.__sigBleConnection)window.__sigBleConnection.disconnect();
+     signalBluetooth('busy');
      window.__sigBleConnection=await connectBleMidi(event=>{
        const result=engine.dispatch(event);
-       bleStatus.textContent=event.type==='MIDI_CC'?'BLE RX canal '+event.channel+' · CC '+event.cc+' = '+event.value+' · '+(result.matched?'reconocido':'sin asignación'):'BLE RX '+event.type;
-     },{onDisconnected:()=>{bleStatus.textContent='BLE desconectado';bleConnect.disabled=false;bleDisconnect.disabled=true;}});
-     bleStatus.textContent='BLE conectado: '+window.__sigBleConnection.name;
-     bleDisconnect.disabled=false;
-   }catch(error){bleStatus.textContent='BLE: '+error.name+' · '+error.message;bleConnect.disabled=false;}
+       bleStatus.textContent=event.type==='MIDI_CC'?'Bluetooth RX canal '+event.channel+' · CC '+event.cc+' = '+event.value+' · '+(result.matched?'reconocido':'sin asignación'):'Bluetooth RX '+event.type;
+     },{onDisconnected:()=>{signalBluetooth('idle');bleStatus.textContent='Bluetooth desconectado';bleConnect.disabled=false;bleDisconnect.disabled=true;}});
+     bleStatus.textContent='Bluetooth conectado: '+window.__sigBleConnection.name;
+     bleDisconnect.disabled=false;signalBluetooth('connected');
+   }catch(error){signalBluetooth('idle');bleStatus.textContent='Bluetooth: '+error.name+' · '+error.message;bleConnect.disabled=false;}
  };
- bleDisconnect.onclick=()=>{window.__sigBleConnection?.disconnect();window.__sigBleConnection=null;bleConnect.disabled=false;bleDisconnect.disabled=true;bleStatus.textContent='BLE desconectado';};
+ bleDisconnect.onclick=()=>{window.__sigBleConnection?.disconnect();window.__sigBleConnection=null;signalBluetooth('idle');bleConnect.disabled=false;bleDisconnect.disabled=true;bleStatus.textContent='Bluetooth desconectado';};
 
  if(!midiPort)midiPort=createBrowserMidiSession({storage:localStorage,
    onMessage:event=>{const result=engine.dispatch(event);status.textContent=event.type==='MIDI_CLOCK'?'RX MIDI Clock':`RX canal ${event.channel} · ${event.type} · ${result.matched?'reconocido':'sin asignación'}`;},
@@ -710,7 +728,8 @@ function render(){
   setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
   engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
-  if(initialSelection.missingRequestedRepertoire)popup(true);
+  if(new URLSearchParams(location.search).get('home')==='1')openHome();
+  else if(initialSelection.missingRequestedRepertoire)popup(true);
  }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);
   const boot=document.querySelector("#hud-boot-status");if(boot)boot.textContent="Error de inicialización: "+err.message;
  }

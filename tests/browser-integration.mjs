@@ -30,15 +30,15 @@ try{
  await page.reload();await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  assert.equal(await page.locator('#songTitle').inputValue(),'Prueba integrada iPhone');
  await page.locator('#songTitle').fill('Salida sin publicar');
- await page.getByRole('link',{name:'LAB',exact:true}).click();
+ await page.locator('#liveLink').click();
  await page.getByRole('button',{name:'Salir sin confirmar',exact:true}).click();
- await page.waitForURL('**/lab/midi-v1.html');
+ await page.waitForURL(/\/v03\.html(?:\?|$)/);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('hudLibraryV34')).songs.some(s=>s.title==='Salida sin publicar')),false);
  await page.goto('http://127.0.0.1:8766/editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  assert.equal(await page.locator('#songTitle').inputValue(),'Salida sin publicar');
- await page.getByRole('link',{name:'LAB',exact:true}).click();
+ await page.locator('#liveLink').click();
  await page.getByRole('button',{name:'Guardar y salir',exact:true}).click();
- await page.waitForURL('**/lab/midi-v1.html');
+ await page.waitForURL(/\/v03\.html(?:\?|$)/);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('hudLibraryV34')).songs.some(s=>s.title==='Salida sin publicar')),true);
  await page.goto('http://127.0.0.1:8766/editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  await page.locator('#libraryToggle').click();await page.locator('#repAdd').click();await page.locator('#repNameInput').fill('Domingo');await page.locator('#repFormSubmit').click();
@@ -58,5 +58,5 @@ try{
  await page.screenshot({path:'build/browser/live-portrait.png',fullPage:true});
  await page.setViewportSize({width:844,height:390});await page.screenshot({path:'build/browser/live-landscape.png',fullPage:true});
  assert.deepEqual(errors,[]);
- console.log('Browser integration passed: four tabs, draft reload, three exit choices, LAB, global save/reload, empty playlist, shared song, degree variant/key, LIVE snapshot, portrait/landscape, no JavaScript errors.');
+ console.log('Browser integration passed: four tabs, draft reload, three exit choices, global save/reload, empty playlist, shared song, degree variant/key, LIVE snapshot, portrait/landscape, no JavaScript errors.');
 }finally{await browser?.close();server.kill();}
