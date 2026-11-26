@@ -1,4 +1,4 @@
-> **Windows QA — 26/11/2026.** Contenedor WPF/WebView2 experimental, entrada MIDI nativa, monitor de recepción y recursos offline. [Guía Windows](native/windows/README.md). Drive, MSIX y validación física pendientes. Icono provisional derivado del vector Android anterior; revisión compacta definitiva pendiente de validación. [Corte documental 26/11](docs/STATUS-20261126.md).
+> **Windows QA — 26/11/2026.** Contenedor WPF/WebView2 experimental, entrada MIDI nativa, monitor de recepción y recursos offline. [Guía Windows](native/windows/README.md). Drive, MSIX y validación física pendientes. Icono compacto reconstruido desde la captura facilitada por el usuario, SVG común e ICO Windows; CI nueva pendiente. [Corte documental 26/11](docs/STATUS-20261126.md).
 
 > **Android QA — 26/11/2026.** Rama `feature/android-native-qa-20261126` sobre el núcleo compartido: contenedor Kotlin/WebView, recursos offline, recepción MidiManager BLE/USB y compilación CI. Google Drive y distribución automática pendientes. [Guía Android](native/android/README.md).
 

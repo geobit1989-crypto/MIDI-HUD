@@ -1,38 +1,31 @@
-"""Render the existing Android four-tile vector into a Windows multi-size ICO.
-No external packages, network access or second editable copy of the artwork.
-Provisional earlier artwork; user clarified on 26/11/2026 that the final revision has tighter tile spacing.
+"""Render the canonical compact MIDI HUD SVG into a seven-size Windows ICO.
+Reference: screenshot supplied by user 26/11/2026. Geometry and solid colors
+reconstructed from visible artwork; no screenshot UI or baked white corners.
 """
 from pathlib import Path
-import re, struct, zlib, xml.etree.ElementTree as ET
+import struct, zlib, xml.etree.ElementTree as ET
 here = Path(__file__).resolve().parent
-source = here.parent / "android/app/src/main/res/drawable/ic_hud.xml"
-ns = "{http://schemas.android.com/apk/res/android}"
+source = here.parents[1] / "assets/brand/midi-hud.svg"
+ns = "{http://www.w3.org/2000/svg}"
 vector = ET.parse(source).getroot()
-assert vector.attrib[ns+"viewportWidth"] == vector.attrib[ns+"viewportHeight"] == "108"
-paths = vector.findall("path")
-assert len(paths)==5 and paths[0].attrib[ns+"pathData"]=="M0,0H108V108H0Z"
+assert vector.attrib["viewBox"] == "0 0 108 108"
+rects = vector.findall(ns+"rect")
+assert len(rects)==5
 def rgb(s): return tuple(bytes.fromhex(s[1:]))
-bg = rgb(paths[0].attrib[ns+"fillColor"])
-tiles = []
-for path in paths[1:]:
-    # The existing vector uses four quadratic rounded rectangles.
-    raw = path.attrib[ns+"pathData"]
-    nums = list(map(int,re.findall(r"\d+",raw)))
-    assert len(nums)==22 and raw.startswith("M") and raw.endswith("Z"), raw
-    x1,y1=nums[0],nums[1]
-    # H right inset; first Q gives the outer x, then bottom V and Q gives outer y.
-    left,top,right,bottom=nums[13],y1,nums[3],nums[9]
-    radius=x1-left
-    assert right-left in (28,29) and bottom-top in (28,29) and radius==6, (raw,nums)
-    tiles.append((left,top,right,bottom,radius,rgb(path.attrib[ns+"fillColor"])))
+bg = rgb(rects[0].attrib["fill"])
+tiles=[]
+for rect in rects[1:]:
+    a=rect.attrib
+    x,y,w,h,rad=(float(a[k]) for k in ("x","y","width","height","rx"))
+    tiles.append((x,y,x+w,y+h,rad,rgb(a["fill"])))
+def inside(x,y,l,t,r,b,rad):
+    if not (l<=x<=r and t<=y<=b): return False
+    dx=max(l+rad-x,0,x-(r-rad))
+    dy=max(t+rad-y,0,y-(b-rad))
+    return dx*dx+dy*dy<=rad*rad
 def pixel(x,y):
     for l,t,r,b,rad,color in tiles:
-        if l<=x<=r and t<=y<=b:
-            dx=max(l+rad-x,0,x-(r-rad))
-            dy=max(t+rad-y,0,y-(b-rad))
-            # Q corner with control at the outer corner; exact quadratic boundary.
-            if (1-dx/rad)**0.5+(1-dy/rad)**0.5>=0.99999999:
-                return color
+        if inside(x,y,l,t,r,b,rad): return color
     return bg
 def png(n):
     def chunk(t,d): return struct.pack(">I",len(d))+t+d+struct.pack(">I",zlib.crc32(t+d)&0xffffffff)
@@ -54,4 +47,4 @@ for n,data in zip(sizes,images):
 out=here/"obj"
 out.mkdir(exist_ok=True)
 (out/"hud.ico").write_bytes(struct.pack("<HHH",0,1,len(sizes))+b"".join(directory)+b"".join(images))
-print("Windows icon: Android vector, seven sizes")
+print("Windows icon: compact canonical vector, seven sizes")
