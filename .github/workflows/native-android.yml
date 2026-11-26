@@ -1,7 +1,7 @@
 name: MIDI HUD Android QA
 on:
   push:
-    branches: ['feature/android-native-qa-20261126']
+    branches: ['feature/android-native-qa-20261126', integration/ajustes-aj18-android]
   pull_request:
     branches: ['integration/shared-core-20261126']
   workflow_dispatch:
