@@ -91,6 +91,9 @@ jobs:
           with ZipFile("build/MIDIHUD-iOS-unsigned.ipa") as ipa:
               info = plistlib.loads(ipa.read(app + "Info.plist"))
               executable = ipa.getinfo(app + "MIDIHUD")
+              assert info.get("CFBundleDisplayName") == "MIDI HUD", "Incorrect visible name"
+              assert any(name.startswith(app+"AppIcon") and name.endswith(".png") for name in ipa.namelist()) or app+"Assets.car" in ipa.namelist(), "Missing compiled AppIcon"
+              assert info.get("CFBundleIcons", {}).get("CFBundlePrimaryIcon", {}).get("CFBundleIconName") == "AppIcon", "AppIcon not declared"
               if info.get("CFBundleExecutable") != "MIDIHUD" or not executable.file_size:
                   raise SystemExit("The IPA is missing its application executable.")
               if any("/_CodeSignature/" in name or name.endswith("/embedded.mobileprovision") for name in ipa.namelist()):
