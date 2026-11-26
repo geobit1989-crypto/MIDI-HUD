@@ -58,8 +58,30 @@ class MainActivity : Activity() {
             runCatching { eventProxy?.postMessage(JSONObject().put("kind", "event").put("event", event).toString()) }
         }
         web = WebView(this)
+        // Explicit MIME types are required for ES modules on Android WebView.
         val loader = WebViewAssetLoader.Builder()
-            .addPathHandler(HudPolicy.PATH, WebViewAssetLoader.AssetsPathHandler(this)).build()
+            .addPathHandler(HudPolicy.PATH) { path ->
+                if (path.isEmpty() || path.split('/').any { it == ".." || it == "." } || path.contains('\\')) {
+                    null
+                } else {
+                    val mime = when (path.substringAfterLast('.', "").lowercase()) {
+                        "html" -> "text/html"
+                        "js", "mjs" -> "text/javascript"
+                        "css" -> "text/css"
+                        "json" -> "application/json"
+                        "svg" -> "image/svg+xml"
+                        "png" -> "image/png"
+                        "jpg", "jpeg" -> "image/jpeg"
+                        "md", "txt" -> "text/plain"
+                        else -> "application/octet-stream"
+                    }
+                    try {
+                        WebResourceResponse(mime,
+                            if (mime.startsWith("text/") || mime == "application/json" || mime == "image/svg+xml") "UTF-8" else null,
+                            assets.open(path))
+                    } catch (_: java.io.IOException) { null }
+                }
+            }.build()
         web.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
