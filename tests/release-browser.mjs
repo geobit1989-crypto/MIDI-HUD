@@ -26,6 +26,17 @@ try{
  await page.goto(base+'index.html');
  const home=page.getByRole('dialog',{name:'MIDI HUD',exact:true});
  await home.waitFor();
+ assert.equal(await page.title(),'MIDI HUD');
+ assert.equal(await home.evaluate(node=>node.ownerDocument.activeElement?.id),'hud-home-title');
+ assert.equal(await home.getByRole('button',{name:'LIVE',exact:true}).evaluate(node=>getComputedStyle(node).borderTopWidth),'0px');
+ assert.equal(await home.evaluate(node=>{
+  const footer=node.querySelector('footer');
+  const group=footer.querySelector('.hud-home-midi');
+  const drive=footer.querySelector('[data-link="drive"]');
+  return group.getBoundingClientRect().left===footer.getBoundingClientRect().left &&
+    drive.getBoundingClientRect().right===footer.getBoundingClientRect().right &&
+    group.lastElementChild?.dataset.link==='usb';
+ }),true);
  assert.equal(await home.locator('.hud-tile').count(),4);
  assert.equal(await home.locator('[data-link="bluetooth"]').getAttribute('data-state'),'idle');
  for(const [width,height] of [[390,844],[844,390],[320,568],[1280,720]]){
@@ -37,6 +48,7 @@ try{
  await page.locator('#hud-close-btn').click();
  await home.getByRole('button',{name:'LIVE',exact:true}).click();
  assert.equal(await home.isVisible(),false);
+ await page.waitForFunction(()=>document.title.includes('LIVE'));
  await page.locator('.topbar .settings').click();
  await page.locator('#hud-home-link').click();
  await home.waitFor();
