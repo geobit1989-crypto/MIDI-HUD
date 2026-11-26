@@ -10,6 +10,7 @@
 </head>
 <body>
 <a href="./v03.html?home=1">Abrir MIDI HUD</a>
+<nav aria-label="Legal"><a href="./privacy.html">Privacidad</a> · <a href="./terms.html">Condiciones</a> · <a href="./privacy-en.html">Privacy</a> · <a href="./terms-en.html">Terms</a></nav>
 <script>
   const route = navigator.userAgentData?.platform === 'Android' || /Android/i.test(navigator.userAgent) ? './v03-ble-test.html' : './v03.html';
   const target = new URL(route, location.href);
