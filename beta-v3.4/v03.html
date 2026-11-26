@@ -291,6 +291,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261015-fit3">
 <link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261124">
 <link rel="stylesheet" href="./live/home-qa.css">
+<link rel="stylesheet" href="./live/settings-qa.css">
 </head>
 <body>
   <!-- MIDI HUD recibe mensajes para visualizar estados; no envía MIDI al hardware. -->
@@ -406,7 +407,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <script type="module">
 import {appStorage as localStorage} from "./core/environment.mjs";
 import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261016-repertoires1";
-import {resolveLiveSelection} from "./core/live-selection-v34.mjs?v=20261016-repertoires1";
+import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34.mjs?v=20261016-repertoires1";
 import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261016-repertoires1";
 import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261016-transfer1";
 import {installCloudSync} from "./core/sync-ui.mjs?v=20261016-native1";
@@ -418,6 +419,7 @@ import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {createBrowserMidiSession} from "./core/midi-session-browser.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
 import {installLiveViewMode} from "./live/view-mode.mjs";
+import {createSettings,installChannelPicker} from "./live/settings-qa.mjs";
 const SETTINGS=readSettings(localStorage);
 const $=s=>document.querySelector(s);
 let engine,library,midiPort,libraryPicker,initialSelection,usingSavedLibrary=false;
@@ -427,114 +429,41 @@ const gear=$(".topbar .settings");
 gear.tabIndex=0;gear.setAttribute("role","button");
 gear.setAttribute("title","Configuración MIDI HUD");
 gear.setAttribute("aria-label","Abrir configuración MIDI HUD");
-const overlay=document.createElement("div");
-overlay.id="hud-settings-overlay";
-overlay.hidden=true;
-overlay.style.cssText="position:fixed;inset:0;background:#000c;z-index:1000;display:none;align-items:center;justify-content:center;padding:18px;font-family:system-ui,sans-serif";
-const dialog=document.createElement("section");
-dialog.className="hud-config-panel";
-dialog.setAttribute("role","dialog");
-dialog.setAttribute("aria-modal","true");
-dialog.setAttribute("aria-label","Configuración MIDI HUD");
-dialog.innerHTML=`
-<header class="hud-config-top">
-  <div><div class="hud-config-eyebrow">MIDI HUD · Herramientas</div><h2>Configuración</h2></div>
-  <button id="hud-close-btn" class="hud-config-close" type="button" aria-label="Cerrar configuración">×</button>
-</header>
-<div class="hud-config-content">
-  <div class="hud-config-grid">
-    <section class="hud-config-group" aria-labelledby="hud-sync-heading">
-      <h3 id="hud-sync-heading">Repertorios compartidos</h3>
-      <div id="hud-sync-root" class="hud-config-actions"></div>
-      <p>Actualiza antes de tocar. LIVE conserva su sesión mientras interpretas.</p>
-    </section>
-    <section class="hud-config-group" aria-labelledby="hud-library-heading">
-      <h3 id="hud-library-heading">Repertorio en LIVE</h3>
-      <label for="hud-repertoire">Repertorio activo
-        <select id="hud-repertoire"></select>
-      </label>
-      <p id="hud-library-status" class="hud-config-readout" role="status"></p>
-      <button id="hud-library-update" type="button">Actualizar repertorios locales</button>
-      <p>La selección se recuerda en este navegador. Para traer tus guardados de otro navegador, usa allí «Enlace para navegador MIDI» en el Editor. Después puedes seguir editando desde aquí.</p>
-    </section>
-    <section class="hud-config-group" aria-labelledby="hud-midi-heading">
-      <h3 id="hud-midi-heading">Recepción MIDI</h3>
-      <p>Canal global de entrada, compartido por todas las canciones.</p>
-      <label for="hud-channel">Canal de recepción
-        <select id="hud-channel"></select>
-      </label>
-      <div class="hud-config-actions">
-        <button id="hud-midi-btn" type="button" class="hud-primary">Autorizar entrada MIDI</button>
-      </div>
-      <label for="hud-midi-input">Entrada MIDI<select id="hud-midi-input"><option value="">Autoriza MIDI para elegir una entrada</option></select></label>
-      <p id="hud-midi-status" role="status" class="hud-config-readout">Entrada MIDI no solicitada. La simulación manual funciona sin hardware.</p>
-    </section>
-    <section class="hud-config-group" aria-labelledby="hud-nav-heading">
-      <h3 id="hud-nav-heading">Consulta de canciones</h3>
-      <p>Consultar una canción o un estado no modifica el estado MIDI operativo.</p>
-      <label for="hud-preview">Canción de consulta
-        <select id="hud-preview"></select>
-      </label>
-      <div class="hud-config-actions">
-        <button id="hud-preview-btn" type="button" class="hud-primary">Consultar</button>
-        <button id="hud-active-btn" type="button">Volver a activa</button>
-      </div>
-      <p id="hud-current-info" class="hud-config-readout"></p>
-    </section>
-  </div>
-</div>
-<nav class="hud-config-tools" aria-label="Herramientas MIDI HUD">
-  <h3>Ir a otra herramienta</h3>
-  <div class="hud-config-links">
-    <a id="hud-editor-link" href="./editor/v3.html?v=20261016-repertoires1">✎ Editor<small>Modificar canciones, estados y lead sheets</small></a>
-    <a id="hud-home-link" href="./index.html">▦ Inicio</a>
-  </div>
-</nav>
-<footer class="hud-config-foot">El HUD únicamente representa estados visuales. No transmite MIDI a la GT ni supervisa sus cambios físicos.</footer>
-`;
-overlay.append(dialog);document.body.append(overlay);
+const dialog=createSettings();
 let returnToHome=false;
 function popup(open){
- overlay.hidden=!open;
- overlay.style.display=open?"flex":"none";
- if(open)dialog.querySelector("#hud-repertoire").focus();
- else if(returnToHome){returnToHome=false;openHome();}
- else gear.focus();
+ if(open){if(!dialog.open)dialog.showModal();}
+ else if(dialog.open)dialog.close();
 }
+dialog.querySelector('#hud-close-btn').onclick=()=>popup(false);
+dialog.addEventListener('close',()=>{
+ if(returnToHome){returnToHome=false;openHome();}
+ else gear.focus();
+});
 const openHome=installHome({
- settings:()=>{returnToHome=true;popup(true);},
+ settings:()=>{
+  returnToHome=true;popup(true);
+  const raw=readLibrarySource(localStorage);
+  if(raw&&raw!==loadedRaw){
+   try{applyLiveLibrary(JSON.parse(raw));}
+   catch(error){dialog.querySelector('#hud-library-status').textContent='Cambios disponibles al volver a abrir LIVE: '+error.message;}
+  }
+ },
  editor:dialog.querySelector('#hud-editor-link'),
  syncRoot:dialog.querySelector('#hud-sync-root')
 });
-dialog.querySelector('#hud-home-link').addEventListener('click',event=>{
- event.preventDefault();popup(false);openHome();
+let loadedRaw;
+function applyLiveLibrary(next){
+ engine.updateLibrary(withFullRepertoire(next));library=engine.getLibrary();loadedRaw=readLibrarySource(localStorage);usingSavedLibrary=true;prepare();render();
+}
+installChannelPicker(dialog.querySelector('#hud-channel'),SETTINGS.midiChannel,midiChannel=>{
+ saveSettings(localStorage,{midiChannel});
+ engine.dispatch({type:"SET_CHANNEL",channel:midiChannel});
 });
-function applyLiveLibrary(next){engine.updateLibrary(next);library=engine.getLibrary();prepare();render();}
+installNativeMidiControls(dialog.querySelector('#hud-native-midi'));
 function prepare(){
- const ch=dialog.querySelector("#hud-channel");
- ch.replaceChildren();
- for(let i=1;i<=16;i++)ch.add(new Option("Canal "+i,i));
- ch.value=String(SETTINGS.midiChannel);
- ch.onchange=()=>{
-   const midiChannel=Number(ch.value);
-   saveSettings(localStorage,{midiChannel});
-   engine.dispatch({type:"SET_CHANNEL",channel:midiChannel});
- };
- const selector=dialog.querySelector("#hud-preview");
- dialog.querySelector("#hud-preview-btn").onclick=()=>{
-   engine.dispatch({type:"PREVIEW_SONG",songId:selector.value});popup(false);
- };
- dialog.querySelector("#hud-active-btn").onclick=()=>{
-   engine.dispatch({type:"RETURN_TO_ACTIVE"});popup(false);
- };
- dialog.querySelector("#hud-close-btn").onclick=()=>popup(false);
- dialog.querySelector('#hud-library-update').onclick=()=>{
-  try{const raw=readLibrarySource(localStorage);if(!raw)throw Error('No hay una biblioteca confirmada. Guarda primero en el Editor.');applyLiveLibrary(JSON.parse(raw));dialog.querySelector('#hud-library-status').textContent='Repertorios actualizados. Estado musical conservado.';}
-  catch(error){dialog.querySelector('#hud-library-status').textContent='Actualización aplazada: '+error.message;}
- };
- installNativeMidiControls(dialog.querySelector('[aria-labelledby="hud-midi-heading"]'));
  libraryPicker?.destroy();libraryPicker=installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
-   missingRequestedRepertoire:initialSelection.missingRequestedRepertoire,onUse:()=>popup(false)});
+   missingRequestedRepertoire:initialSelection.missingRequestedRepertoire});
  const inputSelect=dialog.querySelector('#hud-midi-input'),status=dialog.querySelector('#hud-midi-status');
  if(!midiPort)midiPort=createBrowserMidiSession({storage:localStorage,
    onMessage:event=>{
@@ -542,11 +471,20 @@ function prepare(){
      // iOS usa MIDI solo para interpretar estados; no muestra un registro de eventos.
      if(!globalThis.MidiHudNative)status.textContent=event.type==='MIDI_CLOCK'?'RX MIDI Clock':`RX canal ${event.channel} · ${event.type} · ${result.matched?'reconocido':'sin asignación'}`;
    },
-   onStatus:({status:connection})=>{status.dataset.connection=connection;status.textContent={connected:'Entrada MIDI conectada.',connecting:'Conectando entrada MIDI.',disconnected:'Entrada MIDI desconectada. El estado musical se conserva.'}[connection];},
+   onStatus:({status:connection,deviceId})=>{status.dataset.connection=connection;
+     dialog.querySelector('#hud-midi-disconnect').disabled=connection==='disconnected';
+     const name=Array.from(inputSelect.options).find(option=>option.value===deviceId)?.textContent;
+     status.textContent={connected:name?'Entrada MIDI conectada: '+name:'Entrada MIDI conectada.',connecting:'Conectando entrada MIDI.',disconnected:'Entrada MIDI desconectada. El estado musical se conserva.'}[connection];},
    onDevices:devices=>{inputSelect.replaceChildren(...devices.map(d=>new Option(d.name,d.id)));if(!devices.length)inputSelect.add(new Option('No hay entradas MIDI',''));inputSelect.value=devices.some(d=>d.id===midiPort?.preferredId)?midiPort.preferredId:devices[0]?.id||'';}});
- inputSelect.onchange=async()=>{if(inputSelect.value)await midiPort.select(inputSelect.value);};
+ const selectInput=async id=>{
+  if(!id)return;
+  window.__sigBleConnection?.disconnect();
+  await midiPort.select(id);
+ };
+ inputSelect.onchange=()=>selectInput(inputSelect.value);
+ dialog.querySelector('#hud-midi-disconnect').onclick=()=>midiPort.disconnect();
  dialog.querySelector('#hud-midi-btn').onclick=async()=>{
-  try{const devices=await midiPort.discover();const id=inputSelect.value||midiPort.preferredId||devices[0]?.id;if(id)await midiPort.select(id);else status.textContent='No hay entradas MIDI disponibles.';}
+  try{const devices=await midiPort.discover();const id=inputSelect.value||midiPort.preferredId||devices[0]?.id;if(id)await selectInput(id);else status.textContent='No hay entradas MIDI disponibles.';}
   catch(error){status.textContent='No se pudo abrir MIDI: '+error.message;}
  };
 
@@ -585,8 +523,6 @@ gear.addEventListener("keydown",event=>{
     event.preventDefault();popup(true);
   }
 });
-overlay.addEventListener("click",e=>{if(e.target===overlay)popup(false)});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)popup(false)});
 function sheet(source){
  const root=$(".lead-sheet");
  if(!root)return;
@@ -675,9 +611,6 @@ function render(){
  const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
  renderLiveModules(document.querySelector(".switch-grid"),vm);
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
- const currentInfo=dialog.querySelector("#hud-current-info");
- if(currentInfo)currentInfo.textContent=(vm.isPreview?"Vista de consulta: ":"Vista operativa: ")+
-  vm.repertoire.name+" · "+vm.song.title+" · "+vm.state.name;
  dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261016-repertoires1&repertoire='+
   encodeURIComponent(vm.repertoire.id)+'&song='+encodeURIComponent(vm.song.id);
 }
@@ -690,18 +623,19 @@ function render(){
    if(transferred.applied){data=transferred.library;usingSavedLibrary=true;}
    try{window.history.replaceState(null,'',window.location.pathname+window.location.search);}catch{}
   }
-  const cloud=installCloudSync({host:dialog.querySelector('#hud-sync-root'),mode:'live',
-   canApply:()=>true,
+  const cloud=installCloudSync({host:dialog.querySelector('#hud-sync-root'),mode:'live',inline:true,
+   canApply:()=>dialog.open&&returnToHome,
    onApplied:next=>{if(engine)applyLiveLibrary(next);else data=next;}});
   // La conexión lenta nunca impide abrir el repertorio local para tocar.
   // Local copy opens immediately; automatic sync only updates storage.
-  const saved=readLibrarySource(localStorage);
+  const saved=readLibrarySource(localStorage);loadedRaw=saved;
   if(!data&&saved){data=normalizeLibrary(JSON.parse(saved));usingSavedLibrary=true;}
   if(!data){
    const response=await fetch("./config/midi-hud-data-v2.json");
    if(!response.ok)throw Error("No se encontró la biblioteca v2");
    data=await response.json();
   }
+  data=withFullRepertoire(data);
   initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
   library=engine.getLibrary();prepare();
