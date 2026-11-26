@@ -29,23 +29,12 @@ test("Cloud sync uses existing browser V3 key, not another beta browser database
  assert.match(storage,/LIBRARY_KEY='hudLibraryV34'/);
  assert.match(storage,/BACKUP_KEY='hudLibraryV34Backup'/);
 });
-test("Public Google OAuth ID can be configured without app secrets",()=>{
- assert.match(syncUI,/CLIENT_STORAGE_KEY='midiHudGoogleWebClientId'/);
+test("Google sign-in uses deployment configuration without exposing a technical form",()=>{
+ assert.match(syncUI,/config\.googleWebClientId/);
  assert.match(syncUI,/loadGoogleIdentity\(\)/);
- assert.match(syncUI,/GoogleDriveAuth\(\{clientId:id\}\)/);
+ assert.match(syncUI,/actions\.append\(connect,sync,disconnect/);
+ assert.doesNotMatch(syncUI,/Identificador OAuth|Guardar identificador|Configuración avanzada de Google/);
  assert.doesNotMatch(read("config/cloud-sync.json"),/client_secret/i);
-});
-
-test("iPhone sync dialog shows Connect and Sync before advanced OAuth settings",()=>{
- const open=syncUI.indexOf("function open(){");
- const actions=syncUI.indexOf("actions.append(connect,sync,disconnect",open);
- const panel=syncUI.indexOf("panel.append(actions,setup)",open);
- const settings=syncUI.indexOf("setup.append(make('summary'",open);
- assert(open>=0&&actions>open&&panel>actions&&settings>open);
- assert.match(syncUI,/const setup=make\('details'\)/);
- assert.match(syncUI,/panel\.append\(actions,setup\)/);
- assert.match(syncUI,/\.hud-sync-actions \[data-connect\],\.hud-sync-actions \[data-sync\]\{grid-column:1\/-1\}/);
- assert.match(syncUI,/panel\.scrollTop=0/);
 });
 
 test("sincroniza automáticamente al guardar, volver a la pestaña y reconectarse a internet",()=>{
