@@ -59,15 +59,21 @@ export function createBleMidiDecoder() {
  */
 export async function connectBleMidi(onMessage, options = {}) {
   const bluetooth = options.bluetooth ?? globalThis.navigator?.bluetooth;
-  if (!bluetooth?.requestDevice) throw new Error("Web Bluetooth no disponible en este navegador");
+  if (!options.device && !bluetooth?.requestDevice) throw new Error("Web Bluetooth no disponible en este navegador");
   if (typeof onMessage !== "function") throw new TypeError("onMessage debe ser una función");
-  const device = await bluetooth.requestDevice({
-    filters: [{namePrefix: 'FootCtrl'}, {namePrefix: 'GAM-10'}, {services: ['0000ae40-0000-1000-8000-00805f9b34fb']}],
+  const device = options.device ?? await bluetooth.requestDevice({
+    filters: [{services: [BLE_MIDI_SERVICE]}, {namePrefix: 'FootCtrl'}, {namePrefix: 'GAM-10'}, {services: ['0000ae40-0000-1000-8000-00805f9b34fb']}],
     optionalServices: [BLE_MIDI_SERVICE, '0000ae40-0000-1000-8000-00805f9b34fb']
   });
-  const server = await device.gatt.connect();
-  const service = await server.getPrimaryService(BLE_MIDI_SERVICE);
-  const characteristic = await service.getCharacteristic(BLE_MIDI_CHARACTERISTIC);
+  let characteristic;
+  try {
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(BLE_MIDI_SERVICE);
+    characteristic = await service.getCharacteristic(BLE_MIDI_CHARACTERISTIC);
+  } catch (error) {
+    if (device.gatt?.connected) device.gatt.disconnect();
+    throw error;
+  }
   const decode = createBleMidiDecoder();
   let closed = false;
   const onValue = event => {
@@ -89,6 +95,7 @@ export async function connectBleMidi(onMessage, options = {}) {
     throw error;
   }
   return {
+    id: device.id,
     name: device.name || "BLE MIDI",
     disconnect() {
       if (closed) return;

@@ -1,4 +1,4 @@
-import {homeIcon, isDesktopMidiHud} from './home-qa.mjs';
+import {homeIcon} from './home-qa.mjs';
 
 const icons = {
   account: '<circle cx="32" cy="17" r="12"/><path d="M10 54V43Q10 34 23 34H41Q54 34 54 43V54Q54 57 51 57H13Q10 57 10 54Z"/>',
@@ -17,11 +17,9 @@ export function createSettings() {
   dialog.setAttribute('aria-labelledby', 'hud-settings-title');
   dialog.innerHTML = '<header><h2 id="hud-settings-title">AJUSTES</h2><button id="hud-close-btn" autofocus aria-label="Cerrar ajustes">×</button></header><main>'+
     accordion('account','CUENTA','<div class="hud-settings-drive">'+homeIcon('drive')+'<div id="hud-sync-root"></div></div>')+
-    accordion('devices','DISPOSITIVOS','<div id="hud-native-midi"></div><div id="hud-browser-midi"><button id="hud-midi-btn" type="button">Autorizar entrada MIDI</button> <button id="hud-midi-disconnect" type="button" disabled>Desconectar entrada MIDI</button><label>Entrada MIDI <select id="hud-midi-input"><option value="">Sin entradas autorizadas</option></select></label><p id="hud-midi-status" role="status"></p></div><p id="hud-usb-row">USB MIDI</p><fieldset id="hud-channel"><legend>Canal de recepción MIDI</legend></fieldset>')+
+    accordion('devices','DISPOSITIVOS','<div id="hud-midi-devices"><button id="hud-midi-btn" type="button">Buscar dispositivos</button> <button id="hud-midi-disconnect" type="button" hidden>Desconectar</button><label id="hud-midi-choice" hidden>Dispositivo <select id="hud-midi-input"></select></label> <button id="hud-midi-connect" type="button" hidden>Conectar</button><p id="hud-midi-status" role="status"></p></div><fieldset id="hud-channel"><legend>Canal de recepción MIDI</legend></fieldset>')+
     accordion('library','REPERTORIOS','<fieldset id="hud-repertoire-list"><legend>Setlist activa</legend></fieldset><p id="hud-library-status" role="status"></p>')+
     '</main><a id="hud-editor-link" href="./editor/v3.html?v=20261016-repertoires1" hidden></a>';
-  dialog.querySelector('#hud-usb-row').hidden = !isDesktopMidiHud() || Boolean(globalThis.MidiHudNative);
-  dialog.querySelector('#hud-browser-midi').hidden = Boolean(globalThis.MidiHudNative);
   const drive = dialog.querySelector('#hud-sync-root');
   new MutationObserver(() => {
     drive.parentElement.dataset.state = drive.querySelector('[data-sync-state]')?.dataset.syncState || '';

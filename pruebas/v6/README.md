@@ -153,3 +153,9 @@ Revisar las reglas operativas: persistencia y valor inicial de Morph, activació
 ## Formato de configuración
 
 `config/midi-hud-data-v1.json` mantiene el esquema `1.0.0` de repertorios. El motor es `0.2.0`. El motor migra referencias de volumen de los JSON antiguos sin usarlas.
+
+## Conexión MIDI en QA
+
+En **Ajustes → Dispositivos**, pulsa **Buscar dispositivos** para Bluetooth, selecciona el controlador y pulsa **Conectar** cuando el selector lo ofrezca. Android solicita los permisos del sistema en esa misma acción. iOS utiliza el selector MIDI de Apple. Windows abre el emparejamiento del sistema y solo muestra puertos que Windows expone como entradas MIDI. El selector de Web Bluetooth concede acceso al dispositivo al seleccionarlo y MIDI HUD abre el servicio BLE MIDI estándar. En Web MIDI, el navegador puede pedir permiso al arrancar y puede omitir el tipo de transporte. Una entrada única puede abrirse automáticamente en ese caso. Un navegador sin API compatible requiere otra plataforma.
+
+USB se abre automáticamente cuando existe una entrada MIDI compatible identificable. Ante varias entradas sin preferencia inequívoca, se puede seleccionar la entrada expuesta por el sistema. El canal global es 2 en una instalación nueva y la aplicación conserva cualquier canal guardado. La caída de la conexión conserva la sesión musical y se puede reconectar cuando reaparece la entrada. **Desconectar** suspende esa reconexión hasta volver a conectar expresamente. El monitor de mensajes está en LAB. La convivencia con el hardware y los permisos de cada sistema requieren aceptación física.

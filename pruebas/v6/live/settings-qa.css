@@ -48,5 +48,5 @@
 .hud-settings-drive:is([data-state="connected"],[data-state="synced"]) circle { fill:#22c55e; }
 .hud-settings-drive[data-state="syncing"] circle { fill:#ff9a43; }
 .hud-settings-drive:is([data-state="error"],[data-state="offline"]) circle { fill:#ff6268; }
-#hud-browser-midi label { display:block; margin-top:8px; }
+#hud-midi-choice:not([hidden]) { display:inline-block; margin-top:8px; }
 #hud-settings-overlay [hidden] { display:none; }
