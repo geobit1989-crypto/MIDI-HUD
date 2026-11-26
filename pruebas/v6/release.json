@@ -1,18 +1,18 @@
 {
-  "version": "v8-ajustes-aj18-qa",
+  "version": "v8-ajustes-aj18-qa-oauth-ui",
   "release_date": "2026-11-26",
   "source_branch": "integration/ajustes-aj18-web",
-  "source_commit": "b31bd75da41d3d05be884d0bfa07b16d1a2ed7f0",
+  "source_commit": "6a4afb8fa90a6ebd1efe5b8e2589e57019f6982d",
   "route": "/MIDI-HUD/pruebas/v6/",
   "application": "complete",
   "storage_prefix": "midiHudTest:",
   "drive_history_kind": "midi-hud-test-sync-v1",
   "production_unchanged": true,
-  "previous_web_commit": "0e9498962f9bdd5055a81e32ae912f881fc9a051",
+  "previous_web_commit": "34ea2fd2bf8a997df537c5021b2c9b759883d45e",
   "windows_entry": "v03.html",
   "android_entry": "v03-ble-test.html",
   "android_web_patch": "14 modulepreload links for earlier parallel loading of existing static imports. No JavaScript or MIDI changes. Physical cold/warm launch performance pending.",
-  "application_tests": 264,
+  "application_tests": 263,
   "worker_tests": 4,
   "ci_scope": "AJUSTES Esbozo 05 / AJ-18, HOME, LIVE, EDITOR, sincronización y MIDI",
   "ios_unchanged": true,
@@ -20,5 +20,5 @@
   "home_entry": "index.html",
   "lab_in_product": false,
   "home_visual_revision": "esbozo-06-original",
-  "web_ci": "https://github.com/geobit1989-crypto/MIDI-HUD/actions/runs/45894310180"
+  "web_ci": "https://github.com/geobit1989-crypto/MIDI-HUD/commit/6a4afb8fa90a6ebd1efe5b8e2589e57019f6982d/checks"
 }
