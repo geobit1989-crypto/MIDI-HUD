@@ -59,3 +59,14 @@ test('Android QA is isolated from normal web and production data',()=>{
  const qa=scopeStorage(raw);qa.setItem('hudLibrary','test');qa.clear();
  assert.equal(raw.getItem('hudLibrary'),'production');assert.equal(qa.getItem('hudLibrary'),null);
 });
+
+test('Android opens the actual selected native input before reporting success',async()=>{
+ const t=setup(),opening=vm.runInContext('navigator.requestMIDIAccess()',t.context);
+ t.reply(t.calls[0],{ports:[{id:'foot',name:'FootCtrlPlus',connected:false}],selected:''});
+ const access=await opening,port=access.inputs.get('foot'),opened=port.open();
+ assert.equal(t.calls[1].command,'midi.select');assert.equal(t.calls[1].payload.id,'foot');
+ t.reply(t.calls[1],{ports:[{id:'foot',name:'FootCtrlPlus',connected:true}],selected:'foot'});
+ assert.equal(await opened,port);
+ const failed=port.open();t.reply(t.calls[2],{ports:[{id:'foot',connected:false}],selected:''});
+ await assert.rejects(failed,/No se pudo abrir/);
+});

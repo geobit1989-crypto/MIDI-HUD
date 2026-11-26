@@ -27,8 +27,9 @@ internal class MidiInput(context: Context, private val emit: (JSONObject) -> Uni
     private var active = ""
     private var disposed = false
     private var listening = false
+    private var connectingBluetooth = false
     private val callback = object : MidiManager.DeviceCallback() {
-        override fun onDeviceAdded(info: MidiDeviceInfo) { publish() }
+        override fun onDeviceAdded(info: MidiDeviceInfo) { if (!connectingBluetooth) publish() }
         override fun onDeviceRemoved(info: MidiDeviceInfo) {
             if (active.startsWith("${info.id}:")) { generation++; closePort(); selected = "" }
             bluetooth.remove(info.id)?.let { runCatching { it.close() } }
@@ -121,8 +122,9 @@ internal class MidiInput(context: Context, private val emit: (JSONObject) -> Uni
         start()
         var completed = false
         val request = ++generation
-        closePort(); selected = ""; publish()
-        fun finish(result: Result<JSONObject>) { if (!completed) { completed = true; done(result) } }
+        connectingBluetooth = true
+        closePort(); selected = ""
+        fun finish(result: Result<JSONObject>) { if (!completed) { completed = true; connectingBluetooth = false; done(result); publish() } }
         main.postDelayed({ if (!completed) { if (generation == request) generation++; finish(Result.failure(IllegalStateException("Tiempo de espera Bluetooth."))) } }, 15000)
         try {
             manager!!.openBluetoothDevice(remote, { opened ->
@@ -134,8 +136,16 @@ internal class MidiInput(context: Context, private val emit: (JSONObject) -> Uni
                 } else {
                     val previous = bluetooth.put(opened.info.id, opened)
                     if (previous != null && previous !== opened) runCatching { previous.close() }
-                    // Reply and publish discovery before the shared session selects its port.
-                    finish(Result.success(list())); publish()
+                    val first = opened.info.ports.firstOrNull { it.type == MidiDeviceInfo.PortInfo.TYPE_OUTPUT }
+                    if (first == null) {
+                        bluetooth.remove(opened.info.id); runCatching { opened.close() }
+                        finish(Result.failure(IllegalStateException("El dispositivo BLE no ofrece salida MIDI.")))
+                    } else {
+                        // Complete the native selection before notifying the shared session.
+                        connectingBluetooth = false
+                        completed = true
+                        select(id(opened.info, first.portNumber), done)
+                    }
                 }
             }, main)
         } catch (e: Exception) { finish(Result.failure(e)) }

@@ -77,11 +77,10 @@ class MainActivity : Activity() {
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
                 if (HudPolicy.isLocal(request.url.toString())) {
-                    loader.shouldInterceptRequest(request.url)?.let { return it }
                     // Web pages have links to directory index entries.
-                    if (request.url.path?.endsWith("/") == true) {
-                        loader.shouldInterceptRequest(request.url.buildUpon().appendPath("index.html").build())?.let { return it }
-                    }
+                    val local = if (request.url.path?.endsWith("/") == true)
+                        request.url.buildUpon().appendPath("index.html").build() else request.url
+                    loader.shouldInterceptRequest(local)?.let { return it }
                 }
                 return WebResourceResponse("text/plain", "UTF-8", 403, "Blocked",
                     emptyMap(), ByteArrayInputStream("Blocked".toByteArray()))
@@ -140,7 +139,10 @@ class MainActivity : Activity() {
         when (command) {
             "midi.open" -> { midi.start(); reply(Result.success(midi.list())) }
             "midi.list" -> { midi.start(); reply(Result.success(midi.list())) }
-            "midi.select" -> midi.select(payload.optString("id")) { reply(it) }
+            "midi.select" -> {
+                check(bluetoothReply == null) { "Espera a que termine la conexión Bluetooth." }
+                midi.select(payload.optString("id")) { reply(it) }
+            }
             "midi.bluetooth" -> beginBluetooth(reply)
             "cloud.config" -> reply(Result.success(JSONObject().put("configured", false)))
             "cloud.restore" -> reply(Result.success(null))
