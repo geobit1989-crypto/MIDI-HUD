@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {isWindowsTestEnvironment} from '../core/environment.mjs';
+const source=readFileSync(new URL('../core/native-bridge.js',import.meta.url),'utf8');
+test('Windows WebView transport selects input and delivers MIDI',async()=>{
+ const calls=[],listeners={};
+ const webview={postMessage(text){calls.push(JSON.parse(text));},addEventListener(type,fn){listeners[type]=fn;}};
+ const ctx=vm.createContext({chrome:{webview},location:new URL('https://midihud.local/windows-qa/v03.html'),navigator:{requestMIDIAccess(){throw Error('browser MIDI must not be used');}},performance,Uint8Array,Event,DOMException,setTimeout,clearTimeout,document:{addEventListener(){},getElementById(){return null;}},window:{dispatchEvent(){}}});
+ vm.runInContext(source,ctx);
+ const send=value=>listeners.message({data:JSON.stringify(value)});
+ const port={id:'usb',name:'FootCtrlPlus',connected:true};
+ const opening=vm.runInContext('navigator.requestMIDIAccess()',ctx);
+ assert.equal(ctx.MidiHudNative.platform,'windows');assert.equal(calls[0].command,'midi.open');
+ send({kind:'reply',id:calls[0].id,result:{ports:[port],selected:'usb'}});
+ const access=await opening;const input=access.inputs.get('usb');
+ const selecting=input.open();assert.equal(calls[1].command,'midi.select');
+ send({kind:'reply',id:calls[1].id,result:{ports:[port],selected:'usb'}});await selecting;
+ const received=[];input.addEventListener('midimessage',ev=>received.push(Array.from(ev.data)));
+ send({kind:'event',event:{type:'midi.message',portId:'usb',data:[177,80,127]}});
+ assert.deepEqual(received,[[177,80,127]]);
+ send({kind:'event',event:{type:'midi.ports',ports:[],selected:''}});assert.equal(access.inputs.size,0);
+ await assert.rejects(ctx.MidiHudNative.call('midi.send'),/Acción no disponible/);
+});
+test('Windows QA origin and path are exact',()=>{
+ assert(isWindowsTestEnvironment(new URL('https://midihud.local/windows-qa/index.html')));
+ assert(!isWindowsTestEnvironment(new URL('https://midihud.local/production/index.html')));
+ assert(!isWindowsTestEnvironment(new URL('https://evil.test/windows-qa/index.html')));
+ const ctx=vm.createContext({chrome:{webview:{postMessage(){}}},location:new URL('https://evil.test/windows-qa/index.html'),navigator:{}});
+ vm.runInContext(source,ctx);assert.equal(ctx.MidiHudNative,undefined);
+});

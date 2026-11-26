@@ -13,7 +13,11 @@ export function isAndroidTestEnvironment(location=globalThis.location){
  return location?.origin==='https://appassets.androidplatform.net'&&location?.pathname?.startsWith('/android-qa/')===true;
 }
 export const IS_ANDROID_TEST_ENVIRONMENT=isAndroidTestEnvironment();
-export const IS_TEST_ENVIRONMENT=IS_IOS_TEST_ENVIRONMENT||IS_ANDROID_TEST_ENVIRONMENT||isTestEnvironment();
+export function isWindowsTestEnvironment(location=globalThis.location){
+ return location?.origin==='https://midihud.local'&&location?.pathname?.startsWith('/windows-qa/')===true;
+}
+export const IS_WINDOWS_TEST_ENVIRONMENT=isWindowsTestEnvironment();
+export const IS_TEST_ENVIRONMENT=IS_IOS_TEST_ENVIRONMENT||IS_ANDROID_TEST_ENVIRONMENT||IS_WINDOWS_TEST_ENVIRONMENT||isTestEnvironment();
 function lazyStorage(name){
  const current=()=>IS_TEST_ENVIRONMENT?scopeStorage(globalThis[name]):globalThis[name];
  return {getItem:key=>current().getItem(key),setItem:(key,value)=>current().setItem(key,value),removeItem:key=>current().removeItem(key),key:index=>current().key(index),get length(){return current().length;},clear:()=>current().clear()};
