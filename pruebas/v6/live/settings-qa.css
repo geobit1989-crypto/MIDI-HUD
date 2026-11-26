@@ -1,0 +1,52 @@
+#hud-settings-overlay {
+  position:fixed; inset:0; width:100%; height:100%; max-width:none; max-height:none;
+  margin:0; padding:0; box-sizing:border-box; border:0; overflow:auto;
+  background:#03080d; color:#fff; font:16px/1.4 system-ui,sans-serif;
+}
+#hud-settings-overlay header {
+  position:sticky; top:0; z-index:1; display:grid; grid-template-columns:44px 1fr 44px;
+  align-items:center; padding:env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left));
+  min-height:57px; border-bottom:3px solid #b56829; background:#03080d;
+}
+#hud-settings-title { grid-column:2; text-align:center; margin:0; font-size:20px; letter-spacing:.06em; }
+#hud-settings-overlay #hud-close-btn { padding:0; border:0; background:none; font-size:32px; color:white; }
+#hud-settings-overlay main { width:min(660px,100%); box-sizing:border-box; margin:auto; padding:16px 12px max(16px,env(safe-area-inset-bottom)); }
+#hud-settings-overlay details { border:1px solid #273543; border-radius:12px; background:#111d28; margin-bottom:12px; overflow:hidden; }
+#hud-settings-overlay summary { display:flex; align-items:center; gap:12px; cursor:pointer; min-height:54px; padding:0 14px; list-style:none; font-weight:750; }
+#hud-settings-overlay summary::-webkit-details-marker { display:none; }
+#hud-settings-overlay summary svg { width:29px; }
+#hud-settings-overlay details[open] > summary svg { color:#e79a51; }
+.hud-settings-chevron { margin-left:auto; width:9px; height:9px; border:solid #cbd5e1; border-width:0 2px 2px 0; transform:rotate(45deg); }
+#hud-settings-overlay details[open] > summary .hud-settings-chevron { transform:rotate(225deg); }
+.hud-settings-section { padding:14px; background:#0b141d; border-top:1px solid #273543; }
+#hud-settings-overlay button,#hud-settings-overlay select {
+  color:#fff; background:#263646; border:1px solid #52657c; border-radius:8px; min-height:44px; padding:6px 10px; font:inherit;
+}
+#hud-settings-overlay button:enabled { cursor:pointer; }
+#hud-settings-overlay button:disabled { opacity:.55; }
+#hud-settings-overlay [data-sync] { background:#b56829; border-color:#b56829; }
+#hud-settings-overlay p { margin:8px 0; color:#aab9c8; overflow-wrap:anywhere; }
+#hud-settings-overlay fieldset { border:0; padding:0; margin:0; min-width:0; }
+#hud-settings-overlay legend { padding:0; margin-bottom:9px; color:#cbd5e1; }
+.hud-channel-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:4px; }
+.hud-channel-grid label,.hud-settings-repertoire { position:relative; cursor:pointer; }
+.hud-channel-grid input,.hud-settings-repertoire input { position:absolute; opacity:0; }
+.hud-channel-grid span { display:grid; place-items:center; min-height:44px; border-radius:6px; background:#263646; }
+.hud-channel-grid input:checked + span { background:#305ff3; }
+#hud-settings-overlay :focus-visible,.hud-channel-grid input:focus-visible + span,.hud-settings-repertoire input:focus-visible + span { outline:2px solid #fff; outline-offset:-2px; }
+.hud-settings-repertoire { display:block; margin-bottom:6px; }
+.hud-settings-repertoire > span { display:grid; grid-template-columns:24px 1fr 20px; gap:10px; align-items:center; min-height:44px; padding:8px 12px; border:1px solid #273543; border-radius:8px; background:#111d28; overflow-wrap:anywhere; }
+.hud-settings-repertoire small { display:block; color:#aab9c8; }
+.hud-settings-repertoire .hud-choice { width:16px; height:16px; border:2px solid #52657c; border-radius:50%; }
+.hud-settings-repertoire input:checked + span { background:#263646; border-color:#b56829; }
+.hud-settings-repertoire input:checked + span svg,.hud-settings-repertoire input:checked + span .hud-choice { color:#e79a51; }
+.hud-settings-repertoire input:checked + span .hud-choice { border-color:transparent; }
+.hud-settings-repertoire input:checked + span .hud-choice::after { content:"✓"; }
+.hud-settings-drive { display:flex; align-items:flex-start; gap:10px; }
+.hud-settings-drive > svg { width:28px; flex:none; }
+.hud-settings-drive circle { fill:#64748b; }
+.hud-settings-drive:is([data-state="connected"],[data-state="synced"]) circle { fill:#22c55e; }
+.hud-settings-drive[data-state="syncing"] circle { fill:#ff9a43; }
+.hud-settings-drive:is([data-state="error"],[data-state="offline"]) circle { fill:#ff6268; }
+#hud-browser-midi label { display:block; margin-top:8px; }
+#hud-settings-overlay [hidden] { display:none; }

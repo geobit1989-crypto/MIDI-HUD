@@ -12,6 +12,10 @@ function readState(storage){
  const raw=storage.getItem(SYNC_KEY);if(!raw)return {accounts:{}};
  const value=JSON.parse(raw);if(!value||typeof value.accounts!=='object'||Array.isArray(value.accounts))fail('El registro de sincronización está dañado; se ha conservado.');return value;
 }
+export function lastSuccessfulSync(storage,accountId){
+ try{return accountId?readState(storage).accounts[accountId]?.lastSyncedAt:null;}
+ catch{return null;}
+}
 export function commitMetadata(commit){
  const appProperties={kind:COMMIT_KIND,commitId:commit.id};
  commit.parents.forEach((id,i)=>{appProperties['parent'+i]=id;});
@@ -30,7 +34,7 @@ export class DriveHistory{
  async list(){
   const files=[];let pageToken;
   do{
-   const response=await this.request({method:'GET',path:'/drive/v3/files',query:{spaces:'appDataFolder',q:"trashed = false and appProperties has { key='kind' and value='"+COMMIT_KIND+"' }",pageSize:'1000',fields:'nextPageToken,files(id,appProperties)',...(pageToken?{pageToken}:{})}});
+   const response=await this.request({method:'GET',path:'/drive/v3/files',query:{spaces:'appDataFolder',q:"trashed = false and appProperties has { key='kind' and value='"+COMMIT_KIND+"' }",pageSize:'1000',fields:'nextPageToken,files(id,createdTime,appProperties)',...(pageToken?{pageToken}:{})}});
    if(!Array.isArray(response.files))fail('Drive no devolvió una lista válida.');files.push(...response.files);pageToken=response.nextPageToken;
    if(files.length>MAX_FILES)fail('El historial necesita archivarse antes de continuar; tus versiones se conservan.');
   }while(pageToken);
@@ -41,7 +45,7 @@ export class DriveHistory{
    const parents=Object.keys(props).filter(k=>/^parent\d+$/.test(k)).sort((a,b)=>Number(a.slice(6))-Number(b.slice(6))).map(k=>props[k]);
    if(parents.length>16||parents.some(p=>!ID.test(p)||p===id))fail('Historial de Drive inválido.');
    if(graph.has(id))fail('Hay versiones duplicadas en Drive; se han conservado.');
-   graph.set(id,{id,fileId:file.id,parents});
+   graph.set(id,{id,fileId:file.id,parents,createdAt:file.createdTime});
   }
   // Si una lista está incompleta o alguien elimina un antecesor, no publicamos
   // una resolución basada en una historia incompleta.
