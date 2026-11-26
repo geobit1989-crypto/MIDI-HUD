@@ -2,7 +2,7 @@ import {createMidiConnectionSession} from './midi-connection-session.mjs';
 import {createMidiParser} from './midi-stream.mjs';
 /** One selected input; reconnection never dispatches a musical event. */
 export function createBrowserMidiSession({storage,onMessage=()=>{},onStatus=()=>{},onDevices=()=>{}}={}) {
- let access=null,opening=null,active=null,stop=null,closed=false,removeStateListener=null,connectionAttempt=0;
+ let access=null,opening=null,active=null,stop=null,closed=false,removeStateListener=null,connectionAttempt=0,suspended=false;
  const ports=()=>{
   const source=access?.inputs;
   let items=[];
@@ -16,7 +16,7 @@ export function createBrowserMidiSession({storage,onMessage=()=>{},onStatus=()=>
   const available=ports();
   if(active&&!available.includes(active)){detach();session.lost();}
   onDevices(available.map(p=>({id:id(p),name:p.name||id(p)})));
-  if(active||session.status==='connecting')return;
+  if(suspended||active||session.status==='connecting')return;
   if(session.preferredId&&available.some(p=>id(p)===session.preferredId))void session.retry();
   else if(globalThis.MidiHudNative&&available.length===1)void session.select(id(available[0]));
  }
@@ -61,7 +61,8 @@ export function createBrowserMidiSession({storage,onMessage=()=>{},onStatus=()=>
   onDevices(available.map(p=>({id:id(p),name:p.name||id(p)})));
   return false;
  }
- return {start,discover:()=>session.discover(),select:deviceId=>session.select(deviceId),retry:()=>session.retry(),
+ return {start,discover:()=>session.discover(),select:deviceId=>{suspended=false;return session.select(deviceId);},retry:()=>session.retry(),
+  async disconnect(){suspended=true;++connectionAttempt;await session.disconnect();detach();},
   get status(){return session.status;},get preferredId(){return session.preferredId;},
   async close(){closed=true;++connectionAttempt;removeStateListener?.();await session.disconnect();detach();}};
 }

@@ -74,7 +74,7 @@ final class MIDIManager {
     func select(_ id: String) throws -> [String: Any] {
         // Nunca seleccionar una fuente sin inicializar primero el puerto Core MIDI.
         _ = try start()
-        if !id.isEmpty && !sources().contains(where: { identifier($0) == id }) {
+        if id != "__hud_disconnected__" && !id.isEmpty && !sources().contains(where: { identifier($0) == id }) {
             throw NSError(domain: "MIDI HUD", code: 1, userInfo: [NSLocalizedDescriptionKey: "La entrada MIDI ya no está disponible."])
         }
         let previous = selected
@@ -91,7 +91,7 @@ final class MIDIManager {
         guard input != 0 else { return listing() }
         let found = sources()
         // Un nuevo emparejamiento BLE puede asignar otro identificador.
-        if !selected.isEmpty && found.count == 1 && !found.contains(where: { identifier($0) == selected }) {
+        if selected != "__hud_disconnected__" && !selected.isEmpty && found.count == 1 && !found.contains(where: { identifier($0) == selected }) {
             UserDefaults.standard.set("", forKey: "selectedMIDIInput")
         }
         let available = Set(found.filter { selected.isEmpty || identifier($0) == selected })

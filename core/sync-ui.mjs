@@ -1,5 +1,5 @@
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "./environment.mjs";
-import {DriveHistory,createSyncController} from './drive-sync.mjs';
+import {DriveHistory,createSyncController,lastSuccessfulSync} from './drive-sync.mjs';
 import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-autosync1';
 import {readLibrarySource} from './library-storage.mjs';
 import {PersistentDriveAuth} from './persistent-drive-auth.mjs?v=20261018-persistent1';
@@ -34,8 +34,10 @@ function chooseConflict(info){
 }
 /** Copia local siempre utilizable. En LIVE solo se aplican cambios por elección
  * explícita o antes de crear el motor, nunca durante una interpretación. */
-export function installCloudSync({host,storage=localStorage,getLocal=()=>{const raw=readLibrarySource(storage);return raw?JSON.parse(raw):null;},canApply=()=>true,onApplied=()=>{},mode='editor'}={}){
+export function installCloudSync({host,storage=localStorage,getLocal=()=>{const raw=readLibrarySource(storage);return raw?JSON.parse(raw):null;},canApply=()=>true,onApplied=()=>{},mode='editor',inline=false}={}){
  installStyle();
+ const autoKey='midiHudAutoSync';
+ let auto=storage.getItem(autoKey)!=='off';
  const launch=button('Sincronización',()=>open());host.append(launch);
  const CLIENT_STORAGE_KEY='midiHudGoogleWebClientId';
  let auth,account=null,configured=false,identityReady=false,last={state:'local',message:'Guardado en este dispositivo'},panel=null,busy=false,stopped=false;
@@ -49,23 +51,28 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   launch.setAttribute('data-sync-state',next.state);
   launch.title=next.message;refresh();
  };
- const controller=createSyncController({storage,history:new DriveHistory(request=>auth.request(request)),getLocal,canApply:options=>mode==='live'||canApply(options),onApplied:(library,options)=>{if(mode!=='live')onApplied(library);},onStatus:status,resolveConflict:chooseConflict});
+ const history=new DriveHistory(request=>auth.request(request));
+ const controller=createSyncController({storage,history,getLocal,canApply:options=>mode==='live'||canApply(options),onApplied:(library,options)=>{if(mode!=='live')onApplied(library);},onStatus:status,resolveConflict:chooseConflict});
  const refresh=()=>{
-  if(!panel?.open)return;
+  if(!panel||(!inline&&!panel.open))return;
   panel.querySelector('[data-status]').textContent=last.message;
   panel.querySelector('[data-account]').textContent=account?'Cuenta: '+account.email:configured?'Conecta la misma cuenta de Google en tus dispositivos.':'La conexión con Drive todavía necesita configurarse para esta versión.';
+  if(inline){
+   const timestamp=lastSuccessfulSync(storage,account?.id);
+   panel.querySelector('[data-last-sync]').textContent=timestamp?'Última sincronización correcta: '+new Date(timestamp).toLocaleString():'Sin sincronizaciones registradas para esta cuenta.';
+  }
   const connect=panel.querySelector('[data-connect]');connect.disabled=busy||!configured||!identityReady;connect.textContent=account?'Cambiar cuenta de Google':'Conectar con Google';
   panel.querySelector('[data-sync]').disabled=busy||!account;panel.querySelector('[data-disconnect]').disabled=busy||!account;
  };
  async function synchronize(options={}){
-  if(!account||stopped)return;
+  if(!account||stopped||(!auto&&!options.explicit))return;
   if(busy){queued=true;queuedOptions={...queuedOptions,...options};return;}
   // Esperar a que el editor guarde el borrador. LIVE no cambia su motor activo.
   if(mode!=='live'&&!canApply(options)){status({state:'deferred',message:'Cambios locales sin guardar. Sincronizaré después de Guardar.'});return;}
   busy=true;refresh();
   try{
    const result=await controller.synchronize(options);
-   if(mode==='live'&&options.explicit&&!result?.pending&&!result?.conflict&&!result?.deferred){const local=getLocal();if(local)onApplied(local);}
+   if(mode==='live'&&(!inline||canApply(options))&&options.explicit&&!result?.pending&&!result?.conflict&&!result?.deferred){const local=getLocal();if(local)onApplied(local);}
 
    // Puede haberse guardado otro cambio mientras Drive respondía.
    if(result?.pending&&!result?.deferred&&!result?.conflict)queued=true;
@@ -78,39 +85,87 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
    }else {queued=false;status({state:'error',message:'Sincronización pendiente. Se reintentará al recuperar la conexión: '+error.message});}
   }finally{
    busy=false;refresh();
-   if(queued&&account&&!stopped&&canApply({})&&document.visibilityState!=='hidden'){
+   if(queued&&account&&!stopped&&document.visibilityState!=='hidden'){
     const pendingOptions=queuedOptions;queued=false;queuedOptions={};queueMicrotask(()=>{void synchronize({reason:'queued',...pendingOptions});});
    }
   }
  }
  function recoveries(){
-  const node=dialog('Versiones conservadas');let count=0;
+  const node=dialog('Historial de versiones');
+  const recoveryStatus=make('p');recoveryStatus.setAttribute('role','status');
+  node.append(recoveryStatus);
+  async function restore(read,source){
+   if(busy){recoveryStatus.textContent='Espera a que termine la sincronización.';return;}
+   if(!inline&&!canApply({explicit:true})){recoveryStatus.textContent='Guarda tus cambios antes de recuperar una versión.';return;}
+   busy=true;refresh();
+   try{
+    const previous=getLocal(),origin=JSON.stringify(previous);
+    const library=await read();
+    if(!node.open)return;
+    const names=library.repertoires.map(rep=>rep.name).join(', ');
+    if(!window.confirm('¿Recuperar la versión de '+source+' con '+names+'? La biblioteca actual se conservará como copia anterior.'))return;
+    if(origin!==JSON.stringify(getLocal()))throw Error('La biblioteca local cambió. Vuelve a abrir el historial.');
+    if(!inline&&!canApply({explicit:true}))throw Error('Guarda tus cambios antes de recuperar una versión.');
+    const {replaceLibrary}=await import('./library-storage.mjs');
+    if(origin!==JSON.stringify(getLocal()))throw Error('La biblioteca local cambió. Vuelve a abrir el historial.');
+    replaceLibrary(storage,library,previous||library);
+    status({state:'pending',message:'Versión recuperada en este dispositivo. Pulsa Sincronizar ahora para compartirla.'});
+    if(!inline||canApply({explicit:true}))onApplied(library);
+    node.close();
+   }catch(error){recoveryStatus.textContent=error.message;}
+   finally{busy=false;refresh();}
+  }
+  const remote=make('section');remote.className='hud-sync-recovery';
+  const local=make('section');local.className='hud-sync-recovery';
+  remote.append(make('h3','Versiones en Drive'));
+  local.append(make('h3','Copias de conflictos locales'));
+  let count=0;
   for(let i=0;i<storage.length;i++){
    const key=storage.key(i);if(!key?.startsWith('midiHudSyncRecovery:'))continue;
    let item;try{item=JSON.parse(storage.getItem(key));}catch{continue;}
    if(account&&item.accountId!==account.id)continue;
-   const row=make('section');row.className='hud-sync-recovery';row.append(make('p',new Date(item.createdAt).toLocaleString()));
+   const row=make('section');
+   const date=new Date(item.createdAt).toLocaleString();
+   row.append(make('p',date));
    for(const [label,library] of [['Este dispositivo',item.local],['Drive',item.remote]]){
-    if(!library)continue;
-    row.append(button('Recuperar '+label+' · '+library.repertoires.map(rep=>rep.name).join(', '),()=>{
-     if(!canApply({explicit:true})){status({state:'deferred',message:'Guarda tus cambios antes de recuperar una versión.'});return;}
-     if(!window.confirm('¿Recuperar esta versión completa? La biblioteca actual se conservará como copia anterior.'))return;
-     // La recuperación usa el mismo guardado transaccional que la sincronización.
-     import('./library-storage.mjs').then(({replaceLibrary})=>{
-      const previous=getLocal();replaceLibrary(storage,library,previous||library);onApplied(library);status({state:'pending',message:'Versión recuperada. Pulsa Sincronizar ahora para compartirla.'});node.close();
-     }).catch(error=>status({state:'error',message:error.message}));
-    }));
+    if(library)row.append(button('Recuperar '+label+' · '+library.repertoires.map(rep=>rep.name).join(', '),()=>restore(()=>library,label+' del '+date)));
    }
-   node.append(row);count++;
+   local.append(row);count++;
   }
-  if(!count)node.append(make('p','No hay conflictos guardados en este dispositivo.'));
-  node.append(button('Cerrar',()=>node.close()));node.showModal();
+  if(!count)local.append(make('p','No hay conflictos guardados en este dispositivo.'));
+  node.append(remote,local,button('Cerrar',()=>node.close()));node.showModal();
+  const accountId=account?.id;
+  if(!accountId){remote.append(make('p','Conecta Google para ver las versiones en Drive.'));return;}
+  const listing=make('p','Cargando historial…');remote.append(listing);
+  void history.list().then(({graph})=>{
+   const entries=[...graph.values()].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+   if(!entries.length){listing.textContent='No hay versiones en Drive.';return;}
+   listing.remove();
+   const versions=make('select');versions.setAttribute('aria-label','Versión de biblioteca en Drive');
+   for(const entry of entries){
+    const date=entry.createdAt?new Date(entry.createdAt).toLocaleString():'Fecha no disponible';
+    versions.add(new Option(date+' · '+entry.id.slice(0,8),entry.id));
+   }
+   remote.append(versions,button('Recuperar versión de Drive',()=>restore(async()=>{
+    if(account?.id!==accountId)throw Error('La cuenta de Google cambió. Vuelve a abrir el historial.');
+    return (await history.read(graph.get(versions.value))).library;
+   },versions.selectedOptions[0].textContent)));
+  }).catch(error=>{listing.textContent='No se pudo cargar el historial: '+error.message;});
  }
  function open(){
+  if(inline&&panel){host.closest('details').open=true;panel.querySelector('input')?.focus();return;}
   if(panel?.open){panel.focus();return;}
-  panel=dialog('Sincronización de repertorios');
-  panel.append(make('p','Sincronización automática: al guardar, al abrir o regresar al MIDI HUD y al recuperar internet. Se conserva una copia local para usar LIVE sin conexión.'));
+  panel=inline?make('div'):dialog('Sincronización de repertorios');
+  if(!inline)panel.append(make('p','Sincronización automática: al guardar, al abrir o regresar al MIDI HUD y al recuperar internet. Se conserva una copia local para usar LIVE sin conexión.'));
   const accountLine=make('p');accountLine.dataset.account='';const readout=make('p');readout.dataset.status='';readout.className='hud-sync-status';readout.setAttribute('role','status');panel.append(accountLine,readout);
+  if(inline){
+   const lastSync=make('p');lastSync.dataset.lastSync='';
+   const autoLabel=make('label');
+   const toggle=make('input');toggle.type='checkbox';toggle.checked=auto;
+   toggle.onchange=()=>{auto=toggle.checked;storage.setItem(autoKey,auto?'on':'off');if(auto)void resume();};
+   autoLabel.append(toggle,' Sincronización automática');
+   panel.append(lastSync,autoLabel);
+  }
   const setup=make('details');setup.className='hud-sync-recovery';setup.hidden=!!auth?.isPersistent||!!globalThis.MidiHudNative;
   setup.append(make('summary','Configuración avanzada de Google (OAuth)'));
   const label=make('label','Identificador OAuth web de MIDI HUD (no introduzcas contraseñas)');
@@ -137,9 +192,9 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   const connect=button('Conectar con Google',()=>{
    // connect() abre Google inmediatamente, dentro de esta pulsación.
    if(busy)return;busy=true;refresh();
-   auth.connect().then(next=>{account=next;controller.setAccount(account);status({state:'connected',message:'Cuenta conectada. Sincronización automática activada.'});}).catch(error=>status({state:'error',message:error.message})).finally(()=>{busy=false;refresh();if(account)void synchronize({reason:'connected'});});
+   auth.connect().then(next=>{account=next;controller.setAccount(account);status({state:'connected',message:'Cuenta de Google conectada.'});}).catch(error=>status({state:'error',message:error.message})).finally(()=>{busy=false;refresh();if(account)void synchronize({reason:'connected'});});
   });connect.dataset.connect='';
-  const sync=button(mode==='live'?'Actualizar repertorios':'Sincronizar ahora',()=>synchronize({explicit:true}));sync.dataset.sync='';
+  const sync=button('Sincronizar ahora',()=>synchronize({explicit:true}));sync.dataset.sync='';
   const disconnect=button('Desconectar',async()=>{if(busy)return;busy=true;try{await auth.disconnect();account=null;controller.setAccount(null);status({state:'local',message:'Cuenta desconectada. Los repertorios permanecen en este dispositivo.'});}catch(error){status({state:'error',message:error.message});}finally{busy=false;refresh();}});disconnect.dataset.disconnect='';
   const manage=button('Dispositivos autorizados',async()=>{
    if(!auth?.isPersistent)return;
@@ -166,8 +221,12 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
    }catch(error){container.append(make('p',error.message));}
   });
   manage.hidden=!auth?.isPersistent;
-  actions.append(connect,sync,disconnect,manage,button('Versiones conservadas',recoveries),button('Cerrar',()=>panel.close()));
-  panel.append(actions,setup);panel.showModal();panel.scrollTop=0;refresh();
+  actions.append(connect,sync,disconnect,manage,button('Historial de versiones',recoveries));
+  if(!inline)actions.append(button('Cerrar',()=>panel.close()));
+  panel.append(actions,setup);
+  if(inline){launch.hidden=true;host.append(panel);}
+  else {panel.showModal();panel.scrollTop=0;}
+  refresh();
  }
  async function initialize(){
   if(initializing||stopped)return;
@@ -214,6 +273,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   if(account)await synchronize({reason:'resume'});
  };
  const onSaved=()=>{
+  if(!auto){status({state:'local',message:'Cambios guardados en este dispositivo.'});return;}
   if(!account){
    status({state:'pending',message:'Cambios guardados localmente. Recuperando la sesión autorizada…'});
    void resume();return;
@@ -229,6 +289,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
  window.addEventListener('hud-library-saved',onSaved);
  document.addEventListener('visibilitychange',resume);
  const interval=setInterval(resume,60000);
+ if(inline)open();
  void initialize();
  return {ready,synchronize,open,destroy(){
   stopped=true;clearInterval(interval);if(saveTimer!==null)clearTimeout(saveTimer);

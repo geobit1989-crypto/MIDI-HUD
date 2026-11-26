@@ -10,13 +10,17 @@ const icons = {
   drive: '<g stroke="currentColor" stroke-width="4" stroke-linecap="round" fill="none"><path d="M16 5L3 28"/><path d="M23 5L36 28"/><path d="M8 34H31"/></g><circle cx="20" cy="23" r="3"/>'
 };
 const viewBoxes = {bluetooth: '0 0 40 48', drive: '0 0 40 40'};
-const svg = name => '<svg viewBox="'+(viewBoxes[name] ?? '0 0 24 24')+'" aria-hidden="true" fill="currentColor">'+icons[name]+'</svg>';
+export const homeIcon = name => '<svg viewBox="'+(viewBoxes[name] ?? '0 0 24 24')+'" aria-hidden="true" fill="currentColor">'+icons[name]+'</svg>';
+
+export function isDesktopMidiHud(native = globalThis.MidiHudNative) {
+  return native?.platform === 'windows' || (!native && !navigator.userAgentData?.mobile && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+}
 
 export function installHome({settings, editor, syncRoot}) {
   const liveTitle = document.title;
   const native = globalThis.MidiHudNative;
   const windows = native?.platform === 'windows';
-  const desktop = windows || (!native && !navigator.userAgentData?.mobile && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+  const desktop = isDesktopMidiHud();
   const home = document.createElement('dialog');
   home.className = 'hud-home';
   home.setAttribute('aria-labelledby', 'hud-home-title');
@@ -41,7 +45,7 @@ export function installHome({settings, editor, syncRoot}) {
     }
     node.className = 'hud-tile';
     node.style.setProperty('--tile', color);
-    node.innerHTML = svg(name) + '<span>'+label+'</span>';
+    node.innerHTML = homeIcon(name) + '<span>'+label+'</span>';
     matrix.append(node);
   }
   tile('live', 'LIVE', '#305FF3', () => home.close());
@@ -55,7 +59,7 @@ export function installHome({settings, editor, syncRoot}) {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.link = name;
-    button.innerHTML = svg(name) + '<span>'+label+'</span>';
+    button.innerHTML = homeIcon(name) + '<span>'+label+'</span>';
     button.addEventListener('click', action);
     indicators.set(name, {button, label});
     (name === 'drive' ? status : midiStatus).append(button);
