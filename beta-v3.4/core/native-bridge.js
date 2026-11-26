@@ -1,19 +1,46 @@
-/* Inyectado solo en la app iOS, antes de cargar los módulos del sitio. */
+/* Shared native transport. Inject only into trusted bundled app pages, before site modules. */
 (()=>{
  'use strict';
- const handler=globalThis.webkit?.messageHandlers?.hud;
- if(!handler||globalThis.MidiHudNative)return;
+ const ios=globalThis.webkit?.messageHandlers?.hud;
+ const android=globalThis.MidiHudAndroidHost;
+ const platform=typeof ios?.postMessage==='function'?'ios':typeof android?.postMessage==='function'?'android':null;
+ if(!platform||globalThis.MidiHudNative)return;
+ const midiName=platform==='ios'?'Core MIDI':'Android MIDI';
+ const pending=new Map();
+ let sequence=0;
+ const allowedCommands=new Set(['midi.open','midi.list','midi.select','midi.bluetooth','cloud.config','cloud.restore','cloud.connect','cloud.disconnect','cloud.request','share.text']);
+ function call(command,payload={}){
+  if(!allowedCommands.has(command))return Promise.reject(new Error('Acción no disponible.'));
+  if(platform==='ios')return Promise.resolve().then(()=>ios.postMessage({command,payload}));
+  return new Promise((resolve,reject)=>{
+   const id=String(++sequence);
+   const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Tiempo de espera del servicio nativo agotado.'));},command==='cloud.connect'||command==='midi.bluetooth'||command==='share.text'?120000:30000);
+   pending.set(id,{resolve,reject,timer});
+   try{android.postMessage(JSON.stringify({id,command,payload}));}
+   catch(error){clearTimeout(timer);pending.delete(id);reject(error);}
+  });
+ }
+ function receiveAndroid(message){
+  let data;try{data=JSON.parse(message?.data);}catch{return;}
+  if(!data||typeof data!=='object')return;
+  if(data.kind==='event'){receive(data.event);return;}
+  if(data.kind!=='reply'||typeof data.id!=='string')return;
+  const item=pending.get(data.id);if(!item)return;
+  clearTimeout(item.timer);pending.delete(data.id);
+  if(typeof data.error==='string')item.reject(new Error(data.error));
+  else if(Object.prototype.hasOwnProperty.call(data,'result'))item.resolve(data.result);
+  else item.reject(new Error('Respuesta nativa inválida.'));
+ }
  let hostOffset=null;
  const inputs=new Map(),accessListeners=new Set();
  const access={inputs,outputs:new Map(),onstatechange:null,addEventListener(type,callback){if(type==='statechange')accessListeners.add(callback);},removeEventListener(type,callback){if(type==='statechange')accessListeners.delete(callback);}};
- const call=(command,payload={})=>handler.postMessage({command,payload});
  function portsChanged(ports,selected=''){
   const allowed=ports.filter(port=>!selected||port.id===selected),ids=new Set(allowed.map(port=>port.id));
   for(const [id,port] of inputs)if(!ids.has(id)){port.state='disconnected';inputs.delete(id);}
   for(const item of allowed){
    if(inputs.has(item.id)){inputs.get(item.id).name=item.name;continue;}
    const listeners=new Set();
-   inputs.set(item.id,{id:item.id,name:item.name,type:'input',manufacturer:'Core MIDI',state:'connected',connection:'open',onmidimessage:null,
+   inputs.set(item.id,{id:item.id,name:item.name,type:'input',manufacturer:midiName,state:'connected',connection:'open',onmidimessage:null,
     addEventListener(type,callback){if(type==='midimessage')listeners.add(callback);},removeEventListener(type,callback){if(type==='midimessage')listeners.delete(callback);},
     open(){return Promise.resolve(this);},close(){return Promise.resolve(this);},
     receive(data,timestampMs){const event={data:new Uint8Array(data),target:this,timeStamp:Number.isFinite(timestampMs)?timestampMs:performance.now()};for(const callback of listeners)callback(event);this.onmidimessage?.(event);}});
@@ -23,18 +50,20 @@
  }
  let lastReceived=null, receivedCount=0, lastError=null;
  const receive=event=>{
+  if(!event||typeof event!=='object')return;
   if(event.type==='midi.error'){
-   lastError=event.message||'No se pudo conectar Core MIDI.';
+   lastError=event.message||'No se pudo conectar '+midiName+'.';
    window.dispatchEvent(new Event('hud-native-error'));
    return;
   }
   if(event.type==='midi.ports'){
+   if(!Array.isArray(event.ports))return;
    portsChanged(event.ports,event.selected);
    if(event.ports?.some(port=>port.connected))lastError=null;
   }
   if(event.type==='midi.message'){
    const port=inputs.get(event.portId);
-   if(!port)return;
+   if(!port||!Array.isArray(event.data)||!event.data.length||!event.data.every(b=>Number.isInteger(b)&&b>=0&&b<=255))return;
    if(Number.isFinite(event.timestampMs)&&hostOffset===null)hostOffset=performance.now()-event.timestampMs;
    const type=event.data[0]&0xf0;
    if(type===0xb0||type===0xc0){
@@ -44,7 +73,8 @@
    port.receive(event.data,Number.isFinite(event.timestampMs)?event.timestampMs+hostOffset:undefined);
   }
  };
- Object.defineProperty(globalThis,'MidiHudNative',{value:Object.freeze({call,receive,get lastReceived(){return lastReceived;},get lastError(){return lastError;}}),writable:false,configurable:false});
+ Object.defineProperty(globalThis,'MidiHudNative',{value:Object.freeze({platform,midiName,call,receive,get lastReceived(){return lastReceived;},get lastError(){return lastError;}}),writable:false,configurable:false});
+ if(platform==='android')android.onmessage=receiveAndroid;
  if(typeof navigator.requestMIDIAccess!=='function'){
   Object.defineProperty(navigator,'requestMIDIAccess',{value:async options=>{
    if(options?.sysex)throw new DOMException('La aplicación solo recibe CC MIDI.','NotSupportedError');
