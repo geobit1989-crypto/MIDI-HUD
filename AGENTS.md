@@ -17,6 +17,7 @@ Actualización documental: 25/11/2026. Este archivo es un índice de trabajo, no
 - `test/ios-midi-hud-20261123`: app iOS de prueba con identidad y OAuth aislados; NO equivaler a producción. Compilación/IPA y pruebas de simulador no son aceptación física con FootCtrlPlus ni Drive.
 - `feature/live-ui-20261124`: evolución de LIVE y publicación web de pruebas del 24/11; verificar cada nuevo commit con el registro de accesos.
 - `integration/shared-core-20261126`: contrato del núcleo compartido Web/iOS/Android, sin publicación ni APK; ver [contrato](docs/SHARED-CORE-20261126.md).
+- `feature/android-native-qa-20261126`: contenedor Android QA experimental, ver [README Android](native/android/README.md); no distribuir ni fusionar sin validación.
 Cualquier rama nueva se identifica por nombre, commit y contenido; no inferir "más actual" solo por nombre. No fusionar, publicar ni cambiar hardware sin autorización.
 
 ## Antes de modificar
