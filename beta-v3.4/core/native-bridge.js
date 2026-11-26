@@ -42,7 +42,7 @@
    const listeners=new Set();
    inputs.set(item.id,{id:item.id,name:item.name,type:'input',manufacturer:midiName,state:'connected',connection:'open',onmidimessage:null,
     addEventListener(type,callback){if(type==='midimessage')listeners.add(callback);},removeEventListener(type,callback){if(type==='midimessage')listeners.delete(callback);},
-    open(){return Promise.resolve(this);},close(){return Promise.resolve(this);},
+    async open(){if(platform==='android'){const result=await call('midi.select',{id:item.id});if(!result?.ports?.some(p=>p.id===item.id&&p.connected))throw Error('No se pudo abrir la entrada MIDI.');}return this;},close(){return Promise.resolve(this);},
     receive(data,timestampMs){const event={data:new Uint8Array(data),target:this,timeStamp:Number.isFinite(timestampMs)?timestampMs:performance.now()};for(const callback of listeners)callback(event);this.onmidimessage?.(event);}});
   }
   const event={target:access};for(const callback of accessListeners)callback(event);access.onstatechange?.(event);
