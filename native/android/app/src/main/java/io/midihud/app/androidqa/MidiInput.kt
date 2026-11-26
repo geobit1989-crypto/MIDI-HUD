@@ -53,7 +53,11 @@ internal class MidiInput(context: Context, private val emit: (JSONObject) -> Uni
                 val name = info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "MIDI ${info.id}"
                 ports.put(JSONObject().put("id", key).put("name", if (info.outputPortCount > 1) "$name / ${p.portNumber + 1}" else name)
                     .put("connected", active == key)
-                    .put("transport", if (info.type == MidiDeviceInfo.TYPE_BLUETOOTH) "bluetooth" else "unknown"))
+                    .put("transport", when (info.type) {
+                        MidiDeviceInfo.TYPE_BLUETOOTH -> "bluetooth"
+                        MidiDeviceInfo.TYPE_USB -> "usb"
+                        else -> "unknown"
+                    }))
             }
         }
         return JSONObject().put("ports", ports).put("selected", selected)
@@ -73,8 +77,17 @@ internal class MidiInput(context: Context, private val emit: (JSONObject) -> Uni
         start()
         if (key == active && key.isNotEmpty()) { done(Result.success(list())); return }
         val request = ++generation
+        val disconnectedBluetooth = if (key.isEmpty()) device?.info?.id?.let { bluetooth[it] } else null
         closePort(); selected = ""
-        if (key.isEmpty()) { publish(); done(Result.success(list())); return }
+        if (key.isEmpty()) {
+            if (disconnectedBluetooth != null) {
+                bluetooth.remove(disconnectedBluetooth.info.id)
+                runCatching { disconnectedBluetooth.close() }
+            }
+            publish()
+            done(Result.success(list()))
+            return
+        }
         val info = devices().firstOrNull { d -> d.ports.any { it.type == MidiDeviceInfo.PortInfo.TYPE_OUTPUT && id(d, it.portNumber) == key } }
         if (info == null) { publish(); done(Result.failure(IllegalArgumentException("Entrada MIDI no disponible."))); return }
         val portNumber = key.substringAfter(':').toInt()
