@@ -1,7 +1,7 @@
 name: Windows QA
 on:
   push:
-    branches: [feature/windows-native-qa-20261126]
+    branches: [feature/windows-native-qa-20261126, integration/ajustes-aj18-windows]
   pull_request:
     branches: [feature/android-native-qa-20261126]
     paths: ['native/windows/**', 'core/**', 'tests/**', '.github/workflows/native-windows.yml']

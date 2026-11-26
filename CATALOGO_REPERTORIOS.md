@@ -42,3 +42,8 @@ Ejecutar: node --test tests/*.test.mjs worker/tests/*.test.mjs
 117 pruebas locales aprobadas. Incluyen una canción con varias partituras, tonos y elecciones por playlist; ausencia de duplicación de controles/estados/MIDI; preservación del estado y expresiones al cambiar de vista; migración, historial antiguo, fallos de cuota; handlers reales del editor con DOM de prueba y roundtrip entre dos dispositivos con el controlador Drive actual e historial remoto simulado.
 
 Comprobado en navegador local con datos de ejemplo: variante Grados — Sol mayor sin sobrescribir Original — F; playlist nueva con esa canción y elección propia; LIVE muestra grados y Sol mayor en su ubicación habitual. Quedan iPhone físico, cuenta real de Drive y hardware MIDI antes de publicar. La web del usuario y sus datos reales no se han modificado.
+
+
+## AJUSTES · Esbozo 05 / AJ-18
+
+Desde el 26/11/2026, AJUSTES muestra el repertorio maestro y las playlists del catálogo local con sus cantidades de canciones. El selector es exclusivo e inmediato y se guarda en la preferencia local de LIVE. Drive sigue sincronizando las canciones, partituras y playlists. EDITOR mantiene las operaciones de creación, edición y organización. La recuperación usa una confirmación y el respaldo transaccional existente. Los cambios de biblioteca se difieren durante LIVE y se leen al arrancar o en un punto compatible desde HOME.

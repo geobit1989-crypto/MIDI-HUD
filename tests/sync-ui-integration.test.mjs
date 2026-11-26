@@ -18,12 +18,12 @@ test("V3 editor connects saved repertoire changes to private Drive sync",()=>{
  assert.match(editorScript,/canApply:\(\)=>!hasDraft/);
 });
 test("LIVE receives shared repertoires without interrupting the current song",()=>{
- assert.match(livePage,/id="hud-sync-root"/);
+ assert.match(read("live/settings-qa.mjs"),/id="hud-sync-root"/);
  assert.match(livePage,/mode:'live'/);
- assert.match(livePage,/canApply:\(\)=>true/);
+ assert.match(livePage,/canApply:\(\)=>dialog\.open&&returnToHome/);
  assert.doesNotMatch(livePage,/await Promise\.race\(\[cloud\.ready/);
  assert.match(syncUI,/if\(mode!=='live'\)onApplied/);
- assert.match(livePage,/engine\.updateLibrary\(next\)/);
+ assert.match(livePage,/engine\.updateLibrary\(withFullRepertoire\(next\)\)/);
 });
 test("Cloud sync uses existing browser V3 key, not another beta browser database",()=>{
  assert.match(storage,/LIBRARY_KEY='hudLibraryV34'/);
