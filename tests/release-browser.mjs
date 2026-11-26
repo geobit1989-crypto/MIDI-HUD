@@ -19,6 +19,7 @@ try{
  await page.addInitScript(()=>{
   class Input extends EventTarget{constructor(id){super();this.id=id;this.name=id;this.type='input';this.state='connected';}async open(){}send(data){const event=new Event('midimessage');event.data=new Uint8Array(data);this.dispatchEvent(event);}}
   const inputs=new Map([['Chocolate',new Input('Chocolate')],['Other',new Input('Other')]]),access={inputs,onstatechange:null};
+  Object.defineProperty(navigator,'bluetooth',{configurable:true,value:undefined});
   Object.defineProperty(navigator,'requestMIDIAccess',{configurable:true,value:async()=>access});window.testMidi=access;
  });
  const origin='http://127.0.0.1:8767',base=origin+prefix;
@@ -93,7 +94,10 @@ try{
  await account.click();
  assert.equal(await settings.getByRole('checkbox',{name:'Sincronización automática'}).isChecked(),false);
  assert.equal(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getViewModel().active.repertoireId),'hud-full-repertoire');
- await page.locator('summary').filter({hasText:'DISPOSITIVOS'}).click();await page.getByText('2',{exact:true}).and(page.locator('.hud-channel-grid span')).click();await page.locator('#hud-midi-btn').click();
+ await page.locator('summary').filter({hasText:'DISPOSITIVOS'}).click();await page.getByText('2',{exact:true}).and(page.locator('.hud-channel-grid span')).click();
+ await page.locator('#hud-midi-btn').click();
+ await page.locator('#hud-midi-input').selectOption('Chocolate');
+ await page.locator('#hud-midi-connect').click();
  await page.waitForFunction(()=>document.querySelector('#hud-midi-status').dataset.connection==='connected');
  await page.evaluate(()=>{testMidi.inputs.get('Other').send([0xb1,80,1]);testMidi.inputs.get('Chocolate').send([0xb1,80,2]);testMidi.inputs.get('Chocolate').send([0xb1,81,0]);testMidi.inputs.get('Chocolate').send([0xb1,91,77]);});
  const before=await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState());assert.equal(before.activeStateId,'preset-solo');
@@ -147,7 +151,7 @@ try{
  await page.locator('.topbar .settings').click();
  const devices=page.locator('summary').filter({hasText:'DISPOSITIVOS'});
  if(!await devices.evaluate(node=>node.parentElement.open))await devices.click();
- assert.ok(await page.locator('#hud-ble-connect').isVisible());
+ assert.ok(await page.locator('#hud-midi-btn').isVisible());
  assert.deepEqual(await page.evaluate(()=>['hudLibraryV34','midiHudSettingsV1','midiHudTrustedDeviceSessionV1'].map(k=>localStorage.getItem(k))),['stable-library','stable-settings','stable-auth']);
  assert.deepEqual(errors,[]);console.log(browserName+': Editor/LAB, isolated storage, MIDI channel 2 and reconnection, three LIVE modes at five viewport sizes, MIDI with modules hidden, persistent mode, Android BLE entry point.');
 }finally{await browser?.close();await new Promise(r=>server.close(r));}

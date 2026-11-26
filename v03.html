@@ -411,12 +411,11 @@ import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34
 import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261016-repertoires1";
 import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261016-transfer1";
 import {installCloudSync} from "./core/sync-ui.mjs?v=20261016-native1";
-import {installNativeMidiControls} from "./core/native-controls.mjs?v=20261016-native1";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261124";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
 import {installHome} from "./live/home-qa.mjs";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
-import {createBrowserMidiSession} from "./core/midi-session-browser.mjs";
+import {installMidiDevices} from "./live/midi-devices.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
 import {installLiveViewMode} from "./live/view-mode.mjs";
 import {createSettings,installChannelPicker} from "./live/settings-qa.mjs";
@@ -460,34 +459,10 @@ installChannelPicker(dialog.querySelector('#hud-channel'),SETTINGS.midiChannel,m
  saveSettings(localStorage,{midiChannel});
  engine.dispatch({type:"SET_CHANNEL",channel:midiChannel});
 });
-installNativeMidiControls(dialog.querySelector('#hud-native-midi'));
 function prepare(){
  libraryPicker?.destroy();libraryPicker=installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
    missingRequestedRepertoire:initialSelection.missingRequestedRepertoire});
- const inputSelect=dialog.querySelector('#hud-midi-input'),status=dialog.querySelector('#hud-midi-status');
- if(!midiPort)midiPort=createBrowserMidiSession({storage:localStorage,
-   onMessage:event=>{
-     const result=engine.dispatch(event);
-     // iOS usa MIDI solo para interpretar estados; no muestra un registro de eventos.
-     if(!globalThis.MidiHudNative)status.textContent=event.type==='MIDI_CLOCK'?'RX MIDI Clock':`RX canal ${event.channel} · ${event.type} · ${result.matched?'reconocido':'sin asignación'}`;
-   },
-   onStatus:({status:connection,deviceId})=>{status.dataset.connection=connection;
-     dialog.querySelector('#hud-midi-disconnect').disabled=connection==='disconnected';
-     const name=Array.from(inputSelect.options).find(option=>option.value===deviceId)?.textContent;
-     status.textContent={connected:name?'Entrada MIDI conectada: '+name:'Entrada MIDI conectada.',connecting:'Conectando entrada MIDI.',disconnected:'Entrada MIDI desconectada. El estado musical se conserva.'}[connection];},
-   onDevices:devices=>{inputSelect.replaceChildren(...devices.map(d=>new Option(d.name,d.id)));if(!devices.length)inputSelect.add(new Option('No hay entradas MIDI',''));inputSelect.value=devices.some(d=>d.id===midiPort?.preferredId)?midiPort.preferredId:devices[0]?.id||'';}});
- const selectInput=async id=>{
-  if(!id)return;
-  window.__sigBleConnection?.disconnect();
-  await midiPort.select(id);
- };
- inputSelect.onchange=()=>selectInput(inputSelect.value);
- dialog.querySelector('#hud-midi-disconnect').onclick=()=>midiPort.disconnect();
- dialog.querySelector('#hud-midi-btn').onclick=async()=>{
-  try{const devices=await midiPort.discover();const id=inputSelect.value||midiPort.preferredId||devices[0]?.id;if(id)await selectInput(id);else status.textContent='No hay entradas MIDI disponibles.';}
-  catch(error){status.textContent='No se pudo abrir MIDI: '+error.message;}
- };
-
+ if(!midiPort)midiPort=installMidiDevices({root:dialog,storage:localStorage,onMessage:event=>engine.dispatch(event)});
 }
 // Toque corto: Configuración. Pulsación sostenida de dos segundos: Editor.
 // Una pulsación larga no debe abrir además el menú de Configuración.
@@ -639,10 +614,7 @@ function render(){
   initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
   library=engine.getLibrary();prepare();
-  void midiPort.start().catch(error=>{
-   const status=dialog.querySelector('#hud-midi-status');
-   if(status)status.textContent='Error al iniciar Core MIDI: '+error.message;
-  });
+  void midiPort.start();
   window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
   setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
   engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});

@@ -411,13 +411,11 @@ import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34
 import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261016-repertoires1";
 import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261016-transfer1";
 import {installCloudSync} from "./core/sync-ui.mjs?v=20261016-native1";
-import {installNativeMidiControls} from "./core/native-controls.mjs?v=20261016-native1";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261124";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
 import {installHome} from "./live/home-qa.mjs";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
-import {createBrowserMidiSession} from "./core/midi-session-browser.mjs";
-import {connectBleMidi} from "./core/midi-ble-android.mjs";
+import {installMidiDevices} from "./live/midi-devices.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
 import {installLiveViewMode} from "./live/view-mode.mjs";
 import {createSettings,installChannelPicker} from "./live/settings-qa.mjs";
@@ -461,54 +459,10 @@ installChannelPicker(dialog.querySelector('#hud-channel'),SETTINGS.midiChannel,m
  saveSettings(localStorage,{midiChannel});
  engine.dispatch({type:"SET_CHANNEL",channel:midiChannel});
 });
-installNativeMidiControls(dialog.querySelector('#hud-native-midi'));
 function prepare(){
  libraryPicker?.destroy();libraryPicker=installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
    missingRequestedRepertoire:initialSelection.missingRequestedRepertoire});
- const inputSelect=dialog.querySelector('#hud-midi-input'),status=dialog.querySelector('#hud-midi-status');
- const signalBluetooth=state=>window.dispatchEvent(new CustomEvent('hud-web-bluetooth',{detail:state}));
- const bleControls=dialog.querySelector('#hud-ble-connect')?.parentElement || document.createElement('div');
- if(!bleControls.isConnected){
- bleControls.style.cssText='margin-top:14px;padding:12px;border:1px solid #537489;border-radius:10px';
- bleControls.innerHTML='<strong>Bluetooth MIDI</strong><p>Selecciona un dispositivo Bluetooth MIDI.</p><button type="button" id="hud-ble-connect">Conectar Bluetooth</button> <button type="button" id="hud-ble-disconnect" disabled>Desconectar Bluetooth</button><p id="hud-ble-status" role="status">Sin conexión Bluetooth</p>';
- status.parentElement.append(bleControls);
- }
- const bleConnect=bleControls.querySelector('#hud-ble-connect'),bleDisconnect=bleControls.querySelector('#hud-ble-disconnect'),bleStatus=bleControls.querySelector('#hud-ble-status');
- bleConnect.onclick=async()=>{
-   bleConnect.disabled=true;bleStatus.textContent='Buscando dispositivo Bluetooth MIDI…';
-   try{
-     if(window.__sigBleConnection)window.__sigBleConnection.disconnect();
-     signalBluetooth('busy');
-     window.__sigBleConnection=await connectBleMidi(event=>{
-       const result=engine.dispatch(event);
-       bleStatus.textContent=event.type==='MIDI_CC'?'Bluetooth RX canal '+event.channel+' · CC '+event.cc+' = '+event.value+' · '+(result.matched?'reconocido':'sin asignación'):'Bluetooth RX '+event.type;
-     },{onDisconnected:()=>{signalBluetooth('idle');bleStatus.textContent='Bluetooth desconectado';bleConnect.disabled=false;bleDisconnect.disabled=true;}});
-     await midiPort.disconnect();
-     bleStatus.textContent='Bluetooth conectado: '+window.__sigBleConnection.name;
-     bleDisconnect.disabled=false;signalBluetooth('connected');
-   }catch(error){signalBluetooth('idle');bleStatus.textContent='Bluetooth: '+error.name+' · '+error.message;bleConnect.disabled=false;}
- };
- bleDisconnect.onclick=()=>{window.__sigBleConnection?.disconnect();window.__sigBleConnection=null;signalBluetooth('idle');bleConnect.disabled=false;bleDisconnect.disabled=true;bleStatus.textContent='Bluetooth desconectado';};
-
- if(!midiPort)midiPort=createBrowserMidiSession({storage:localStorage,
-   onMessage:event=>{const result=engine.dispatch(event);status.textContent=event.type==='MIDI_CLOCK'?'RX MIDI Clock':`RX canal ${event.channel} · ${event.type} · ${result.matched?'reconocido':'sin asignación'}`;},
-   onStatus:({status:connection,deviceId})=>{status.dataset.connection=connection;
-     dialog.querySelector('#hud-midi-disconnect').disabled=connection==='disconnected';
-     const name=Array.from(inputSelect.options).find(option=>option.value===deviceId)?.textContent;
-     status.textContent={connected:name?'Entrada MIDI conectada: '+name:'Entrada MIDI conectada.',connecting:'Conectando entrada MIDI.',disconnected:'Entrada MIDI desconectada. El estado musical se conserva.'}[connection];},
-   onDevices:devices=>{inputSelect.replaceChildren(...devices.map(d=>new Option(d.name,d.id)));if(!devices.length)inputSelect.add(new Option('No hay entradas MIDI',''));inputSelect.value=devices.some(d=>d.id===midiPort?.preferredId)?midiPort.preferredId:devices[0]?.id||'';}});
- const selectInput=async id=>{
-  if(!id)return;
-  window.__sigBleConnection?.disconnect();
-  await midiPort.select(id);
- };
- inputSelect.onchange=()=>selectInput(inputSelect.value);
- dialog.querySelector('#hud-midi-disconnect').onclick=()=>midiPort.disconnect();
- dialog.querySelector('#hud-midi-btn').onclick=async()=>{
-  try{const devices=await midiPort.discover();const id=inputSelect.value||midiPort.preferredId||devices[0]?.id;if(id)await selectInput(id);else status.textContent='No hay entradas MIDI disponibles.';}
-  catch(error){status.textContent='No se pudo abrir MIDI: '+error.message;}
- };
-
+ if(!midiPort)midiPort=installMidiDevices({root:dialog,storage:localStorage,onMessage:event=>engine.dispatch(event)});
 }
 // Toque corto: Configuración. Pulsación sostenida de dos segundos: Editor.
 // Una pulsación larga no debe abrir además el menú de Configuración.

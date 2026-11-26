@@ -1,6 +1,6 @@
 /** Ajustes propios de MIDI HUD; no se guardan dentro de las canciones. */
 export const SETTINGS_KEY = "midiHudSettingsV1";
-export const DEFAULT_SETTINGS = Object.freeze({midiChannel:1});
+export const DEFAULT_SETTINGS = Object.freeze({midiChannel:2});
 export function validChannel(value) {
   return Number.isInteger(value) && value>=1 && value<=16;
 }
@@ -8,7 +8,7 @@ export function readSettings(storage) {
   if (!storage) return {...DEFAULT_SETTINGS};
   try {
     const saved=JSON.parse(storage.getItem(SETTINGS_KEY));
-    return {midiChannel:validChannel(saved?.midiChannel)?saved.midiChannel:1};
+    return {midiChannel:validChannel(saved?.midiChannel)?saved.midiChannel:DEFAULT_SETTINGS.midiChannel};
   } catch {return {...DEFAULT_SETTINGS};}
 }
 export function saveSettings(storage, settings) {

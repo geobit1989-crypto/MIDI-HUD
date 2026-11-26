@@ -1,7 +1,7 @@
 name: MIDI HUD iOS and synchronization
 on:
   push:
-    branches: ['integration/**', 'test/ios-midi-hud-20261123', 'feature/live-ui-20261124']
+    branches: [qa/midi-device-flow-20261126, 'integration/**', 'test/ios-midi-hud-20261123']
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,8 +19,8 @@ jobs:
     needs: web
     runs-on: macos-latest
     env:
-      HUD_IOS_QA: ${{ github.ref == 'refs/heads/test/ios-midi-hud-20261123' || github.ref == 'refs/heads/feature/live-ui-20261124' }}
-      HUD_GOOGLE_IOS_CLIENT_ID: ${{ (github.ref == 'refs/heads/test/ios-midi-hud-20261123' || github.ref == 'refs/heads/feature/live-ui-20261124') && vars.HUD_GOOGLE_IOS_QA_CLIENT_ID || '' }}
+      HUD_IOS_QA: ${{ github.ref == 'refs/heads/test/ios-midi-hud-20261123' || github.ref == 'refs/heads/qa/midi-device-flow-20261126' }}
+      HUD_GOOGLE_IOS_CLIENT_ID: ${{ github.ref == 'refs/heads/test/ios-midi-hud-20261123' || github.ref == 'refs/heads/qa/midi-device-flow-20261126' && vars.HUD_GOOGLE_IOS_QA_CLIENT_ID || '' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -91,6 +91,9 @@ jobs:
           with ZipFile("build/MIDIHUD-iOS-unsigned.ipa") as ipa:
               info = plistlib.loads(ipa.read(app + "Info.plist"))
               executable = ipa.getinfo(app + "MIDIHUD")
+              assert info.get("CFBundleDisplayName") == "MIDI HUD", "Incorrect visible name"
+              assert any(name.startswith(app+"AppIcon") and name.endswith(".png") for name in ipa.namelist()) or app+"Assets.car" in ipa.namelist(), "Missing compiled AppIcon"
+              assert info.get("CFBundleIcons", {}).get("CFBundlePrimaryIcon", {}).get("CFBundleIconName") == "AppIcon", "AppIcon not declared"
               if info.get("CFBundleExecutable") != "MIDIHUD" or not executable.file_size:
                   raise SystemExit("The IPA is missing its application executable.")
               if any("/_CodeSignature/" in name or name.endswith("/embedded.mobileprovision") for name in ipa.namelist()):

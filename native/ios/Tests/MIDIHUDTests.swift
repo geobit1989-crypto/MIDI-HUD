@@ -31,6 +31,10 @@ final class MIDIHUDTests: XCTestCase {
         let window = UIWindow(frame: UIScreen.main.bounds)
         window.rootViewController = controller; window.makeKeyAndVisible(); controller.loadViewIfNeeded()
         let web = controller.webView!
+        try await until("!!document.querySelector('.hud-home[open]')", in: web)
+        let usbHidden = try await web.evaluateJavaScript("!document.querySelector('.hud-home [data-link=usb]')") as? Bool
+        XCTAssertEqual(usbHidden, true)
+        _ = try await web.evaluateJavaScript("document.querySelector('.hud-home a.hud-tile').click()")
         try await until("!!window.MIDIHUD_EDITOR", in: web)
         let midiType = try await web.evaluateJavaScript("typeof navigator.requestMIDIAccess") as? String
         XCTAssertEqual(midiType, "function")

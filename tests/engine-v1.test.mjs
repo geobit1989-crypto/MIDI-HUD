@@ -117,7 +117,7 @@ test("migracion de esquema antiguo: estados, sin intents ni reenvios fisicos",()
 test("persistencia global del canal MIDI, fuera del repertorio",()=>{
  const memory=new Map();
  const store={getItem:key=>memory.get(key)||null,setItem:(key,value)=>memory.set(key,value)};
- assert.equal(readSettings(store).midiChannel,1);
+ assert.equal(readSettings(store).midiChannel,2);
  saveSettings(store,{midiChannel:12});
  assert.equal(readSettings(store).midiChannel,12);
  assert.throws(()=>saveSettings(store,{midiChannel:0}),/Canal MIDI/);

@@ -26,7 +26,7 @@ test('el puente Core MIDI alimenta el adaptador existente sin modificarlo',async
 test('desconectar, seleccionar y volver a conectar una entrada actualiza listeners y nombres',async()=>{
  const t=setup();t.context.onCC=()=>{};t.context.onPorts=()=>{};
  const session=await vm.runInContext('openBrowserMidi(onCC,onPorts)',t.context);
- vm.runInContext("MidiHudNative.receive({type:'midi.ports',ports:[{id:'123',name:'Chocolate Plus'},{id:'456',name:'GT'}],selected:'456'})",t.context);assert.equal(session.inputCount,1);assert.equal(session.inputNames[0],'GT');
+ vm.runInContext("MidiHudNative.receive({type:'midi.ports',ports:[{id:'123',name:'Chocolate Plus'},{id:'456',name:'GT'}],selected:'456'})",t.context);assert.equal(session.inputCount,2);assert.deepEqual([...session.inputNames],['Chocolate Plus','GT']);
  vm.runInContext("MidiHudNative.receive({type:'midi.ports',ports:[],selected:'456'})",t.context);assert.equal(session.inputCount,0);
  vm.runInContext("MidiHudNative.receive({type:'midi.ports',ports:[{id:'456',name:'GT USB'}],selected:'456'})",t.context);assert.equal(session.inputNames[0],'GT USB');session.close();
 });

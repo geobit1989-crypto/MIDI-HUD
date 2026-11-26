@@ -27,7 +27,7 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         view.addSubview(webView)
         NSLayoutConstraint.activate([webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), webView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor), webView.leadingAnchor.constraint(equalTo: view.leadingAnchor), webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)])
         midi.onEvent = { [weak self] event in self?.send(event) }
-        webView.load(URLRequest(url: URL(string: "hud://\(webHost)/editor/v3.html")!))
+        webView.load(URLRequest(url: URL(string: "hud://\(webHost)/index.html")!))
     }
     func becameActive() {
         guard webView != nil else { return }
@@ -63,9 +63,11 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
                 case "midi.select": result = try midi.select(payload["id"] as? String ?? "")
                 case "midi.bluetooth":
                     _ = try midi.start()
+                    portsBeforeBluetooth = Set((midi.listing()["ports"] as? [[String: Any]] ?? []).compactMap { $0["id"] as? String })
                     let controller = CABTMIDICentralViewController()
                     let navigation = UINavigationController(rootViewController: controller)
                     controller.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(closeBluetooth))
+                    navigation.isModalInPresentation = true
                     present(navigation, animated: true); result = true
                 case "cloud.config": result = ["configured": drive.configured]
                 case "cloud.restore": result = try await drive.restore() as Any? ?? NSNull()
@@ -87,10 +89,19 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             } catch { replyHandler(nil, error.localizedDescription) }
         }
     }
+    private var portsBeforeBluetooth = Set<String>()
     @objc private func closeBluetooth() {
         dismiss(animated: true) { [weak self] in
             guard let self = self else { return }
-            do { _ = try self.midi.start() }
+            do {
+                let listing = try self.midi.start()
+                let ports = listing["ports"] as? [[String: Any]] ?? []
+                let added = ports.compactMap { $0["id"] as? String }.filter { !self.portsBeforeBluetooth.contains($0) }
+                let detail = added.count == 1 ? ["id": added[0]] : [:]
+                let data = try JSONSerialization.data(withJSONObject: detail)
+                let json = String(decoding: data, as: UTF8.self)
+                self.webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('hud-bluetooth-picker-closed', {detail: \(json)}))", completionHandler: nil)
+            }
             catch { self.send(["type": "midi.error", "message": error.localizedDescription]) }
         }
     }

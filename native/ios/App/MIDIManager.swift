@@ -52,9 +52,24 @@ final class MIDIManager {
     private func sources() -> [MIDIEndpointRef] {
         (0..<MIDIGetNumberOfSources()).map { MIDIGetSource($0) }.filter { $0 != 0 }
     }
+    private func transport(_ endpoint: MIDIEndpointRef) -> String {
+        var entity: MIDIEntityRef = 0
+        var device: MIDIDeviceRef = 0
+        _ = MIDIEndpointGetEntity(endpoint, &entity)
+        if entity != 0 { _ = MIDIEntityGetDevice(entity, &device) }
+        for object in [endpoint, entity, device] where object != 0 {
+            var owner: Unmanaged<CFString>?
+            if MIDIObjectGetStringProperty(object, kMIDIPropertyDriverOwner, &owner) == noErr,
+               let driver = owner?.takeRetainedValue() as String? {
+                if driver.localizedCaseInsensitiveContains("Bluetooth") { return "bluetooth" }
+                if driver.localizedCaseInsensitiveContains("USB") { return "usb" }
+            }
+        }
+        return "unknown"
+    }
     func listing() -> [String: Any] {
         let ports: [[String: Any]] = sources().map { endpoint in
-            ["id": identifier(endpoint), "name": name(endpoint), "connected": connected.contains(endpoint)]
+            ["id": identifier(endpoint), "name": name(endpoint), "connected": connected.contains(endpoint), "transport": transport(endpoint)]
         }
         return ["ports": ports, "selected": selected, "connectedCount": connected.count]
     }
@@ -77,11 +92,10 @@ final class MIDIManager {
     func refresh() throws -> [String: Any] {
         guard input != 0 else { return listing() }
         let found = sources()
-        // Un nuevo emparejamiento BLE puede asignar otro identificador.
-        if selected != "__hud_disconnected__" && !selected.isEmpty && found.count == 1 && !found.contains(where: { identifier($0) == selected }) {
-            UserDefaults.standard.set("", forKey: "selectedMIDIInput")
-        }
-        let available = Set(found.filter { selected.isEmpty || identifier($0) == selected })
+        let preferred = found.first { identifier($0) == selected }
+        let initial = found.first { transport($0) == "usb" } ?? (found.count == 1 ? found.first : nil)
+        let target = selected == "__hud_disconnected__" ? nil : preferred ?? initial
+        let available = Set(target.map { [$0] } ?? [])
         for source in connected.subtracting(available) {
             MIDIPortDisconnectSource(input, source)
             connected.remove(source)

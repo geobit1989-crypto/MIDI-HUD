@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>MIDI HUD</AssemblyName>
+    <ApplicationIcon>$(MSBuildProjectDirectory)/obj/hud.ico</ApplicationIcon>
+    <RootNamespace>MidiHud.Windows</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+  <Target Name="GenerateHudIcon" BeforeTargets="PrepareForBuild">
+    <Exec Command="python &quot;$(MSBuildProjectDirectory)/prepare_icon.py&quot;" />
+  </Target>
+  <!-- Copy once after build/publish; generated files are not SDK publish items. -->
+  <Target Name="GenerateHudBundle">
+    <Exec Command="python &quot;$(MSBuildProjectDirectory)/prepare_web.py&quot;" />
+    <ItemGroup>
+      <HudResource Include="$(MSBuildProjectDirectory)/obj/hud-assets/**/*" />
+    </ItemGroup>
+  </Target>
+  <Target Name="CopyHudBuild" AfterTargets="Build" DependsOnTargets="GenerateHudBundle;GenerateHudIcon">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/obj/hud.ico" DestinationFolder="$(TargetDir)" />
+    <Copy SourceFiles="@(HudResource)" DestinationFiles="@(HudResource->'$(TargetDir)Web/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyHudPublish" AfterTargets="Publish" DependsOnTargets="GenerateHudBundle;GenerateHudIcon">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/obj/hud.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="@(HudResource)" DestinationFiles="@(HudResource->'$(PublishDir)Web/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

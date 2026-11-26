@@ -75,14 +75,13 @@ export function installHome({settings, editor, syncRoot}) {
     entry.button.title = label + ' · ' + descriptions[state];
     entry.button.setAttribute('aria-label', entry.button.title);
   }
-  let ports = [], bluetoothPending = false, webBluetooth = 'idle', readSequence = 0;
+  let ports = [], webBluetooth = 'idle', readSequence = 0;
   function showConnections() {
     for (const name of ['bluetooth', 'usb']) {
       const connected = ports.find(port => port.transport === name && port.connected === true);
       const pending = ports.some(port => port.transport === name && port.connecting === true);
-      const state = connected ? 'connected' : pending || (name === 'bluetooth' && bluetoothPending) ? 'busy' : name === 'bluetooth' ? webBluetooth : 'idle';
-      const webDevice = !native && name === 'bluetooth' && state === 'connected' ? globalThis.__sigBleConnection?.name : '';
-      setState(name, state, connected?.name || webDevice);
+      const state = connected ? 'connected' : pending ? 'busy' : name === 'bluetooth' ? webBluetooth : 'idle';
+      setState(name, state, connected?.name);
     }
   }
   async function readPorts() {
@@ -97,17 +96,9 @@ export function installHome({settings, editor, syncRoot}) {
     showConnections();
   }
   function openSettings() { home.close(); settings(); }
-  indicator('bluetooth', 'Bluetooth', async () => {
-    if (!native) { openSettings(); return; }
-    if (bluetoothPending) return;
-    bluetoothPending = native.platform !== 'windows';
-    showConnections();
-    try {
-      await native.call('midi.bluetooth');
-      if (native.platform === 'ios') return;
-    } catch (error) { alert(error.message); }
-    bluetoothPending = false;
-    void readPorts();
+  indicator('bluetooth', 'Bluetooth', () => {
+    openSettings();
+    document.querySelector('#hud-midi-devices')?.closest('details').setAttribute('open','');
   });
   if (desktop) indicator('usb', 'USB', openSettings);
   indicator('drive', 'Drive', () => {
@@ -129,7 +120,7 @@ export function installHome({settings, editor, syncRoot}) {
     } else void readPorts();
   });
   window.addEventListener('hud-foreground', readPorts);
-  window.addEventListener('hud-bluetooth-picker-closed', () => { bluetoothPending = false; void readPorts(); });
+  window.addEventListener('hud-bluetooth-picker-closed', readPorts);
   window.addEventListener('hud-web-bluetooth', event => { webBluetooth = event.detail; showConnections(); });
   home.addEventListener('close', () => { if (!home.open) document.title = liveTitle; });
   document.body.append(home, about);

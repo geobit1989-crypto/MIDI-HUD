@@ -1,3 +1,5 @@
+> **26/11/2026:** nombre visible MIDI HUD e icono compacto RGB opaco de 1024×1024, derivado del [SVG maestro](../../assets/brand/midi-hud.svg). CI comprueba icono y etiqueta IPA. Identificador, OAuth y firma no cambian. Aceptación física pendiente.
+
 # MIDI HUD para iPhone y iPad
 
 Aplicación iOS con Core MIDI de entrada, Editor y LIVE compartiendo almacenamiento local, recursos web incluidos y sincronización privada mediante Google Drive. El motor y la interfaz se empaquetan desde la raíz del repositorio. La edición **MIDI HUD Pruebas** usa el identificador `io.midihud.app.iosqa`, el origen `hud://ios-test.localhost`, las claves `midiHudTest:` y el historial Drive de pruebas `midi-hud-test-sync-v1`, compartido con la web. El transporte MIDI es solo de entrada.

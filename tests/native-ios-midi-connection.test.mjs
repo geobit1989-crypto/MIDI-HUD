@@ -9,20 +9,21 @@ const code=readFileSync(new URL('../core/midi-session-browser.mjs',import.meta.u
  .replace(/^import .*;\r?\n/gm,'').replace('export function createBrowserMidiSession','function createBrowserMidiSession')
  + '\nglobalThis.createBrowserMidiSession=createBrowserMidiSession;';
 
-function setup(initial=[],preferred=''){
+function setup(initial=[],preferred='',paused=false){
  const listeners=new Set(),messages=[],stored=new Map(preferred?[['hudMidiPreferredDevice',preferred]]:[]);
+ if(paused)stored.set('hudMidiManuallyDisconnected','1');
  const inputs=new Map(initial.map(item=>[item.id,item]));
  const access={inputs,addEventListener(type,handler){if(type==='statechange')listeners.add(handler);},
   removeEventListener(type,handler){if(type==='statechange')listeners.delete(handler);}};
  const context=vm.createContext({createMidiConnectionSession,createMidiParser,performance,Map,Set,Promise,console,
-  MidiHudNative:{},navigator:{requestMIDIAccess:async()=>access}});
+  MidiHudNative:{call:async()=>{}},navigator:{requestMIDIAccess:async()=>access}});
  vm.runInContext(code,context);
  const session=context.createBrowserMidiSession({storage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>stored.set(key,value)},onMessage:event=>messages.push(event)});
  return {session,inputs,messages,stored,changed(){for(const listener of listeners)listener();}};
 }
-function input(id){
+function input(id,connected=true){
  const handlers=new Set();
- return {id,name:'FootCtrlPlus',type:'input',state:'connected',
+ return {id,name:'FootCtrlPlus',type:'input',state:'connected',connected,
   addEventListener(type,handler){if(type==='midimessage')handlers.add(handler);},
   removeEventListener(type,handler){if(type==='midimessage')handlers.delete(handler);},
   open:async()=>{},
@@ -51,8 +52,21 @@ test('iOS reemplaza identificador MIDI antiguo con una sola entrada',async()=>{
  await t.session.close();
 });
 test('iOS no autoselecciona dispositivos ambiguos',async()=>{
- const t=setup([input('a'),input('b')]);
+ const t=setup([input('a',false),input('b',false)]);
  assert.equal(await t.session.start(),false);
  assert.equal(t.session.status,'disconnected');
+ await t.session.close();
+});
+
+test('la desconexión manual persiste y no se revierte al volver a enumerar',async()=>{
+ const foot=input('ble-1'),t=setup([foot],'ble-1',true);
+ assert.equal(await t.session.start(),false);
+ t.changed();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(t.session.status,'disconnected');
+ assert.equal(await t.session.select(foot.id),true);
+ await t.session.disconnect();
+ assert.equal(t.stored.get('hudMidiManuallyDisconnected'),'1');
+ assert.equal(t.stored.get('hudMidiPreferredDevice'),foot.id);
  await t.session.close();
 });
