@@ -1,3 +1,5 @@
+> **Marca — 26/11/2026.** Favicon y apple-touch-icon de MIDI HUD compactos en la fuente Web QA; SVG maestro en `assets/brand/midi-hud.svg`. Pendiente CI y publicación de pruebas; producción intacta.
+
 # MIDI HUD — Aplicación de pruebas consolidada al 18/11/2026
 
 Rama vigente: `integration/consolidacion-181126-v8`. Aplicación completa: Inicio, LIVE, Editor, catálogo, repertorios, lead sheets, LAB, ajustes, motor, persistencia y sincronización. [Auditoría y cambios de esta entrega](docs/CONSOLIDACION-20261118.md).
