@@ -1,3 +1,5 @@
+> **Windows QA — 26/11/2026.** Contenedor WPF/WebView2 experimental, entrada MIDI nativa, monitor de recepción y recursos offline. [Guía Windows](native/windows/README.md). Drive, MSIX, icono definitivo y validación física pendientes.
+
 > **Android QA — 26/11/2026.** Rama `feature/android-native-qa-20261126` sobre el núcleo compartido: contenedor Kotlin/WebView, recursos offline, recepción MidiManager BLE/USB y compilación CI. Google Drive y distribución automática pendientes. [Guía Android](native/android/README.md).
 
 > **Núcleo compartido — 26/11/2026.** Rama `integration/shared-core-20261126` (experimental), basada en la integración LIVE del 24/11. Conserva las funcionalidades existentes y añade el contrato de transporte Android al puente nativo común, aislamiento QA y pruebas de contrato. No contiene un host Kotlin ni un APK. [Contrato y pendientes](docs/SHARED-CORE-20261126.md).

@@ -1,0 +1,50 @@
+name: Windows QA
+on:
+  push:
+    branches: [feature/windows-native-qa-20261126]
+  pull_request:
+    branches: [feature/android-native-qa-20261126]
+    paths: ['native/windows/**', 'core/**', 'tests/**', '.github/workflows/native-windows.yml']
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tests/*.test.mjs
+      - run: node --test worker/tests/*.test.mjs
+      - run: node scripts/check-site.mjs
+      - run: python3 scripts/sync-web-resources.py --check
+  windows:
+    runs-on: windows-latest
+    needs: regression
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build portable x64 application
+        run: dotnet publish native/windows/MidiHud.Windows.csproj -c Release -r win-x64 --self-contained true -o dist/windows
+      - name: Verify executable and bundled resources
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'dist/windows/MIDI HUD.exe')) { throw 'Executable missing' }
+          $root = 'dist/windows/Web/windows-qa'
+          $manifest = Get-Content "$root/bundle-manifest.json" -Raw | ConvertFrom-Json -AsHashtable
+          foreach ($entry in $manifest.GetEnumerator()) {
+            $hash = (Get-FileHash (Join-Path $root $entry.Key) -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($hash -ne $entry.Value) { throw "Hash mismatch: $($entry.Key)" }
+          }
+          if (!(Test-Path "$root/core/native-bridge.js")) { throw 'Bridge missing' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: midi-hud-windows-qa-x64
+          path: dist/windows/
+          if-no-files-found: error

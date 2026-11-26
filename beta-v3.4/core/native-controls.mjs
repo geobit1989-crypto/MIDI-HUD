@@ -20,7 +20,7 @@ export function installNativeMidiControls(host,native=globalThis.MidiHudNative){
   }catch(error){status.textContent=error.message;}
  };
  bluetooth.onclick=async()=>{
-  try{await native.call('midi.bluetooth');status.textContent=native.platform==='android'?'Selecciona FootCtrlPlus en el diálogo Bluetooth.':'Conecta FootCtrlPlus y pulsa Listo.';}
+  try{await native.call('midi.bluetooth');status.textContent=native.platform==='windows'?'Empareja el controlador en Windows y selecciona su entrada MIDI.':native.platform==='android'?'Selecciona FootCtrlPlus en el diálogo Bluetooth.':'Conecta FootCtrlPlus y pulsa Listo.';}
   catch(error){status.textContent='Error '+midiName+': '+error.message;}
  };
  select.onchange=async()=>{
