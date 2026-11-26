@@ -59,6 +59,10 @@ jobs:
       - name: Build and test Android QA
         working-directory: native/android
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+      - name: Verify Android launcher identity
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging native/android/app/build/outputs/apk/debug/app-debug.apk | grep -F "application-label:'MIDI HUD'"
+          python3 assets/brand/verify_android.py
       - name: Verify APK signature
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs native/android/app/build/outputs/apk/debug/app-debug.apk

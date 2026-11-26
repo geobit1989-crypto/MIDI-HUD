@@ -1,3 +1,5 @@
+> **26/11/2026: corrección de marca.** Nombre visible MIDI HUD y vector compacto con separación 1,5 derivados de [SVG maestro](../../assets/brand/midi-hud.svg). Se conserva applicationId, versión QA, comportamiento MIDI y firma. CI verifica geometría, paleta y etiqueta del APK. Validación visual física pendiente.
+
 # MIDI HUD Android QA — 26/11/2026
 
 Contenedor experimental basado en el núcleo compartido `219a53201f9b76c4c2bc8ec351a8d188aaa9db29` y el contrato [SHARED-CORE](../../docs/SHARED-CORE-20261126.md). No se modifica la web publicada, iOS QA, la programación de GT o Chocolate ni los datos de producción.
