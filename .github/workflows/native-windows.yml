@@ -31,7 +31,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Build portable x64 application
-        run: dotnet publish native/windows/MidiHud.Windows.csproj -c Release -r win-x64 --self-contained true -o dist/windows
+        working-directory: native/windows
+        run: dotnet publish MidiHud.Windows.csproj -c Release -r win-x64 --self-contained true -o ../../dist/windows
       - name: Verify executable and bundled resources
         shell: pwsh
         run: |

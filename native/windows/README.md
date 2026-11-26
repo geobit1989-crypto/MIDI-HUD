@@ -11,6 +11,9 @@ Base: Android QA 75a4e503e702fcacbc9e98eb5a185295040bf3fc. Contenedor WPF/.NET 8
 ## Compilación
 Windows con .NET 8 SDK, Python 3 y WebView2 Runtime:
 ```powershell
-dotnet publish native/windows/MidiHud.Windows.csproj -c Release -r win-x64 --self-contained true -o dist/windows
+cd native/windows
+dotnet publish MidiHud.Windows.csproj -c Release -r win-x64 --self-contained true -o ../../dist/windows
 ```
 CI ejecuta regresión Node y empaquetado, comprueba hashes y publica ZIP portable si tiene éxito. Extraer toda la carpeta y abrir MIDI HUD.exe; no ejecutar desde dentro del ZIP. No hay instalador ni firma de distribución todavía. CI no acredita ejecución física ni Bluetooth. Pruebas: Inicio/LIVE/Editor, importación/exportación JSON, modo U, CC/PC canal aprobado, desconexión, coexistencia GT y persistencia al actualizar. Usar copia del repertorio.
+
+Primera CI 45833385173: 274 pruebas correctas; fallo NETSDK1152 por recursos duplicados en publish. Corrección: generación y copia posterior a Build/Publish, sin declarar los recursos como Content del SDK; SDK 8 fijado en global.json. Revalidar CI.
