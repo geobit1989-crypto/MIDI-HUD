@@ -52,7 +52,8 @@ internal class MidiInput(context: Context, private val emit: (JSONObject) -> Uni
                 val key = id(info, p.portNumber)
                 val name = info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "MIDI ${info.id}"
                 ports.put(JSONObject().put("id", key).put("name", if (info.outputPortCount > 1) "$name / ${p.portNumber + 1}" else name)
-                    .put("connected", active == key))
+                    .put("connected", active == key)
+                    .put("transport", if (info.type == MidiDeviceInfo.TYPE_BLUETOOTH) "bluetooth" else "unknown"))
             }
         }
         return JSONObject().put("ports", ports).put("selected", selected)

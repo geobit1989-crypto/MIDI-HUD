@@ -11,7 +11,7 @@ if target != expected:
 if target.exists():
     shutil.rmtree(target)
 target.mkdir(parents=True)
-for name in ("core", "editor", "live", "lab", "config"):
+for name in ("core", "editor", "live", "config"):
     shutil.copytree(ROOT / name, target / name)
 for name in ("index.html", "v03.html", "README.md", "privacy.html", "privacy-en.html", "terms.html", "terms-en.html"):
     shutil.copy2(ROOT / name, target / name)
