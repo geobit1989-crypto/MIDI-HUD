@@ -1,5 +1,5 @@
 # AGENTS.md — Entrada operativa MIDI HUD
-Actualización documental: 25/11/2026. Este archivo es un índice de trabajo, no una orden automática de lectura desde otros chats.
+Actualización documental: 26/11/2026. Este archivo es un índice de trabajo, no una orden automática de lectura desde otros chats.
 
 ## Fuente de verdad y entrada
 - PCP v1.0: https://docs.google.com/document/d/1NaYQOiI-vL4vueMNFM014jXPInE023hA0xDcM9xZph0/edit
@@ -20,6 +20,8 @@ Actualización documental: 25/11/2026. Este archivo es un índice de trabajo, no
 - `feature/android-native-qa-20261126`: contenedor Android QA experimental, ver [README Android](native/android/README.md); no distribuir ni fusionar sin validación.
 - `feature/windows-native-qa-20261126`: contenedor Windows experimental, [guía Windows](native/windows/README.md); sin fusión ni distribución oficial.
 Cualquier rama nueva se identifica por nombre, commit y contenido; no inferir "más actual" solo por nombre. No fusionar, publicar ni cambiar hardware sin autorización.
+
+Corte documental de las cuatro plataformas: [26/11/2026](docs/STATUS-20261126.md).
 
 ## Antes de modificar
 1. Seleccionar rama y leer su README, contrato y archivos afectados; comprobar último SHA y estado del repositorio.

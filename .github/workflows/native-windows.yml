@@ -37,6 +37,13 @@ jobs:
         shell: pwsh
         run: |
           if (!(Test-Path 'dist/windows/MIDI HUD.exe')) { throw 'Executable missing' }
+          if (!(Test-Path 'dist/windows/hud.ico')) { throw 'Icon missing' }
+          $ico = [IO.File]::ReadAllBytes((Resolve-Path 'dist/windows/hud.ico'))
+          if ([BitConverter]::ToUInt16($ico,2) -ne 1 -or [BitConverter]::ToUInt16($ico,4) -ne 7) { throw 'Invalid multi-size icon' }
+          Add-Type -AssemblyName System.Drawing
+          $embedded = [System.Drawing.Icon]::ExtractAssociatedIcon((Resolve-Path 'dist/windows/MIDI HUD.exe').Path)
+          if ($null -eq $embedded) { throw 'Executable icon unavailable' }
+          $embedded.Dispose()
           $root = 'dist/windows/Web/windows-qa'
           $manifest = Get-Content "$root/bundle-manifest.json" -Raw | ConvertFrom-Json -AsHashtable
           foreach ($entry in $manifest.GetEnumerator()) {

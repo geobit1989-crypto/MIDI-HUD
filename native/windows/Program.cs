@@ -28,6 +28,8 @@ internal sealed class HudWindow : Window
     public HudWindow()
     {
         Title="MIDI HUD";Width=1200;Height=820;MinWidth=500;MinHeight=440;
+        var iconPath=Path.Combine(AppContext.BaseDirectory,"hud.ico");
+        if(File.Exists(iconPath)) Icon=System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(iconPath));
         var panel=new DockPanel();var menu=new Menu();
         var manager=new MenuItem{Header="Controller Manager"};
         manager.Click+=(_,_)=>{if(monitor!=null){monitor.Activate();return;}monitor=new ControllerMonitor{Owner=this};monitor.Closed+=(_,_)=>monitor=null;monitor.Show();};
