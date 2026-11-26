@@ -13,6 +13,7 @@ internal sealed class MidiInput : IDisposable
     private readonly Dictionary<string,string> ports=new(StringComparer.Ordinal);
     private MidiInPort? active;
     private string selected="";
+    private string connecting="";
     private int epoch;
     private bool disposed;
     private readonly SemaphoreSlim gate=new(1,1);
@@ -27,8 +28,19 @@ internal sealed class MidiInput : IDisposable
         watcher.EnumerationCompleted+=(s,d)=>ui.BeginInvoke(new Action(()=>{if(!disposed)Publish();}));
         watcher.Start();
     }
-    public object List()=>new {ports=ports.Select(p=>new {id=p.Key,name=p.Value,connected=active!=null&&selected==p.Key}).ToArray(),selected};
-    private void Publish()=>emit(new {type="midi.ports",ports=ports.Select(p=>new {id=p.Key,name=p.Value,connected=active!=null&&selected==p.Key}).ToArray(),selected});
+    private static string Transport(string id)
+    {
+        var parts=id.Split('\\','#');
+        if(parts.Any(part=>part.Equals("USB",StringComparison.OrdinalIgnoreCase)))return "usb";
+        if(parts.Any(part=>part.Equals("BTHLEDEVICE",StringComparison.OrdinalIgnoreCase)||part.Equals("BTHENUM",StringComparison.OrdinalIgnoreCase)))return "bluetooth";
+        return "unknown";
+    }
+    private object[] PortStates()=>ports.Select(p=>(object)new {
+        id=p.Key,name=p.Value,connected=active!=null&&selected==p.Key,
+        connecting=connecting==p.Key,transport=Transport(p.Key)
+    }).ToArray();
+    public object List()=>new {ports=PortStates(),selected};
+    private void Publish()=>emit(new {type="midi.ports",ports=PortStates(),selected});
     public async Task<object> RefreshAsync()
     {
         var entries=await DeviceInformation.FindAllAsync(MidiInPort.GetDeviceSelector());
@@ -46,6 +58,7 @@ internal sealed class MidiInput : IDisposable
             ClosePort();
             if(id.Length==0){Publish();return List();}
             if(!ports.ContainsKey(id))throw new InvalidOperationException("Entrada MIDI no disponible.");
+            connecting=id;Publish();
             var generation=epoch;
             var opening=MidiInPort.FromIdAsync(id).AsTask();
             MidiInPort? opened;
@@ -60,7 +73,7 @@ internal sealed class MidiInput : IDisposable
             active=opened;selected=id;active.MessageReceived+=Received;
             Publish();return List();
         }catch(Exception e){if(!disposed){Publish();emit(new{type="midi.error",message=e.Message});}throw;}
-        finally{gate.Release();}
+        finally{if(connecting.Length>0){connecting="";if(!disposed)Publish();}gate.Release();}
     }
     private void Received(MidiInPort sender,MidiMessageReceivedEventArgs args)
     {

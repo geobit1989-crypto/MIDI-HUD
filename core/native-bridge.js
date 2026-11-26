@@ -11,7 +11,7 @@
  const midiName=platform==='ios'?'Core MIDI':platform==='windows'?'Windows MIDI':'Android MIDI';
  const pending=new Map();
  let sequence=0;
- const allowedCommands=new Set(['midi.open','midi.list','midi.select','midi.bluetooth','cloud.config','cloud.restore','cloud.connect','cloud.disconnect','cloud.request','share.text']);
+ const allowedCommands=new Set(['midi.open','midi.list','midi.select','midi.bluetooth','cloud.config','cloud.restore','cloud.connect','cloud.disconnect','cloud.request','share.text','controller.open']);
  function call(command,payload={}){
   if(!allowedCommands.has(command))return Promise.reject(new Error('Acción no disponible.'));
   if(platform==='ios')return Promise.resolve().then(()=>ios.postMessage({command,payload}));
@@ -49,7 +49,7 @@
     receive(data,timestampMs){const event={data:new Uint8Array(data),target:this,timeStamp:Number.isFinite(timestampMs)?timestampMs:performance.now()};for(const callback of listeners)callback(event);this.onmidimessage?.(event);}});
   }
   const event={target:access};for(const callback of accessListeners)callback(event);access.onstatechange?.(event);
-  window.dispatchEvent(new Event('hud-native-ports'));
+  window.dispatchEvent(new CustomEvent('hud-native-ports',{detail:ports}));
  }
  let lastReceived=null, receivedCount=0, lastError=null;
  const receive=event=>{

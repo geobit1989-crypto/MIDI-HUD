@@ -23,11 +23,28 @@ try{
  });
  const origin='http://127.0.0.1:8767',base=origin+prefix;
  await page.goto(origin);await page.evaluate(()=>{localStorage.setItem('hudLibraryV34','stable-library');localStorage.setItem('midiHudSettingsV1','stable-settings');localStorage.setItem('midiHudTrustedDeviceSessionV1','stable-auth');});
+ await page.goto(base+'index.html');
+ const home=page.getByRole('dialog',{name:'MIDI HUD',exact:true});
+ await home.waitFor();
+ assert.equal(await home.locator('.hud-tile').count(),4);
+ assert.equal(await home.locator('[data-link="bluetooth"]').getAttribute('data-state'),'idle');
+ for(const [width,height] of [[390,844],[844,390],[320,568],[1280,720]]){
+  await page.setViewportSize({width,height});
+  assert.equal(await home.evaluate(node=>node.scrollHeight<=node.clientHeight && node.scrollWidth<=node.clientWidth),true);
+ }
+ await page.setViewportSize({width:390,height:844});
+ await home.getByRole('button',{name:'AJUSTES',exact:true}).click();
+ await page.locator('#hud-close-btn').click();
+ await home.getByRole('button',{name:'LIVE',exact:true}).click();
+ assert.equal(await home.isVisible(),false);
+ await page.locator('.topbar .settings').click();
+ await page.locator('#hud-home-link').click();
+ await home.waitFor();
  await page.goto(base+'editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  await page.locator('#songTitle').fill('Guardado completo de pruebas');await page.locator('[data-tab="states"]').click();await page.locator('#saveAll').click();
  await page.waitForFunction(()=>!!localStorage.getItem('midiHudTest:hudLibraryV34'));
  assert.equal(await page.evaluate(()=>localStorage.getItem('hudLibraryV34')),'stable-library');
- await page.getByRole('link',{name:'LAB',exact:true}).click();await page.waitForURL('**/lab/midi-v1.html');
+ await page.goto(base+'lab/midi-v1.html');
  page.once('dialog',dialog=>dialog.accept());await page.locator('#clone').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('midiHudTest:hudLabLibraryV1')).songs.some(s=>s.title==='Guardado completo de pruebas'));
  assert.equal(await page.getByRole('link',{name:'Editor',exact:true}).getAttribute('href'),'../editor/v3.html');
  const source=JSON.parse(await readFile(new URL('./fixtures/main-v04.json',import.meta.url),'utf8'));

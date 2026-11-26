@@ -32,7 +32,7 @@ internal sealed class HudWindow : Window
         if(File.Exists(iconPath)) Icon=System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(iconPath));
         var panel=new DockPanel();var menu=new Menu();
         var manager=new MenuItem{Header="Controller Manager"};
-        manager.Click+=(_,_)=>{if(monitor!=null){monitor.Activate();return;}monitor=new ControllerMonitor{Owner=this};monitor.Closed+=(_,_)=>monitor=null;monitor.Show();};
+        manager.Click+=(_,_)=>OpenController();
         var about=new MenuItem{Header="Acerca de"};
         about.Click+=(_,_)=>MessageBox.Show(this,"MIDI HUD — Windows Alpha 0.1\nEntorno de pruebas.","MIDI HUD");
         menu.Items.Add(manager);menu.Items.Add(about);DockPanel.SetDock(menu,Dock.Top);
@@ -82,6 +82,13 @@ internal sealed class HudWindow : Window
             core.Navigate(Origin+Prefix+"index.html");
         }catch(Exception e){MessageBox.Show(this,"No se pudo iniciar MIDI HUD. Comprueba WebView2 Runtime.\n"+e.Message,"MIDI HUD");Close();}
     }
+    private void OpenController()
+    {
+        if(monitor!=null){monitor.Activate();return;}
+        monitor=new ControllerMonitor{Owner=this};
+        monitor.Closed+=(_,_)=>monitor=null;
+        monitor.Show();
+    }
     private MidiInput Midi()=>midi??=new MidiInput(Dispatcher,ev=>Post(new{kind="event",@event=ev}),(source,data)=>monitor?.Observe(source,data));
     private void Post(object body)
     {
@@ -103,6 +110,7 @@ internal sealed class HudWindow : Window
                 case "midi.select": result=await Midi().SelectAsync(payload.GetProperty("id").GetString()??"");break;
                 case "midi.bluetooth":
                     Process.Start(new ProcessStartInfo("ms-settings:bluetooth"){UseShellExecute=true});result=new{opened=true};break;
+                case "controller.open": OpenController();result=true;break;
                 case "cloud.config":result=new{configured=false};break;
                 case "cloud.restore":case "cloud.disconnect":result=null;break;
                 case "cloud.connect":case "cloud.request":throw new InvalidOperationException("Google Drive aún no está configurado para Windows.");
