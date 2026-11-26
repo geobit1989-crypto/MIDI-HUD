@@ -46,7 +46,7 @@
     receive(data,timestampMs){const event={data:new Uint8Array(data),target:this,timeStamp:Number.isFinite(timestampMs)?timestampMs:performance.now()};for(const callback of listeners)callback(event);this.onmidimessage?.(event);}});
   }
   const event={target:access};for(const callback of accessListeners)callback(event);access.onstatechange?.(event);
-  window.dispatchEvent(new CustomEvent('hud-native-ports',{detail:ports}));
+  window.dispatchEvent(Object.assign(new Event('hud-native-ports'),{detail:ports}));
  }
  let lastReceived=null, receivedCount=0, lastError=null;
  const receive=event=>{
