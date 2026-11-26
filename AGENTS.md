@@ -23,6 +23,8 @@ Cualquier rama nueva se identifica por nombre, commit y contenido; no inferir "m
 
 Corte documental de las cuatro plataformas: [26/11/2026](docs/STATUS-20261126.md).
 
+Identidad visual canónica: [construcción y exportaciones del icono](assets/brand/README.md); fuente SVG [midi-hud.svg](assets/brand/midi-hud.svg).
+
 ## Antes de modificar
 1. Seleccionar rama y leer su README, contrato y archivos afectados; comprobar último SHA y estado del repositorio.
 2. Distinguir producción, staging web, integración iOS, simulación, dispositivo físico y validación musical.
