@@ -49,8 +49,13 @@ try {
     Copy-Item -LiteralPath $next -Destination $tampered
     $zip = [IO.Compression.ZipFile]::Open($tampered, 'Update')
     try {
-        $zip.GetEntry('MIDI HUD.exe').Delete()
-        $entry = $zip.CreateEntry('MIDI HUD.exe').Open()
+        $payload = $zip.Entries | Where-Object {
+            [uri]::UnescapeDataString($_.FullName).TrimStart('/') -eq 'MIDI HUD.exe'
+        } | Select-Object -First 1
+        if (!$payload) { throw 'Executable part missing from MSIX test fixture' }
+        $part = $payload.FullName
+        $payload.Delete()
+        $entry = $zip.CreateEntry($part).Open()
         try { $entry.WriteByte(42) } finally { $entry.Dispose() }
     } finally { $zip.Dispose() }
     Assert-Rejected $tampered
