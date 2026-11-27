@@ -1,25 +1,19 @@
 {
-  "version": "v8.1-settings-responsive-qa",
+  "version": "v8.2-unified-library-qa",
   "release_date": "2026-11-27",
   "source_branch": "qa/midi-device-flow-20261126",
-  "source_commit": "a1bc60e5bf835435080e2e79815f44fb0a41546a",
+  "source_commit": "2e86d2ffb0cb9fd01c4dea0e852cb9b36eaa1407",
   "route": "/MIDI-HUD/pruebas/v6/",
   "application": "complete",
   "storage_prefix": "midiHudTest:",
   "drive_history_kind": "midi-hud-test-sync-v1",
   "production_unchanged": true,
-  "previous_web_commit": "8ecd7b74b7eef18c31c9f45cef5618d42e3abad0",
+  "previous_web_commit": "e988da300713b06852db2fc0dd5edabd147e7ad9",
   "windows_entry": "v03.html",
   "android_entry": "v03-ble-test.html",
   "home_entry": "index.html",
-  "application_tests": null,
-  "worker_tests": null,
-  "browser_tests": null,
   "physical_acceptance": "pending",
-  "build_token": "20261127-settings1",
-  "verification": {
-    "local_chromium_settings_geometry": "passed (isolated layout fixture, six viewports)",
-    "unified_ci": "pending at publication",
-    "physical_safari_iphone": "pending"
-  }
+  "build_token": "20261127-sync2",
+  "web_qa_run": 45956890146,
+  "worker_deployment": "not verified"
 }

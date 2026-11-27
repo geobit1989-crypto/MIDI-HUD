@@ -4,7 +4,7 @@
 <link rel="icon" type="image/svg+xml" href="./core/brand/midi-hud.svg">
 <link rel="apple-touch-icon" href="./core/brand/apple-touch-icon.png">
   <meta charset="utf-8">
-<meta name="midi-hud-build" content="v8.1-settings-responsive-qa">
+<meta name="midi-hud-build" content="v8.2-unified-library-qa">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#03080d">
   <title>MIDI HUD LIVE</title>
@@ -411,10 +411,10 @@ import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261016-rep
 import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34.mjs?v=20261016-repertoires1";
 import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261016-repertoires1";
 import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261016-transfer1";
-import {installCloudSync} from "./core/sync-ui.mjs?v=20261016-native1";
+import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-sync2";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261124";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
-import {installHome} from "./live/home-qa.mjs?v=20261127-settings1";
+import {installHome} from "./live/home-qa.mjs?v=20261127-sync2";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {installMidiDevices} from "./live/midi-devices.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
@@ -431,35 +431,52 @@ gear.setAttribute("title","Configuración MIDI HUD");
 gear.setAttribute("aria-label","Abrir configuración MIDI HUD");
 const dialog=createSettings();
 let returnToHome=false;
+let unsubscribeEngine;
+const safeToRefresh=()=>!!document.querySelector('.hud-home[open]')||dialog.open&&returnToHome;
+let cloud;
 function popup(open){
  if(open){if(!dialog.open)dialog.showModal();}
  else if(dialog.open)dialog.close();
 }
 dialog.querySelector('#hud-close-btn').onclick=()=>popup(false);
 dialog.addEventListener('close',()=>{
- if(returnToHome){returnToHome=false;openHome();}
+ if(returnToHome){returnToHome=false;showHome();}
  else gear.focus();
 });
+function refreshLocal(){
+ if(!engine)return;
+ const raw=readLibrarySource(localStorage);
+ if(raw&&raw!==loadedRaw){try{applyLiveLibrary(JSON.parse(raw));}catch(error){dialog.querySelector("#hud-library-status").textContent="Cambios disponibles al volver a abrir LIVE: "+error.message;}}
+}
+function showHome(){openHome();refreshLocal();void cloud?.synchronize();}
 const openHome=installHome({
  settings:()=>{
   returnToHome=true;popup(true);
   const raw=readLibrarySource(localStorage);
-  if(raw&&raw!==loadedRaw){
-   try{applyLiveLibrary(JSON.parse(raw));}
-   catch(error){dialog.querySelector('#hud-library-status').textContent='Cambios disponibles al volver a abrir LIVE: '+error.message;}
-  }
+  if(raw&&raw!==loadedRaw)refreshLocal();
+  void cloud?.synchronize();
  },
  editor:dialog.querySelector('#hud-editor-link'),
  syncRoot:dialog.querySelector('#hud-sync-root')
 });
 let loadedRaw;
 function applyLiveLibrary(next){
- engine.updateLibrary(withFullRepertoire(next));library=engine.getLibrary();loadedRaw=readLibrarySource(localStorage);usingSavedLibrary=true;prepare();render();
+ try{engine.updateLibrary(withFullRepertoire(next));}
+ catch(error){
+  if(!safeToRefresh())throw error;
+  // HOME can safely select an available song if the old demo/session is absent.
+  const updated=withFullRepertoire(next),selection=resolveLiveSelection(updated,localStorage);
+  const midiChannel=engine.getState().midiChannel||readSettings(localStorage).midiChannel;
+  const replacement=createEngine(updated,{midiChannel,...selection});
+  unsubscribeEngine?.();engine=replacement;initialSelection=selection;subscribeEngine();
+ }
+ library=engine.getLibrary();loadedRaw=readLibrarySource(localStorage);usingSavedLibrary=true;prepare();render();
 }
 installChannelPicker(dialog.querySelector('#hud-channel'),SETTINGS.midiChannel,midiChannel=>{
  saveSettings(localStorage,{midiChannel});
  engine.dispatch({type:"SET_CHANNEL",channel:midiChannel});
 });
+function subscribeEngine(){unsubscribeEngine=engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent('midi-hud-render',{detail:engine.getViewModel()}));});}
 function prepare(){
  libraryPicker?.destroy();libraryPicker=installLibraryPicker({root:dialog,engine,library,storage:localStorage,usingSavedLibrary,
    missingRequestedRepertoire:initialSelection.missingRequestedRepertoire});
@@ -587,7 +604,7 @@ function render(){
  const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
  renderLiveModules(document.querySelector(".switch-grid"),vm);
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
- dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261127-settings1&repertoire='+
+ dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261127-sync2&repertoire='+
   encodeURIComponent(vm.repertoire.id)+'&song='+encodeURIComponent(vm.song.id);
 }
 (async()=>{
@@ -599,9 +616,9 @@ function render(){
    if(transferred.applied){data=transferred.library;usingSavedLibrary=true;}
    try{window.history.replaceState(null,'',window.location.pathname+window.location.search);}catch{}
   }
-  const cloud=installCloudSync({host:dialog.querySelector('#hud-sync-root'),mode:'live',inline:true,
-   canApply:()=>dialog.open&&returnToHome,
-   onApplied:next=>{if(engine)applyLiveLibrary(next);else data=next;}});
+  cloud=installCloudSync({host:dialog.querySelector('#hud-sync-root'),mode:'live',inline:true,
+   canApply:safeToRefresh,
+   onApplied:next=>{if(engine)refreshLocal();else data=next;}});
   // La conexión lenta nunca impide abrir el repertorio local para tocar.
   // Local copy opens immediately; automatic sync only updates storage.
   const saved=readLibrarySource(localStorage);loadedRaw=saved;
@@ -611,6 +628,9 @@ function render(){
    if(!response.ok)throw Error("No se encontró la biblioteca v2");
    data=await response.json();
   }
+  // A download may finish while the bundled example is being fetched.
+  const latestRaw=readLibrarySource(localStorage);
+  if(latestRaw&&latestRaw!==loadedRaw){data=normalizeLibrary(JSON.parse(latestRaw));loadedRaw=latestRaw;usingSavedLibrary=true;}
   data=withFullRepertoire(data);
   initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
@@ -618,9 +638,9 @@ function render(){
   void midiPort.start();
   window.MIDIHUD_LIVE=Object.freeze({getEngine:()=>engine,getLibrary:()=>library});
   setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
-  engine.subscribe(()=>{render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));});
+  subscribeEngine();
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
-  if(new URLSearchParams(location.search).get('home')==='1')openHome();
+  if(new URLSearchParams(location.search).get('home')==='1')showHome();
   else if(initialSelection.missingRequestedRepertoire)popup(true);
  }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);
   const boot=document.querySelector("#hud-boot-status");if(boot)boot.textContent="Error de inicialización: "+err.message;

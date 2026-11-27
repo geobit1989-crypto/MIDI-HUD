@@ -5,7 +5,7 @@ import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} fro
 import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch2";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261016-repertoires1";
 import {createLibraryTransferUrl} from "../core/library-transfer-v34.mjs?v=20261016-transfer1";
-import {installCloudSync} from "../core/sync-ui.mjs?v=20261016-native1";
+import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-sync2";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261016-overlays1";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261016-patch2";

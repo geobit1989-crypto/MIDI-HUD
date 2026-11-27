@@ -78,7 +78,7 @@ export function commonAncestor(graph,a,b){
  const first=ancestors(graph,a),pending=[b],seen=new Set();
  while(pending.length){const id=pending.shift();if(seen.has(id))continue;seen.add(id);if(first.has(id))return id;pending.push(...(graph.get(id)?.parents||[]));}return null;
 }
-export function createSyncController({storage,history,getLocal=()=>{const raw=readLibrarySource(storage);return raw?checkedLibrary(JSON.parse(raw)):null;},canApply=()=>true,onApplied=()=>{},onStatus=()=>{},resolveConflict=async()=>null,id=newId,now=()=>new Date().toISOString()}){
+export function createSyncController({storage,history,getLocal=()=>{const raw=readLibrarySource(storage);return raw?checkedLibrary(JSON.parse(raw)):null;},canApply=()=>true,onApplied=()=>{},onStatus=()=>{},resolveConflict=async()=>null,authoritative=false,confirmSeed=async()=>false,id=newId,now=()=>new Date().toISOString()}){
  let running=null,account=null;
  const status=(state,message)=>onStatus({state,message});
  async function merge(base,local,remote,context){
@@ -114,7 +114,23 @@ export function createSyncController({storage,history,getLocal=()=>{const raw=re
   // antecesor de otra biblioteca.
   let base=previous.heads?.length&&previous.heads.every(head=>graph.has(head))?previous.base||null:null;
   if(base)checkedLibrary(base);
-  let merged=captured&&remote?await merge(base,captured,remote,{kind:'local'}):clone(captured||remote);
+  const owner=state.activeAccountId||(Object.keys(state.accounts).length===1?Object.keys(state.accounts)[0]:null);
+  let merged;
+  if(authoritative&&(!base||(owner&&owner!==account.id))){
+   // An unverified cache is not a second source of truth. Never upload it
+   // into another account; preserve a divergent copy before adopting Drive.
+   if(remote){
+    if(captured&&!sameLibrary(captured,remote)){
+     const recoveryAccount=owner||account.id;
+     storage.setItem('midiHudSyncRecovery:'+id(),JSON.stringify({createdAt:now(),accountId:recoveryAccount,base:null,local:captured,remote:owner&&owner!==account.id?null:remote,conflicts:[{key:'library',label:'Copia local anterior a la vinculación con Drive'}]}));
+    }
+    merged=clone(remote);
+   }else if(captured){
+    if(owner&&owner!==account.id){status('deferred','Esta copia pertenece a otra cuenta. Conecta la cuenta original; no se publicará en la nueva.');return {deferred:true};}
+    if(!options.explicit||!await confirmSeed()){status('deferred','Drive no tiene biblioteca. Pulsa Sincronizar ahora y confirma únicamente desde el dispositivo con los datos correctos.');return {deferred:true};}
+    merged=clone(captured);
+   }else merged=null;
+  }else merged=captured&&remote?await merge(base,captured,remote,{kind:'local'}):clone(captured||remote);
   if(!merged){if(!captured&&!remote)status('synced','Cuenta conectada. Guarda tu primer repertorio para sincronizarlo.');return {empty:!captured&&!remote,conflict:!!(captured||remote)};}
   const stillCurrent=()=>sameLibrary(getLocal(),captured)&&canApply(options);
   if(!stillCurrent()){status('pending','Hay cambios nuevos en este dispositivo. Se sincronizarán después de guardar.');return {pending:true};}
@@ -130,6 +146,7 @@ export function createSyncController({storage,history,getLocal=()=>{const raw=re
   if(stillCurrent()&&!sameLibrary(captured,merged)){
    replaceLibrary(storage,merged,captured||merged);onApplied(clone(merged),options);
   }
+  state.activeAccountId=account.id;
   state.accounts[account.id]={base:merged,heads:acceptedHeads,lastSyncedAt:now(),email:account.email||''};
   storage.setItem(SYNC_KEY,JSON.stringify(state));
   const pending=!sameLibrary(getLocal(),merged);
