@@ -23,6 +23,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node tests/browser-integration.mjs
       - run: node tests/release-browser.mjs
+      - name: Package the canonical Web QA application
+        run: |
+          mkdir -p build/qa
+          git archive --format=zip --output=build/qa/midi-hud-web-qa.zip HEAD \
+            index.html v03.html v03-ble-test.html core editor live config assets \
+            privacy.html privacy-en.html terms.html terms-en.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: midi-hud-web-qa
+          path: build/qa/midi-hud-web-qa.zip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
