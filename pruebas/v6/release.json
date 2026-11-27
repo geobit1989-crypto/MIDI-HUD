@@ -1,19 +1,25 @@
 {
-  "version": "v8-midi-device-flow-qa",
-  "release_date": "2026-11-26",
+  "version": "v8.1-settings-responsive-qa",
+  "release_date": "2026-11-27",
   "source_branch": "qa/midi-device-flow-20261126",
-  "source_commit": "749bcae7fd95cc3e50f0477bc116cf764463d062",
+  "source_commit": "a1bc60e5bf835435080e2e79815f44fb0a41546a",
   "route": "/MIDI-HUD/pruebas/v6/",
   "application": "complete",
   "storage_prefix": "midiHudTest:",
   "drive_history_kind": "midi-hud-test-sync-v1",
   "production_unchanged": true,
-  "previous_web_commit": "b776a4e99c881f17e3c0159a82288c1dc50a849a",
+  "previous_web_commit": "8ecd7b74b7eef18c31c9f45cef5618d42e3abad0",
   "windows_entry": "v03.html",
   "android_entry": "v03-ble-test.html",
   "home_entry": "index.html",
-  "application_tests": 264,
-  "worker_tests": 4,
-  "browser_tests": 2,
-  "physical_acceptance": "pending"
+  "application_tests": null,
+  "worker_tests": null,
+  "browser_tests": null,
+  "physical_acceptance": "pending",
+  "build_token": "20261127-settings1",
+  "verification": {
+    "local_chromium_settings_geometry": "passed (isolated layout fixture, six viewports)",
+    "unified_ci": "pending at publication",
+    "physical_safari_iphone": "pending"
+  }
 }
