@@ -1,13 +1,36 @@
-import {IS_TEST_ENVIRONMENT} from './environment.mjs';
+import {IS_TEST_ENVIRONMENT,QA_LIBRARY_KIND,QA_LIBRARY_ID,QA_LIBRARY_ROOT} from './environment.mjs?v=20261127-drive4';
 import {checkedLibrary,clone,canonical,sameLibrary,mergeLibraries} from './sync-merge.mjs';
 import {readLibrarySource,replaceLibrary} from './library-storage.mjs';
 
 export const SYNC_KEY='midiHudDriveSyncV1';
 export const SYNC_SCOPE='https://www.googleapis.com/auth/drive.appdata';
-export const COMMIT_KIND=IS_TEST_ENVIRONMENT?'midi-hud-test-sync-v1':'midi-hud-sync-v1';
+export const COMMIT_KIND=IS_TEST_ENVIRONMENT?QA_LIBRARY_KIND:'midi-hud-sync-v1';
 const MAX_BYTES=2_000_000,MAX_FILES=5000,ID=/^[a-zA-Z0-9_-]{8,100}$/;
 export const newId=()=>crypto.randomUUID();
 const fail=message=>{throw Error(message);};
+const activeLibrary=library=>!IS_TEST_ENVIRONMENT||library?.libraryId===QA_LIBRARY_ID;
+function validateQaHistory(graph){
+ if(!graph.size)return;
+ const roots=[...graph.values()].filter(entry=>entry.parents.length===0);
+ if(roots.length!==1||roots[0].id!==QA_LIBRARY_ROOT)fail('Drive no contiene la revisión inicial de la biblioteca QA.');
+ const remainingParents=new Map(),children=new Map();
+ for(const {id,parents} of graph.values()){
+  remainingParents.set(id,parents.length);
+  for(const parent of parents){
+   if(!children.has(parent))children.set(parent,[]);
+   children.get(parent).push(id);
+  }
+ }
+ const queue=[QA_LIBRARY_ROOT];
+ for(let i=0;i<queue.length;i++){
+  for(const child of children.get(queue[i])||[]){
+   const count=remainingParents.get(child)-1;
+   remainingParents.set(child,count);
+   if(count===0)queue.push(child);
+  }
+ }
+ if(queue.length!==graph.size)fail('El historial de la biblioteca QA contiene referencias circulares.');
+}
 function readState(storage){
  const raw=storage.getItem(SYNC_KEY);if(!raw)return {accounts:{}};
  const value=JSON.parse(raw);if(!value||typeof value.accounts!=='object'||Array.isArray(value.accounts))fail('El registro de sincronización está dañado; se ha conservado.');return value;
@@ -25,7 +48,9 @@ export function validateCommit(value,expected=null){
  if(value?.format!==COMMIT_KIND||value.version!==1||!ID.test(value.id)||!Array.isArray(value.parents)||value.parents.length>16||value.parents.some(id=>!ID.test(id)||id===value.id)||new Set(value.parents).size!==value.parents.length)fail('Versión de Drive inválida.');
  if(expected&&(expected.id!==value.id||canonical([...expected.parents].sort())!==canonical([...value.parents].sort())))fail('Las referencias de la versión de Drive no coinciden.');
  if(typeof value.createdAt!=='string'||typeof value.deviceId!=='string')fail('Versión incompleta en Drive.');
- return {...value,library:checkedLibrary(value.library)};
+ const library=checkedLibrary(value.library);
+ if(!activeLibrary(library))fail('Versión de otra biblioteca QA.');
+ return {...value,library};
 }
 /** REST compartido entre Google Identity Services (web) y URLSession (iOS).
  * Las versiones son inmutables: dos subidas simultáneas no se pisan. */
@@ -41,7 +66,7 @@ export class DriveHistory{
   const graph=new Map();
   for(const file of files){
    const props=file.appProperties||{},id=props.commitId;
-   if(!ID.test(id)||!ID.test(file.id))fail('Referencia inválida en el historial de Drive.');
+   if((IS_TEST_ENVIRONMENT&&props.kind!==COMMIT_KIND)||!ID.test(id)||!ID.test(file.id))fail('Referencia inválida en el historial de Drive.');
    const parents=Object.keys(props).filter(k=>/^parent\d+$/.test(k)).sort((a,b)=>Number(a.slice(6))-Number(b.slice(6))).map(k=>props[k]);
    if(parents.length>16||parents.some(p=>!ID.test(p)||p===id))fail('Historial de Drive inválido.');
    if(graph.has(id))fail('Hay versiones duplicadas en Drive; se han conservado.');
@@ -50,6 +75,7 @@ export class DriveHistory{
   // Si una lista está incompleta o alguien elimina un antecesor, no publicamos
   // una resolución basada en una historia incompleta.
   for(const item of graph.values())for(const parent of item.parents)if(!graph.has(parent))fail('Drive aún no muestra todo el historial. Vuelve a sincronizar en unos segundos.');
+  if(IS_TEST_ENVIRONMENT)validateQaHistory(graph);
   const referenced=new Set([...graph.values()].flatMap(item=>item.parents));
   const heads=[...graph.keys()].filter(id=>!referenced.has(id)).sort();
   if(graph.size&&!heads.length)fail('Historial circular en Drive.');
@@ -63,6 +89,7 @@ export class DriveHistory{
  }
  async append(commit){
   validateCommit(commit);
+  if(IS_TEST_ENVIRONMENT&&!commit.parents.length)fail('La biblioteca QA ya tiene una revisión inicial en Drive.');
   const text=JSON.stringify(commit);if(new TextEncoder().encode(text).length>MAX_BYTES)fail('La biblioteca supera el tamaño permitido para sincronizar.');
   const boundary='hud_'+commit.id;
   const body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(commitMetadata(commit))+'\r\n--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+text+'\r\n--'+boundary+'--\r\n';
@@ -100,6 +127,10 @@ export function createSyncController({storage,history,getLocal=()=>{const raw=re
   const state=readState(storage),previous=state.accounts[account.id]||{},captured=clone(getLocal());
   if(captured)checkedLibrary(captured);
   const {graph,heads}=await history.list();
+  if(IS_TEST_ENVIRONMENT&&!heads.length){
+   status('deferred','Esta cuenta no tiene la biblioteca compartida de MIDI HUD QA.');
+   return {deferred:true};
+  }
   const cache=new Map();
   const read=async commitId=>{if(!cache.has(commitId))cache.set(commitId,(await history.read(graph.get(commitId))).library);return cache.get(commitId);};
   let remote=null,firstHead=null;
@@ -116,7 +147,7 @@ export function createSyncController({storage,history,getLocal=()=>{const raw=re
   if(base)checkedLibrary(base);
   const owner=state.activeAccountId||(Object.keys(state.accounts).length===1?Object.keys(state.accounts)[0]:null);
   let merged;
-  if(authoritative&&(!base||(owner&&owner!==account.id))){
+  if(!activeLibrary(captured)||authoritative&&(!base||(owner&&owner!==account.id))){
    // An unverified cache is not a second source of truth. Never upload it
    // into another account; preserve a divergent copy before adopting Drive.
    if(remote){
@@ -144,7 +175,7 @@ export function createSyncController({storage,history,getLocal=()=>{const raw=re
   // La red puede tardar mientras el usuario sigue editando. Conservar la nueva
   // base remota, pero aplicar solamente si la copia local sigue siendo la leída.
   if(stillCurrent()&&!sameLibrary(captured,merged)){
-   replaceLibrary(storage,merged,captured||merged);onApplied(clone(merged),options);
+   replaceLibrary(storage,merged,activeLibrary(captured)&&captured?captured:merged);onApplied(clone(merged),options);
   }
   state.activeAccountId=account.id;
   state.accounts[account.id]={base:merged,heads:acceptedHeads,lastSyncedAt:now(),email:account.email||''};

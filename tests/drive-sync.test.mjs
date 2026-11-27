@@ -211,19 +211,20 @@ test('sesión caducada o de otro cliente OAuth nunca se reutiliza',async()=>{
  assert.equal(cache.size,0);
 });
 
-test('Windows, Android e iPhone comparten el historial de pruebas y conservan tres repertorios', async () => {
+test('Los cuatro entornos QA aíslan cachés anteriores y comparten una identidad de Drive', async () => {
  const platforms = [
   {protocol:'https:',hostname:'geobit1989-crypto.github.io',pathname:'/MIDI-HUD/pruebas/v6/'},
-  {protocol:'https:',hostname:'geobit1989-crypto.github.io',pathname:'/MIDI-HUD/pruebas/v6/editor/'},
+  {protocol:'https:',hostname:'midihud.local',pathname:'/windows-qa/index.html'},
+  {protocol:'https:',hostname:'appassets.androidplatform.net',pathname:'/android-qa/index.html'},
   {protocol:'hud:',hostname:'ios-test.localhost',pathname:'/editor/v3.html'}
  ];
  for (const location of platforms) {
   const {stdout} = await import('node:child_process').then(({execFileSync}) => ({
    stdout:execFileSync(process.execPath,['--input-type=module','-e',
-    'globalThis.location='+JSON.stringify(location)+'; console.log((await import("./core/drive-sync.mjs")).COMMIT_KIND);'],
+    'globalThis.location='+JSON.stringify(location)+'; await import("./tests/fixtures/qa-library-cutover.mjs");'],
     {cwd:new URL('../',import.meta.url),encoding:'utf8'})
   }));
-  assert.equal(stdout.trim(),'midi-hud-test-sync-v1');
+  assert.equal(stdout.trim(),'QA library cutover verified');
  }
  assert.equal(COMMIT_KIND,'midi-hud-sync-v1');
  const original = fixture();

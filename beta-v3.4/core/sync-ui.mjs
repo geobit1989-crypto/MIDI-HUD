@@ -1,5 +1,5 @@
-import {appStorage as localStorage,appSessionStorage as sessionStorage,IS_TEST_ENVIRONMENT} from "./environment.mjs";
-import {DriveHistory,createSyncController,lastSuccessfulSync} from './drive-sync.mjs?v=20261127-sync2';
+import {appStorage as localStorage,appSessionStorage as sessionStorage,IS_TEST_ENVIRONMENT} from "./environment.mjs?v=20261127-drive4";
+import {DriveHistory,createSyncController,lastSuccessfulSync} from './drive-sync.mjs?v=20261127-drive4';
 import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-autosync1';
 import {readLibrarySource} from './library-storage.mjs';
 import {PersistentDriveAuth} from './persistent-drive-auth.mjs?v=20261127-sync2';

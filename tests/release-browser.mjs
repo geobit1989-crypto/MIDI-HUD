@@ -4,6 +4,7 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import {createRequire} from 'node:module';
 import {migrateCatalog} from '../core/catalog-v1.mjs';
+import {QA_LIBRARY_KIND,QA_LIBRARY_ID,QA_LIBRARY_ROOT} from '../core/environment.mjs';
 const require=createRequire(import.meta.url),browsers=require(process.env.HUD_PLAYWRIGHT||'playwright');
 const browserName=process.env.HUD_BROWSER||'chromium';
 const root=resolve('.'),prefix='/MIDI-HUD/pruebas/v6/';
@@ -83,7 +84,7 @@ try{
  assert.equal(await home.isVisible(),false);
  await page.goto(base+'editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  await page.locator('#songTitle').fill('Guardado completo de pruebas');await page.locator('[data-tab="states"]').click();await page.locator('#saveAll').click();
- await page.waitForFunction(()=>!!localStorage.getItem('midiHudTest:hudLibraryV34'));
+ await page.waitForFunction(()=>!!localStorage.getItem('midiHudTest:midiHudQa20261127:hudLibraryV34'));
  assert.equal(await page.evaluate(()=>localStorage.getItem('hudLibraryV34')),'stable-library');
  await page.goto(base+'lab/midi-v1.html');
  page.once('dialog',dialog=>dialog.accept());await page.locator('#clone').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('midiHudTest:hudLabLibraryV1')).songs.some(s=>s.title==='Guardado completo de pruebas'));
@@ -95,10 +96,11 @@ try{
  try{
   const syncPage=await syncContext.newPage();
   const central=JSON.parse(await readFile(new URL('../config/midi-hud-data-v2.json',import.meta.url),'utf8'));
+  central.libraryId=QA_LIBRARY_ID;
   central.repertoires[0].name='Biblioteca central';
   central.repertoires.push({id:'central-extra',name:'Setlist central',songIds:[central.songs[0].id]});
-  const account={id:'google-account-000001',email:'qa@example.test'},kind='midi-hud-test-sync-v1';
-  const bearer='B'.repeat(64),id1='qa-cloud-00000001',id2='qa-cloud-00000002';
+  const account={id:'google-account-000001',email:'qa@example.test'},kind=QA_LIBRARY_KIND;
+  const bearer='B'.repeat(64),id1=QA_LIBRARY_ROOT,id2='qa-cloud-00000002';
   const commit=(id,parents,library)=>({format:kind,version:1,id,parents,deviceId:'cloud-device',createdAt:new Date().toISOString(),library});
   const versions=[commit(id1,[],central)];
   let uploads=0;
@@ -116,6 +118,11 @@ try{
   });
   await syncPage.goto(base+'privacy.html');
   await syncPage.evaluate(({account,bearer})=>localStorage.setItem('midiHudTest:midiHudTrustedDeviceSessionV1',JSON.stringify({origin:'https://midihudaut.midihudapp.workers.dev',token:bearer,account,deviceId:'device-qa',expiresAt:Date.now()+86400000})),{account,bearer});
+  await syncPage.evaluate(library=>{
+   const stale=structuredClone(library);
+   stale.repertoires.push({id:'stale-rep',name:'Repertorio anterior',songIds:[stale.songs[0].id]});
+   localStorage.setItem('midiHudTest:hudLibraryV34',JSON.stringify(stale));
+  },central);
   await syncPage.goto(base+'index.html');
   await syncPage.getByRole('dialog',{name:'MIDI HUD',exact:true}).waitFor();
   await syncPage.waitForFunction(()=>window.MIDIHUD_LIVE?.getLibrary().repertoires.some(r=>r.name==='Setlist central'));
@@ -124,11 +131,13 @@ try{
   const updated=structuredClone(central);updated.repertoires.push({id:'central-third',name:'Nueva setlist',songIds:[updated.songs[0].id]});
   versions.push(commit(id2,[id1],updated));
   await syncPage.evaluate(()=>window.dispatchEvent(new Event('online')));
-  await syncPage.waitForFunction(()=>JSON.parse(localStorage.getItem('midiHudTest:hudLibraryV34')).repertoires.some(r=>r.name==='Nueva setlist'));
+  await syncPage.waitForFunction(()=>JSON.parse(localStorage.getItem('midiHudTest:midiHudQa20261127:hudLibraryV34')).repertoires.some(r=>r.name==='Nueva setlist'));
   assert.equal(await syncPage.evaluate(()=>MIDIHUD_LIVE.getLibrary().repertoires.some(r=>r.name==='Nueva setlist')),false);
   assert.deepEqual(await syncPage.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
   await syncPage.goto(base+'editor/v3.html');
   await syncPage.waitForFunction(()=>window.MIDIHUD_EDITOR?.getLibrary().repertoires.some(r=>r.name==='Nueva setlist'));
+  assert.equal(await syncPage.evaluate(()=>window.MIDIHUD_EDITOR.getLibrary().repertoires.some(r=>r.id==='stale-rep')),false);
+  assert.ok(await syncPage.evaluate(()=>localStorage.getItem('midiHudTest:hudLibraryV34').includes('stale-rep')));
   assert.equal(uploads,0);
  }finally{await syncContext.close();}
  const source=JSON.parse(await readFile(new URL('./fixtures/main-v04.json',import.meta.url),'utf8'));
@@ -136,7 +145,7 @@ try{
  source.songs[0].leadSheet=demo.songs[0].leadSheet;
  const library=migrateCatalog(source);
  library.repertoires.push({id:'test-empty',name:'Ensayo vacío',songIds:[]});
- await page.evaluate(library=>localStorage.setItem('midiHudTest:hudLibraryV34',JSON.stringify(library)),library);
+ await page.evaluate(library=>localStorage.setItem('midiHudTest:midiHudQa20261127:hudLibraryV34',JSON.stringify(library)),library);
  await page.goto(base+'v03.html');await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  await page.locator('.topbar .settings').click();
  await settings.locator('summary').filter({hasText:'REPERTORIOS'}).click();
@@ -168,7 +177,7 @@ try{
  await page.evaluate(()=>{testMidi.inputs.get('Other').send([0xb1,80,1]);testMidi.inputs.get('Chocolate').send([0xb1,80,2]);testMidi.inputs.get('Chocolate').send([0xb1,81,0]);testMidi.inputs.get('Chocolate').send([0xb1,91,77]);});
  const before=await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState());assert.equal(before.activeStateId,'preset-solo');
  await page.evaluate(()=>testMidi.inputs.get('Chocolate').send([0xb1,80,2]));assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
- await page.evaluate(()=>{const key='midiHudTest:hudLibraryV34',db=JSON.parse(localStorage.getItem(key));db.songs[0].title='Actualización compatible';localStorage.setItem(key,JSON.stringify(db));window.dispatchEvent(new Event('storage'));});
+ await page.evaluate(()=>{const key='midiHudTest:midiHudQa20261127:hudLibraryV34',db=JSON.parse(localStorage.getItem(key));db.songs[0].title='Actualización compatible';localStorage.setItem(key,JSON.stringify(db));window.dispatchEvent(new Event('storage'));});
  assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
  assert.equal(await page.locator('#hud-library-update').count(),0);
  await page.evaluate(()=>{const input=testMidi.inputs.get('Chocolate');input.state='disconnected';testMidi.inputs.delete('Chocolate');window.disconnectedInput=input;testMidi.onstatechange();});
