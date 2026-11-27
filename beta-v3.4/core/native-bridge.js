@@ -11,7 +11,7 @@
  const midiName=platform==='ios'?'Core MIDI':platform==='windows'?'Windows MIDI':'Android MIDI';
  const pending=new Map();
  let sequence=0;
- const allowedCommands=new Set(['midi.open','midi.list','midi.select','midi.bluetooth','cloud.config','cloud.restore','cloud.connect','cloud.disconnect','cloud.request','share.text','controller.open']);
+ const allowedCommands=new Set(['midi.open','midi.list','midi.select','midi.bluetooth','cloud.config','cloud.restore','cloud.connect','cloud.disconnect','cloud.request','broker.request','broker.open','share.text','controller.open']);
  function call(command,payload={}){
   if(!allowedCommands.has(command))return Promise.reject(new Error('Acción no disponible.'));
   if(platform==='ios')return Promise.resolve().then(()=>ios.postMessage({command,payload}));

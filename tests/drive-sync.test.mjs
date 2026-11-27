@@ -248,3 +248,29 @@ test('Windows, Android e iPhone comparten el historial de pruebas y conservan tr
  assert.equal(windows.get().songs[0].title,androidEdit.songs[0].title);
  assert.equal(windows.get().songs[1].title,iphoneEdit.songs[1].title);
 });
+
+test('one authoritative QA library converges across web, Windows, Android and iOS; offline edits converge on reconnect',async()=>{
+ const cloud=new MemoryHistory(),web=device(cloud,fixture(),{authoritative:true,confirmSeed:async()=>true});
+ assert((await web.sync()).deferred);assert.equal(cloud.commits.size,0);
+ await web.sync({explicit:true});assert.equal(cloud.commits.size,1);
+ const stale=fixture();stale.repertoires[0].name='Old local cache';
+ const windows=device(cloud,stale,{authoritative:true}),android=device(cloud,null,{authoritative:true}),ios=device(cloud,null,{authoritative:true});
+ const clients=[web,windows,android,ios];
+ for(const client of clients.slice(1))await client.sync();
+ assert(clients.every(client=>sameLibrary(client.get(),web.get())));assert.equal(cloud.commits.size,1);
+ assert([...windows.store.map.keys()].some(key=>key.startsWith('midiHudSyncRecovery:')));
+ for(const [i,client] of clients.entries()){
+  cloud.offline=true;change(client,db=>{db.repertoires.push({id:'qa-rep-'+i,name:'Setlist '+i,songIds:[db.songs[0].id]});});
+  await assert.rejects(client.sync(),/Sin conexión/);cloud.offline=false;await client.sync();
+  for(const other of clients)await other.sync();
+  assert(clients.every(other=>sameLibrary(other.get(),client.get())));
+ }
+ assert.equal(web.get().repertoires.length,5);assert.equal((await cloud.list()).heads.length,1);
+});
+test('native cache cannot seed a different Google account',async()=>{
+ const cloud=new MemoryHistory(),a=device(cloud,fixture(),{authoritative:true,confirmSeed:async()=>true});
+ await a.sync({explicit:true});const empty=new MemoryHistory();
+ const controller=createSyncController({storage:a.store,history:empty,authoritative:true,confirmSeed:async()=>true,id});
+ controller.setAccount({id:'another-account-0001',email:'other@example.test'});
+ assert((await controller.synchronize({explicit:true})).deferred);assert.equal(empty.commits.size,0);
+});

@@ -18,12 +18,12 @@ export class PersistentDriveAuth {
   fetcher=(...args)=>globalThis.fetch(...args),
   location=()=>globalThis.location,
   history=()=>globalThis.history,
-  navigate=address=>globalThis.location.assign(address)
+  navigate=address=>globalThis.location.assign(address),native=null
  }={}){
   if(workerUrl!==DEFAULT_WORKER)throw Error("La dirección del servidor de MIDI HUD no está permitida.");
   this.workerUrl=workerUrl;this.store=store;this.transient=transient;this.fetcher=fetcher;
   this.location=location;this.history=history;this.navigate=navigate;
-  this.session=null;this.account=null;this.clientId="";
+  this.session=null;this.account=null;this.clientId="";this.native=native;
  }
  get configured(){return true;}
  get isPersistent(){return true;}
@@ -46,13 +46,14 @@ export class PersistentDriveAuth {
  }
  async ready(){
   try{
-   const response=await this.fetcher(this.workerUrl+"/health",{cache:"no-store",signal:AbortSignal.timeout(10000)});
-   const status=await response.json();
-   return response.ok&&status?.service==="midi-hud-auth"&&status.oauthEnabled===true;
+   let status;
+   if(this.native)status=await this.call("/health");
+   else {const response=await this.fetcher(this.workerUrl+"/health",{cache:"no-store",signal:AbortSignal.timeout(10000)});if(!response.ok)return false;status=await response.json();}
+   return status?.service==="midi-hud-auth"&&status.oauthEnabled===true;
   }catch{return false;}
  }
  async call(path,{method="GET",body,token=this.session?.token}={}){
-  const response=await this.fetcher(this.workerUrl+path,{
+  const response=this.native?await this.native.call("broker.request",{path,method,body,token}).then(result=>({ok:result.status>=200&&result.status<300,status:result.status,json:async()=>result.data})):await this.fetcher(this.workerUrl+path,{
    method,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},
    ...(body===undefined?{}:{body:JSON.stringify(body)}),
    cache:"no-store",signal:AbortSignal.timeout(18000)
@@ -91,7 +92,10 @@ export class PersistentDriveAuth {
   return true;
  }
  async restore(){
-  await this.redeem();
+  if(this.native){
+   const pending=parse(this.store()?.getItem(PROOF_KEY));
+   if(pending?.value&&now()-pending.created<600000){const result=await this.call("/auth/native/poll",{method:"POST",body:{proof:pending.value},token:null});if(!result.pending){this.acceptNative(result);return this.account;}}
+  }else await this.redeem();
   const saved=this.load();
   if(!saved)return null;
   try{
@@ -107,11 +111,29 @@ export class PersistentDriveAuth {
    return this.account;
   }
  }
+ acceptNative(session){
+  if(!chars.test(session.token||"")||session.token.length!==64||!session.account?.id||!session.account?.email)throw Error("Sesión nativa inválida.");
+  this.save({origin:this.workerUrl,token:session.token,deviceId:session.deviceId,expiresAt:session.expiresAt,account:session.account});
+  this.store()?.removeItem(PROOF_KEY);
+ }
+ async connectNative(){
+  const next=await this.call("/auth/native/start",{method:"POST",body:{},token:null});
+  if(!/^[A-Za-z0-9_-]{43}$/.test(next.proof||"")||!next.authorizeUrl?.startsWith("https://accounts.google.com/o/oauth2/v2/auth?"))throw Error("Autorización nativa inválida.");
+  const created=now();this.store()?.setItem(PROOF_KEY,JSON.stringify({value:next.proof,created}));
+  if(!await this.native.call("broker.open",{url:next.authorizeUrl}))throw Error('No se pudo abrir Google en el navegador del sistema.');
+  while(now()-created<600000){
+   await new Promise(resolve=>setTimeout(resolve,2500));
+   const result=await this.call("/auth/native/poll",{method:"POST",body:{proof:next.proof},token:null});
+   if(!result.pending){this.acceptNative(result);return this.account;}
+  }
+  throw Error("La autorización caducó. Vuelve a conectar Google.");
+ }
  async connect(){
+  if(this.native)return this.connectNative();
   const proof=random(),proofHash=await digest(proof);
   let returnPath="/MIDI-HUD/editor/v3.html";
   if(this.location().pathname==="/MIDI-HUD/v03.html")returnPath="/MIDI-HUD/v03.html";
-  if(this.location().pathname.startsWith('/MIDI-HUD/pruebas/v6/'))returnPath=this.location().pathname.endsWith('/v03.html')?'/MIDI-HUD/pruebas/v6/v03.html':'/MIDI-HUD/pruebas/v6/editor/v3.html';
+  if(this.location().pathname.startsWith('/MIDI-HUD/pruebas/v6/'))returnPath=/\/v03(?:-ble-test)?\.html$/.test(this.location().pathname)?'/MIDI-HUD/pruebas/v6/v03.html':'/MIDI-HUD/pruebas/v6/editor/v3.html';
   const pending=JSON.stringify({value:proof,created:now()});
   try{this.transient()?.setItem(PROOF_KEY,pending);}catch{}
   this.store()?.setItem(PROOF_KEY,pending);

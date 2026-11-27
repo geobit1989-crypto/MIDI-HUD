@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -95,6 +97,32 @@ internal sealed class HudWindow : Window
         if(!closed&&core!=null&&Local(core.Source))
             try{core.PostWebMessageAsString(JsonSerializer.Serialize(body));}catch(InvalidOperationException){}
     }
+    private static readonly HttpClient Broker = new(new HttpClientHandler{AllowAutoRedirect=false}){Timeout=TimeSpan.FromSeconds(20)};
+    private static async Task<object> BrokerRequest(JsonElement payload)
+    {
+        var path=payload.GetProperty("path").GetString()??"";
+        var method=payload.GetProperty("method").GetString()??"";
+        bool allowed=method=="GET"&&new[]{"/health","/session","/session/devices"}.Contains(path)||
+            method=="POST"&&new[]{"/auth/native/start","/auth/native/poll","/session/revoke","/session/devices/revoke","/drive/request"}.Contains(path);
+        if(!allowed)throw new InvalidOperationException("Ruta de sincronización no permitida.");
+        using var request=new HttpRequestMessage(new HttpMethod(method),"https://midihudaut.midihudapp.workers.dev"+path);
+        request.Headers.TryAddWithoutValidation("Origin",Origin);
+        if(payload.TryGetProperty("token",out var tokenElement)&&tokenElement.ValueKind==JsonValueKind.String){
+            var token=tokenElement.GetString()??"";if(!Regex.IsMatch(token,"^[A-Za-z0-9_-]{64}$"))throw new InvalidOperationException("Sesión inválida.");
+            request.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",token);
+        }
+        if(method=="POST"){
+            var body=payload.TryGetProperty("body",out var value)?value.GetRawText():"{}";
+            if(Encoding.UTF8.GetByteCount(body)>3_200_000)throw new InvalidOperationException("Petición demasiado grande.");
+            request.Content=new StringContent(body,Encoding.UTF8,"application/json");
+        }
+        using var response=await Broker.SendAsync(request,HttpCompletionOption.ResponseHeadersRead);
+        await using var input=await response.Content.ReadAsStreamAsync();
+        using var buffer=new MemoryStream();var bytes=new byte[8192];
+        int n;while((n=await input.ReadAsync(bytes.AsMemory()))>0){if(buffer.Length+n>3_200_000)throw new InvalidOperationException("Respuesta demasiado grande.");buffer.Write(bytes,0,n);}
+        using var json=JsonDocument.Parse(buffer.ToArray());
+        return new{status=(int)response.StatusCode,data=json.RootElement.Clone()};
+    }
     private async void Received(object? sender,CoreWebView2WebMessageReceivedEventArgs args)
     {
         if(core==null||!Local(args.Source)||!Local(core.Source)||args.Source!=core.Source)return;
@@ -111,6 +139,11 @@ internal sealed class HudWindow : Window
                 case "midi.bluetooth":
                     Process.Start(new ProcessStartInfo("ms-settings:bluetooth"){UseShellExecute=true});result=new{opened=true};break;
                 case "controller.open": OpenController();result=true;break;
+                case "broker.request":result=await BrokerRequest(payload);break;
+                case "broker.open":
+                    var authUrl=new Uri(payload.GetProperty("url").GetString()??"");
+                    if(authUrl.Scheme!="https"||authUrl.Host!="accounts.google.com"||!authUrl.IsDefaultPort||authUrl.UserInfo.Length!=0||authUrl.AbsolutePath!="/o/oauth2/v2/auth")throw new InvalidOperationException("URL no autorizada.");
+                    Process.Start(new ProcessStartInfo(authUrl.AbsoluteUri){UseShellExecute=true});result=true;break;
                 case "cloud.config":result=new{configured=false};break;
                 case "cloud.restore":case "cloud.disconnect":result=null;break;
                 case "cloud.connect":case "cloud.request":throw new InvalidOperationException("Google Drive aún no está configurado para Windows.");

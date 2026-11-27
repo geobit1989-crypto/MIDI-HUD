@@ -2,6 +2,8 @@ import {randomToken,sha256,seal,unseal} from "./crypto.mjs";
 import {prepareInitialSchema} from "./schema.mjs";
 
 const APP_ORIGIN="https://geobit1989-crypto.github.io";
+const NATIVE_ORIGINS=new Set(["https://appassets.androidplatform.net","https://midihud.local","hud://ios-test.localhost"]);
+const NATIVE_RETURN="native-qa";
 const SERVICE_URL="https://midihudaut.midihudapp.workers.dev";
 const GOOGLE_AUTH="https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN="https://oauth2.googleapis.com/token";
@@ -69,22 +71,25 @@ async function accountFromGoogle(accessToken){
   fail(502,"invalid_google_identity");
  return {id:info.sub,email:info.email};
 }
-async function startAuth(request,env){
+async function startAuth(request,env,native=false){
  const data=await parseJson(request,2048);
- if(!ALLOWED_RETURN.has(data.returnPath))fail(400,"invalid_return_path");
+ if(native)data.returnPath=NATIVE_RETURN;
+ let proof=null;
+ if(native){proof=randomToken(32);data.proofHash=await sha256(proof);}
+ if(!native&&!ALLOWED_RETURN.has(data.returnPath))fail(400,"invalid_return_path");
  if(!/^[A-Za-z0-9_-]{43}$/.test(data.proofHash||""))fail(400,"invalid_proof");
  const state=randomToken(32),verifier=randomToken(48);
  const challenge=await sha256(verifier);
  await env.DB.prepare("DELETE FROM oauth_flows WHERE expires_at < ?").bind(now()).run();
  await env.DB.prepare("INSERT INTO oauth_flows(state_hash,proof_hash,verifier_cipher,return_path,expires_at) VALUES(?,?,?,?,?)")
-  .bind(await sha256(state),data.proofHash,await seal(verifier,env.TOKEN_ENCRYPTION_KEY),data.returnPath,now()+600).run();
+  .bind(await sha256(state),native?"native:"+data.proofHash:data.proofHash,await seal(verifier,env.TOKEN_ENCRYPTION_KEY),data.returnPath,now()+600).run();
  const url=new URL(GOOGLE_AUTH);
  for(const [key,value] of Object.entries({
   client_id:env.GOOGLE_CLIENT_ID,redirect_uri:SERVICE_URL+"/auth/callback",response_type:"code",
   scope:SCOPE,access_type:"offline",prompt:"consent select_account",
   include_granted_scopes:"true",state,code_challenge:challenge,code_challenge_method:"S256"
  }))url.searchParams.set(key,value);
- return response({authorizeUrl:url.toString(),expiresIn:600});
+ return response({authorizeUrl:url.toString(),expiresIn:600,...(native?{proof}:{})});
 }
 async function googleCallback(request,env){
  const url=new URL(request.url),state=url.searchParams.get("state")||"",code=url.searchParams.get("code")||"";
@@ -95,6 +100,7 @@ async function googleCallback(request,env){
  const consumed=await env.DB.prepare("DELETE FROM oauth_flows WHERE state_hash = ?").bind(stateHash).run();
  if(consumed.meta?.changes!==1)fail(400,"replayed_state");
  if(!code||url.searchParams.has("error")){
+  if(flow.return_path===NATIVE_RETURN)return nativeDone(false);
   const back=new URL(APP_ORIGIN+flow.return_path);
   back.searchParams.set("hud_auth_error","cancelled");
   return new Response(null,{status:303,headers:{"Location":back.toString(),"Cache-Control":"no-store","Referrer-Policy":"no-referrer"}});
@@ -116,10 +122,22 @@ async function googleCallback(request,env){
  const ticket=randomToken(32);
  await env.DB.prepare("INSERT INTO handoff_tickets(ticket_hash,proof_hash,account_id,expires_at) VALUES(?,?,?,?)")
   .bind(await sha256(ticket),flow.proof_hash,user.id,now()+180).run();
+ if(flow.return_path===NATIVE_RETURN)return nativeDone(true);
  const dest=new URL(APP_ORIGIN+flow.return_path);
  dest.searchParams.set("hud_auth_ticket",ticket);
  // The ticket by itself is useless: exchanging it also requires the client-held random proof.
  return new Response(null,{status:303,headers:{"Location":dest.toString(),"Cache-Control":"no-store","Referrer-Policy":"no-referrer"}});
+}
+function nativeDone(ok){
+ return new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>MIDI HUD</title><h1>MIDI HUD</h1><p>'+(ok?'Autorización completada. Regresa a MIDI HUD para sincronizar.':'Autorización cancelada. Regresa a MIDI HUD e inténtalo de nuevo.')+'</p>',{headers:{...JSON_HEADERS,"Content-Type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'"}});
+}
+async function nativePoll(request,env){
+ const body=await parseJson(request,2048);
+ if(!/^[A-Za-z0-9_-]{43}$/.test(body.proof||""))fail(400,"invalid_proof");
+ const proofHash="native:"+await sha256(body.proof);
+ const ticket=await env.DB.prepare("SELECT * FROM handoff_tickets WHERE proof_hash = ? AND used_at IS NULL AND expires_at >= ? ORDER BY expires_at DESC LIMIT 1").bind(proofHash,now()).first();
+ if(!ticket)return response({pending:true});
+ return issueDevice(env,ticket,ticket.ticket_hash);
 }
 async function exchangeTicket(request,env){
  const body=await parseJson(request,2048);
@@ -129,6 +147,9 @@ async function exchangeTicket(request,env){
  const ticket=await env.DB.prepare("SELECT * FROM handoff_tickets WHERE ticket_hash = ?")
   .bind(hash).first();
  if(!ticket||ticket.used_at||ticket.expires_at<now()||ticket.proof_hash!==proofHash)fail(401,"expired_ticket");
+ return issueDevice(env,ticket,hash);
+}
+async function issueDevice(env,ticket,hash){
  const consumed=await env.DB.prepare("UPDATE handoff_tickets SET used_at=? WHERE ticket_hash=? AND used_at IS NULL")
   .bind(now(),hash).run();
  if(consumed.meta?.changes!==1)fail(401,"expired_ticket");
@@ -195,6 +216,8 @@ async function driveRequest(request,env,device){
  return response(result,upstream.status===403?403:upstream.ok?200:502);
 }
 async function api(request,env,path){
+ if(path==="/auth/native/start"&&request.method==="POST"&&NATIVE_ORIGINS.has(request.headers.get("Origin")))return startAuth(request,env,true);
+ if(path==="/auth/native/poll"&&request.method==="POST"&&NATIVE_ORIGINS.has(request.headers.get("Origin")))return nativePoll(request,env);
  if(path==="/auth/start"&&request.method==="POST")return startAuth(request,env);
  if(path==="/session/exchange"&&request.method==="POST")return exchangeTicket(request,env);
  const device=await authenticate(request,env);
@@ -240,7 +263,8 @@ export default {
   }
   let result;
   try{
-   browserOnly(request);
+   if(!NATIVE_ORIGINS.has(request.headers.get("Origin")))browserOnly(request);
+   else if(!["/auth/native/start","/auth/native/poll","/session","/session/revoke","/session/devices","/session/devices/revoke","/drive/request"].includes(path))fail(403,"invalid_native_path");
    assertReady(env);
    result=await api(request,env,path);
   }catch(error){

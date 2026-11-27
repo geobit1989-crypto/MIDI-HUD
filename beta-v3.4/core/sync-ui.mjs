@@ -1,8 +1,8 @@
-import {appStorage as localStorage,appSessionStorage as sessionStorage} from "./environment.mjs";
-import {DriveHistory,createSyncController,lastSuccessfulSync} from './drive-sync.mjs';
+import {appStorage as localStorage,appSessionStorage as sessionStorage,IS_TEST_ENVIRONMENT} from "./environment.mjs";
+import {DriveHistory,createSyncController,lastSuccessfulSync} from './drive-sync.mjs?v=20261127-sync2';
 import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-autosync1';
 import {readLibrarySource} from './library-storage.mjs';
-import {PersistentDriveAuth} from './persistent-drive-auth.mjs?v=20261018-persistent1';
+import {PersistentDriveAuth} from './persistent-drive-auth.mjs?v=20261127-sync2';
 
 const make=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
 const button=(text,callback)=>{const node=make('button',text);node.type='button';node.onclick=callback;return node;};
@@ -37,7 +37,8 @@ function chooseConflict(info){
 export function installCloudSync({host,storage=localStorage,getLocal=()=>{const raw=readLibrarySource(storage);return raw?JSON.parse(raw):null;},canApply=()=>true,onApplied=()=>{},mode='editor',inline=false}={}){
  installStyle();
  const autoKey='midiHudAutoSync';
- let auto=storage.getItem(autoKey)!=='off';
+ let auto=IS_TEST_ENVIRONMENT||storage.getItem(autoKey)!=='off';
+ if(IS_TEST_ENVIRONMENT)storage.setItem(autoKey,'on');
  const launch=button('Sincronización',()=>open());host.append(launch);
  const CLIENT_STORAGE_KEY='midiHudGoogleWebClientId';
  let auth,account=null,configured=false,identityReady=false,last={state:'local',message:'Guardado en este dispositivo'},panel=null,busy=false,stopped=false;
@@ -52,7 +53,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   launch.title=next.message;refresh();
  };
  const history=new DriveHistory(request=>auth.request(request));
- const controller=createSyncController({storage,history,getLocal,canApply:options=>mode==='live'||canApply(options),onApplied:(library,options)=>{if(mode!=='live')onApplied(library);},onStatus:status,resolveConflict:chooseConflict});
+ const controller=createSyncController({storage,history,getLocal,canApply:options=>mode==='live'||canApply(options),onApplied:(library,options)=>{if(mode!=='live')onApplied(library);},onStatus:status,resolveConflict:chooseConflict,authoritative:IS_TEST_ENVIRONMENT,confirmSeed:()=>window.confirm('Drive todavía no contiene una biblioteca. ¿Publicar la biblioteca confirmada de este dispositivo como biblioteca inicial compartida?')});
  const refresh=()=>{
   if(!panel||(!inline&&!panel.open))return;
   panel.querySelector('[data-status]').textContent=last.message;
@@ -72,7 +73,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   busy=true;refresh();
   try{
    const result=await controller.synchronize(options);
-   if(mode==='live'&&(!inline||canApply(options))&&options.explicit&&!result?.pending&&!result?.conflict&&!result?.deferred){const local=getLocal();if(local)onApplied(local);}
+   if(mode==='live'&&(!inline&&options.explicit||inline&&canApply(options))&&!result?.pending&&!result?.conflict&&!result?.deferred&&result?.library){onApplied(result.library);}
 
    // Puede haberse guardado otro cambio mientras Drive respondía.
    if(result?.pending&&!result?.deferred&&!result?.conflict)queued=true;
@@ -161,10 +162,11 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   if(inline){
    const lastSync=make('p');lastSync.dataset.lastSync='';
    const autoLabel=make('label');
-   const toggle=make('input');toggle.type='checkbox';toggle.checked=auto;
-   toggle.onchange=()=>{auto=toggle.checked;storage.setItem(autoKey,auto?'on':'off');if(auto)void resume();};
+   const toggle=make('input');toggle.type='checkbox';toggle.checked=auto;toggle.disabled=IS_TEST_ENVIRONMENT;
+   toggle.onchange=()=>{if(IS_TEST_ENVIRONMENT){toggle.checked=true;return;}auto=toggle.checked;storage.setItem(autoKey,auto?'on':'off');if(auto)void resume();};
    autoLabel.append(toggle,' Sincronización automática');
    panel.append(lastSync,autoLabel);
+   if(IS_TEST_ENVIRONMENT)panel.append(make('p','Siempre activa. Sin conexión se utiliza la última copia local; al recuperar internet se reanuda automáticamente.'));
   }
   const actions=make('div');actions.className='hud-sync-actions';
   const connect=button('Conectar con Google',()=>{
@@ -173,7 +175,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
    auth.connect().then(next=>{account=next;controller.setAccount(account);status({state:'connected',message:'Cuenta de Google conectada.'});}).catch(error=>status({state:'error',message:error.message})).finally(()=>{busy=false;refresh();if(account)void synchronize({reason:'connected'});});
   });connect.dataset.connect='';
   const sync=button('Sincronizar ahora',()=>synchronize({explicit:true}));sync.dataset.sync='';
-  const disconnect=button('Desconectar',async()=>{if(busy)return;busy=true;try{await auth.disconnect();account=null;controller.setAccount(null);status({state:'local',message:'Cuenta desconectada. Los repertorios permanecen en este dispositivo.'});}catch(error){status({state:'error',message:error.message});}finally{busy=false;refresh();}});disconnect.dataset.disconnect='';
+  const disconnect=button('Desconectar',async()=>{if(busy)return;busy=true;try{await auth.disconnect();account=null;controller.setAccount(null);status({state:'reauth',message:'Cuenta desconectada. La copia local está a salvo; vuelve a autorizar Google para mantenerla actualizada.'});}catch(error){status({state:'error',message:error.message});}finally{busy=false;refresh();}});disconnect.dataset.disconnect='';
   const manage=button('Dispositivos autorizados',async()=>{
    if(!auth?.isPersistent)return;
    const list=dialog('Dispositivos autorizados');
@@ -210,7 +212,10 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
   if(initializing||stopped)return;
   initializing=true;
   try{
-   if(globalThis.MidiHudNative){
+   if(globalThis.MidiHudNative?.platform){
+    auth=new PersistentDriveAuth({native:globalThis.MidiHudNative,store:()=>storage});configured=true;identityReady=await auth.ready();
+    if(!identityReady)status({state:'offline',message:'Servidor común de Drive no disponible. Se conserva la caché local.'});
+   }else if(globalThis.MidiHudNative){
     auth=new GoogleDriveAuth();const config=await globalThis.MidiHudNative.call('cloud.config');configured=config.configured;identityReady=configured;
    }else{
     const response=await globalThis.fetch(new URL('../config/cloud-sync.json',import.meta.url),{cache:'no-store'});
@@ -219,8 +224,8 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
     const persistent=new PersistentDriveAuth();
     const callback=globalThis.location.search.includes('hud_auth_ticket=')||
      globalThis.location.search.includes('hud_auth_error=');
-    if(callback||persistent.hasSession||await persistent.ready()){
-     auth=persistent;configured=true;identityReady=true;
+    if(IS_TEST_ENVIRONMENT||callback||persistent.hasSession||await persistent.ready()){
+     auth=persistent;configured=true;identityReady=await persistent.ready()||callback||persistent.hasSession;
     }else{
      // Preserve the existing Google Identity flow until the new Worker has its
      // D1 database, Google OAuth secret and encryption key fully configured.
@@ -233,14 +238,14 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
    if(configured){
     account=await auth.restore();
     if(account){controller.setAccount(account);await synchronize({reason:'startup'});}
-    else status({state:'reauth',message:'Conecta tu cuenta de Google una vez para activar la sincronización automática. Tu repertorio local está a salvo.'});
+    else status(identityReady?{state:'reauth',message:'Autoriza la misma cuenta de Google para acceder a la biblioteca única. Tu copia local está a salvo.'}:{state:'offline',message:'Servidor común de Drive no disponible. Se conserva la caché local.'});
    }else status({state:'setup',message:'La conexión con Drive todavía necesita configurarse.'});
   }catch(error){status({state:'error',message:error.message});}
   finally{initializing=false;resolveReady();refresh();}
  }
  const resume=async()=>{
   if(stopped||initializing||last.state==='conflict'||document.visibilityState==='hidden')return;
-  if(!auth||!configured){await initialize();return;}
+  if(!auth||!configured||(!identityReady&&auth.isPersistent)){await initialize();return;}
   if(!account){
    if(restoring||busy)return;
    restoring=true;

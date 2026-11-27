@@ -31,6 +31,8 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
+import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 
 @SuppressLint("SetJavaScriptEnabled", "MissingPermission")
 class MainActivity : Activity() {
@@ -156,6 +158,40 @@ class MainActivity : Activity() {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
+    private fun brokerRequest(payload: JSONObject, reply: (Result<Any?>) -> Unit) {
+        Thread {
+            val result = runCatching {
+                val path = payload.getString("path")
+                val method = payload.getString("method")
+                require(HudPolicy.brokerPath(path, method)) { "Ruta de sincronización no permitida." }
+                val token = if (payload.isNull("token")) "" else payload.optString("token", "")
+                require(token.isEmpty() || token.matches(Regex("[A-Za-z0-9_-]{64}")))
+                val c = URL("https://midihudaut.midihudapp.workers.dev" + path).openConnection() as HttpsURLConnection
+                try {
+                    c.instanceFollowRedirects = false
+                    c.connectTimeout = 12000; c.readTimeout = 18000
+                    c.requestMethod = method
+                    c.setRequestProperty("Origin", HudPolicy.ORIGIN)
+                    c.setRequestProperty("Content-Type", "application/json")
+                    if (token.isNotEmpty()) c.setRequestProperty("Authorization", "Bearer " + token)
+                    if (method == "POST") {
+                        val bytes = (payload.optJSONObject("body") ?: JSONObject()).toString().toByteArray(Charsets.UTF_8)
+                        require(bytes.size <= 3_200_000)
+                        c.doOutput = true; c.outputStream.use { it.write(bytes) }
+                    }
+                    val status = c.responseCode
+                    val stream = if (status in 200..299) c.inputStream else c.errorStream
+                    val data = stream?.use { input ->
+                        val out = java.io.ByteArrayOutputStream(); val buffer = ByteArray(8192)
+                        while (true) { val n = input.read(buffer); if (n < 0) break; require(out.size() + n <= 3_200_000); out.write(buffer,0,n) }
+                        JSONObject(out.toString("UTF-8"))
+                    } ?: JSONObject().put("error","invalid_response")
+                    JSONObject().put("status",status).put("data",data)
+                } finally { c.disconnect() }
+            }
+            handler.post { reply(result) }
+        }.start()
+    }
     private fun dispatch(command: String, payload: JSONObject, reply: (Result<Any?>) -> Unit) {
         require(command in HudPolicy.commands) { "Acción no disponible." }
         when (command) {
@@ -166,6 +202,13 @@ class MainActivity : Activity() {
                 midi.select(payload.optString("id")) { reply(it) }
             }
             "midi.bluetooth" -> beginBluetooth(reply)
+            "broker.request" -> brokerRequest(payload, reply)
+            "broker.open" -> {
+                val url = Uri.parse(payload.getString("url"))
+                require(url.scheme == "https" && url.host == "accounts.google.com" && url.port == -1 && url.userInfo == null && url.path == "/o/oauth2/v2/auth")
+                startActivity(Intent(Intent.ACTION_VIEW,url))
+                reply(Result.success(true))
+            }
             "cloud.config" -> reply(Result.success(JSONObject().put("configured", false)))
             "cloud.restore" -> reply(Result.success(null))
             "cloud.disconnect" -> reply(Result.success(true))

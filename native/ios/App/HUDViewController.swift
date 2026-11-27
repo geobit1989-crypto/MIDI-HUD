@@ -2,11 +2,43 @@ import UIKit
 import WebKit
 import CoreAudioKit
 
+private final class BrokerNoRedirect: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
+}
+
 final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply {
     private let webHost = "ios-test.localhost"
     private(set) var webView: WKWebView!
     private let midi = MIDIManager()
     private let drive = GoogleDriveService()
+    private let brokerDelegate = BrokerNoRedirect()
+    private lazy var brokerSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 18; config.timeoutIntervalForResource = 25
+        return URLSession(configuration: config, delegate: brokerDelegate, delegateQueue: nil)
+    }()
+    private func brokerRequest(_ payload: [String: Any]) async throws -> Any {
+        guard let path = payload["path"] as? String, let method = payload["method"] as? String,
+              (method == "GET" && ["/health","/session","/session/devices"].contains(path)) ||
+              (method == "POST" && ["/auth/native/start","/auth/native/poll","/session/revoke","/session/devices/revoke","/drive/request"].contains(path)),
+              let url = URL(string:"https://midihudaut.midihudapp.workers.dev" + path) else { throw URLError(.unsupportedURL) }
+        var request = URLRequest(url:url)
+        request.httpMethod = method
+        request.setValue("hud://ios-test.localhost",forHTTPHeaderField:"Origin")
+        request.setValue("application/json",forHTTPHeaderField:"Content-Type")
+        if let token = payload["token"] as? String {
+            guard token.range(of:"^[A-Za-z0-9_-]{64}$",options:.regularExpression) != nil else { throw URLError(.userAuthenticationRequired) }
+            request.setValue("Bearer " + token,forHTTPHeaderField:"Authorization")
+        }
+        if method == "POST" {
+            let data = try JSONSerialization.data(withJSONObject:payload["body"] ?? [:])
+            guard data.count <= 3_200_000 else { throw URLError(.dataLengthExceedsMaximum) }
+            request.httpBody = data
+        }
+        let (data,response) = try await brokerSession.data(for:request)
+        guard data.count <= 3_200_000, let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        return ["status":http.statusCode,"data":try JSONSerialization.jsonObject(with:data)]
+    }
     private var scheme: BundleSchemeHandler?
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -69,6 +101,10 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
                     controller.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(closeBluetooth))
                     navigation.isModalInPresentation = true
                     present(navigation, animated: true); result = true
+                case "broker.request": result = try await brokerRequest(payload)
+                case "broker.open":
+                    guard let raw = payload["url"] as? String, let url = URL(string:raw), url.scheme == "https", url.host == "accounts.google.com", url.port == nil, url.user == nil, url.path == "/o/oauth2/v2/auth" else { throw URLError(.unsupportedURL) }
+                    result = await UIApplication.shared.open(url)
                 case "cloud.config": result = ["configured": drive.configured]
                 case "cloud.restore": result = try await drive.restore() as Any? ?? NSNull()
                 case "cloud.connect": result = try await drive.connect(presenting: self)

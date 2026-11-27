@@ -1,3 +1,5 @@
+> **v8.2 QA:** [Biblioteca lógica única multiplataforma](docs/BIBLIOTECA-UNICA-20261127.md). Aceptación física pendiente.
+
 > **v8.1 QA — 27/11/2026.** Corrección de iconos SVG de Ajustes: ancho y alto acotados, columnas de setlists independientes, adaptación de iconos de cuenta y acordeones. Entrada Windows/Android idéntica, identificador de compilación visible en Acerca de y referencias nuevas para los recursos modificados. Ruta histórica de pruebas y aislamiento de almacenamiento/OAuth conservados. Se añade regresión de geometría en seis viewports; validación física Safari/iPhone pendiente. No se cambia producción.
 
 > **AJUSTES — Esbozo 05 y AJ-18 (26/11/2026).** La X superior derecha vuelve a HOME o LIVE conservando la sesión. La selección de setlist y el canal MIDI son locales. La biblioteca y sus setlists siguen el flujo de sincronización de Drive. Los cambios de biblioteca se leen al arrancar y pueden aplicarse al abrir AJUSTES desde HOME si el motor puede conservar el estado. La sincronización automática y la recuperación mientras se consulta desde LIVE solo actualizan la copia local. La edición de repertorios se realiza en EDITOR.
