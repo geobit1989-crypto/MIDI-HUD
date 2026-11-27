@@ -1,5 +1,5 @@
-import {appStorage as localStorage,appSessionStorage as sessionStorage,IS_TEST_ENVIRONMENT} from "./environment.mjs";
-import {DriveHistory,createSyncController,lastSuccessfulSync} from './drive-sync.mjs?v=20261127-sync2';
+import {appStorage as localStorage,appSessionStorage as sessionStorage,IS_TEST_ENVIRONMENT} from "./environment.mjs?v=20261127-drive4";
+import {DriveHistory,createSyncController,lastSuccessfulSync} from './drive-sync.mjs?v=20261127-drive4';
 import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-autosync1';
 import {readLibrarySource} from './library-storage.mjs';
 import {PersistentDriveAuth} from './persistent-drive-auth.mjs?v=20261127-sync2';
@@ -34,7 +34,7 @@ function chooseConflict(info){
 }
 /** Copia local siempre utilizable. En LIVE solo se aplican cambios por elección
  * explícita o antes de crear el motor, nunca durante una interpretación. */
-export function installCloudSync({host,storage=localStorage,getLocal=()=>{const raw=readLibrarySource(storage);return raw?JSON.parse(raw):null;},canApply=()=>true,onApplied=()=>{},mode='editor',inline=false}={}){
+export function installCloudSync({host,storage=localStorage,getLocal=()=>{const raw=readLibrarySource(storage);return raw?JSON.parse(raw):null;},canApply=()=>true,onApplied=()=>{},mode='editor',inline=false,hasPendingLiveLibrary=()=>false}={}){
  installStyle();
  const autoKey='midiHudAutoSync';
  let auto=IS_TEST_ENVIRONMENT||storage.getItem(autoKey)!=='off';
@@ -45,6 +45,9 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
  let queued=false,queuedOptions={},saveTimer=null,initializing=false,restoring=false;
  let resolveReady;const ready=new Promise(resolve=>{resolveReady=resolve;});
  const status=next=>{
+  if(next.state==='synced'&&mode==='live'&&!canApply()&&hasPendingLiveLibrary()){
+   next={state:'pending',message:'Biblioteca descargada. Se aplicará al volver a HOME.'};
+  }
   last=next;
   launch.textContent=next.state==='synced'?'Sincronizado':
    next.state==='reauth'?'Reconectar Google':
