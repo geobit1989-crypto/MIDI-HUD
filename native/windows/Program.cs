@@ -30,8 +30,12 @@ internal sealed class HudWindow : Window
     public HudWindow()
     {
         Title="MIDI HUD";Width=1200;Height=820;MinWidth=500;MinHeight=440;
-        var iconPath=Path.Combine(AppContext.BaseDirectory,"hud.ico");
-        if(File.Exists(iconPath)) Icon=System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(iconPath));
+        var iconPath=Path.Combine(assets,"windows-qa","core","brand","apple-touch-icon.png");
+        try{
+            if(File.Exists(iconPath)) Icon=System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(iconPath));
+        }catch(System.IO.FileFormatException e){Trace.TraceWarning("MIDI HUD window icon: "+e.Message);}
+        catch(IOException e){Trace.TraceWarning("MIDI HUD window icon: "+e.Message);}
+        catch(NotSupportedException e){Trace.TraceWarning("MIDI HUD window icon: "+e.Message);}
         var panel=new DockPanel();var menu=new Menu();
         var manager=new MenuItem{Header="Controller Manager"};
         manager.Click+=(_,_)=>OpenController();

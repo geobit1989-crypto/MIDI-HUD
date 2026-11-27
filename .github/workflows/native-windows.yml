@@ -45,6 +45,9 @@ jobs:
           if ($null -eq $embedded) { throw 'Executable icon unavailable' }
           $embedded.Dispose()
           $root = 'dist/windows/Web/windows-qa'
+          Add-Type -AssemblyName PresentationCore
+          $windowIcon = [System.Windows.Media.Imaging.BitmapFrame]::Create([Uri](Resolve-Path "$root/core/brand/apple-touch-icon.png").Path)
+          if ($windowIcon.PixelWidth -le 0) { throw 'WPF window icon failed to decode' }
           $manifest = Get-Content "$root/bundle-manifest.json" -Raw | ConvertFrom-Json -AsHashtable
           foreach ($entry in $manifest.GetEnumerator()) {
             $hash = (Get-FileHash (Join-Path $root $entry.Key) -Algorithm SHA256).Hash.ToLowerInvariant()
