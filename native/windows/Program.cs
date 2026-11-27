@@ -4,6 +4,8 @@ using System.Net.Http;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -33,6 +35,7 @@ internal sealed class HudWindow : Window
     private CancellationTokenSource? oauthTimeout;
     private string? oauthPath;
     private bool oauthWaiting;
+    private Process? oauthBrowser;
     private static bool Local(string? raw)=>Uri.TryCreate(raw,UriKind.Absolute,out var u)&&u.Scheme=="https"&&u.Host=="midihud.local"&&u.IsDefaultPort&&u.UserInfo.Length==0&&u.AbsolutePath.StartsWith(Prefix,StringComparison.Ordinal)&&!Uri.UnescapeDataString(u.AbsolutePath).Contains('\\')&&!Uri.UnescapeDataString(u.AbsolutePath).Split('/').Any(x=>x is "." or "..");
     public HudWindow()
     {
@@ -51,7 +54,7 @@ internal sealed class HudWindow : Window
         menu.Items.Add(manager);menu.Items.Add(about);DockPanel.SetDock(menu,Dock.Top);
         panel.Children.Add(menu);panel.Children.Add(web);Content=panel;
         Loaded+=async(_,_)=>await InitializeAsync();
-        Closed+=(_,_)=>{closed=true;StopOAuth();midi?.Dispose();web.Dispose();};
+        Closed+=(_,_)=>{closed=true;StopOAuth();RequestOAuthBrowserClose();midi?.Dispose();web.Dispose();};
     }
     private async Task InitializeAsync()
     {
@@ -110,16 +113,93 @@ internal sealed class HudWindow : Window
         oauthPath="/oauth/"+Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         return $"http://127.0.0.1:{((IPEndPoint)listener.LocalEndpoint).Port}{oauthPath}";
     }
+    // Use an installed external browser, never WebView2 for Google credentials.
+    // A unique profile ensures the process belongs exclusively to this authorization.
+    private static string OAuthBrowserExecutable()
+    {
+        var roots=new[]{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)};
+        foreach(var name in new[]{"msedge.exe","chrome.exe"}){
+            foreach(var hive in new[]{Registry.CurrentUser,Registry.LocalMachine}){
+                using var key=hive.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\"+name);
+                if(key?.GetValue(null) is string location && File.Exists(location))return location;
+            }
+            var relative=name=="msedge.exe"?@"Microsoft\Edge\Application\msedge.exe":@"Google\Chrome\Application\chrome.exe";
+            foreach(var root in roots){
+                var location=Path.Combine(root,relative);
+                if(File.Exists(location))return location;
+            }
+        }
+        throw new InvalidOperationException("Para conectar Google instala Microsoft Edge o Google Chrome.");
+    }
+    private static Process StartOAuthBrowser(Uri url,string profile)
+    {
+        var info=new ProcessStartInfo(OAuthBrowserExecutable()){UseShellExecute=false};
+        foreach(var argument in new[]{"--user-data-dir="+profile,"--no-first-run","--no-default-browser-check",
+            "--disable-background-mode","--new-window",url.AbsoluteUri})info.ArgumentList.Add(argument);
+        return Process.Start(info)??throw new InvalidOperationException("No se pudo abrir la ventana de Google.");
+    }
+    private void RequestOAuthBrowserClose()
+    {
+        try{if(oauthBrowser is {HasExited:false})oauthBrowser.CloseMainWindow();}
+        catch(InvalidOperationException){}
+    }
+    private static async Task CloseOAuthBrowser(Process browser)
+    {
+        // Only the process launched with the unique OAuth profile is owned by HUD.
+        try{
+            if(!browser.HasExited){
+                browser.Refresh();
+                browser.CloseMainWindow();
+                using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                try{await browser.WaitForExitAsync(timeout.Token);}
+                catch(OperationCanceledException){
+                    if(!browser.HasExited)browser.Kill(entireProcessTree:true);
+                    await browser.WaitForExitAsync();
+                }
+            }
+        }catch(InvalidOperationException){}
+        catch(System.ComponentModel.Win32Exception e){Trace.TraceWarning("MIDI HUD OAuth browser: "+e.Message);}
+    }
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr handle);
+    private async Task RestoreOAuthWindow()
+    {
+        if(closed)return;
+        if(WindowState==WindowState.Minimized)WindowState=WindowState.Normal;
+        var wasTopmost=Topmost;
+        try{
+            Topmost=true;Activate();
+            SetForegroundWindow(new WindowInteropHelper(this).Handle);
+            Focus();
+            // Let the browser close and WPF process its activation before releasing Topmost.
+            await Task.Delay(250);
+        }finally{if(!closed)Topmost=wasTopmost;}
+    }
     private async Task<bool> OpenOAuth(Uri url)
     {
         var listener=oauthListener??throw new InvalidOperationException("No se preparó el retorno de Google.");
         var path=oauthPath!;var token=oauthTimeout!.Token;
         if(oauthWaiting)throw new InvalidOperationException("Ya hay una autorización en curso.");
         oauthWaiting=true;
+        var profile=Path.Combine(Path.GetTempPath(),"MIDI-HUD-OAuth-"+Guid.NewGuid().ToString("N"));
+        Process? browser=null;
         try{
-            Process.Start(new ProcessStartInfo(url.AbsoluteUri){UseShellExecute=true});
+            Directory.CreateDirectory(profile);
+            browser=StartOAuthBrowser(url,profile);oauthBrowser=browser;
+            // Closing the dedicated browser is also a cancellation action.
+            var browserExited=browser.WaitForExitAsync(token);
             while(!token.IsCancellationRequested){
-                using var client=await listener.AcceptTcpClientAsync(token);
+                var incoming=listener.AcceptTcpClientAsync(token).AsTask();
+                if(await Task.WhenAny(incoming,browserExited)==browserExited&&!incoming.IsCompleted){
+                    // Cancel/observe the outstanding accept before disposing the listener.
+                    oauthTimeout?.Cancel();
+                    try{using var abandoned=await incoming;}catch(Exception) when(token.IsCancellationRequested){}
+                    return false;
+                }
+                using var client=await incoming;
                 using var requestTimeout=CancellationTokenSource.CreateLinkedTokenSource(token);
                 requestTimeout.CancelAfter(TimeSpan.FromSeconds(3));
                 using var stream=client.GetStream();
@@ -132,20 +212,29 @@ internal sealed class HudWindow : Window
                     var ok=parts.Length==3&&parts[0]=="GET"&&parts[1]==path+"?status=ok";
                     var cancelled=parts.Length==3&&parts[0]=="GET"&&parts[1]==path+"?status=cancelled";
                     if(!ok&&!cancelled)continue;
-                    var html="<!doctype html><meta charset=utf-8><title>MIDI HUD</title><script>window.close()</script><p>MIDI HUD</p>";
+                    var html="<!doctype html><meta charset=utf-8><title>MIDI HUD</title><body style='background:#101820;color:#eee;font:16px system-ui;padding:24px'>Regresando a MIDI HUD…</body>";
                     var response="HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nConnection: close\r\nContent-Length: "+Encoding.UTF8.GetByteCount(html)+"\r\n\r\n"+html;
                     try{await stream.WriteAsync(Encoding.UTF8.GetBytes(response).AsMemory(),requestTimeout.Token);}catch(IOException){}
-                    if(!closed){
-                        if(WindowState==WindowState.Minimized)WindowState=WindowState.Normal;
-                        var wasTopmost=Topmost;Topmost=true;Activate();Topmost=wasTopmost;Focus();
-                    }
                     return ok;
                 }catch(OperationCanceledException) when(!token.IsCancellationRequested){}
                 catch(IOException) when(!token.IsCancellationRequested){}
             }
             return false;
         }catch(Exception) when(token.IsCancellationRequested){return false;}
-        finally{oauthWaiting=false;StopOAuth();}
+        finally{
+            StopOAuth();
+            try{
+                if(browser!=null){
+                    await CloseOAuthBrowser(browser);
+                    browser.Dispose();
+                }
+            }finally{
+                oauthBrowser=null;
+                try{if(Directory.Exists(profile))Directory.Delete(profile,true);}
+                catch(IOException){}catch(UnauthorizedAccessException){}
+                try{await RestoreOAuthWindow();}finally{oauthWaiting=false;}
+            }
+        }
     }
     private void OpenController()
     {

@@ -6,3 +6,7 @@ Corrección acotada: conservar servidor común, PKCE, sesiones y biblioteca úni
 - Worker acepta únicamente el retorno correspondiente al origen. Callback sin tokens ni pruebas. Clientes anteriores y Android conservan flujo previo.
 - Nuevo cliente exige confirmación del destino por servidor. Desplegar Worker compatible antes de probar.
 - Pendientes: CI, autorización/cancelación, retorno a Ajustes y sincronización física de ambas plataformas. No borrar biblioteca ni sesiones para probar.
+
+## Segunda revisión de Windows (27/11/2026)
+
+La prueba física del usuario mostró que la redirección local se recibía, pero el navegador seguía en primer plano. `window.close()` no es una garantía para una pestaña externa. Se sustituye por una ventana independiente de Edge (Chrome como alternativa), con perfil temporal único y proceso propiedad del flujo OAuth. Al recibir el callback o cancelar, se cierra ese proceso, se elimina su perfil temporal cuando es posible y se restaura la ventana original de HUD sin navegar el WebView. No se cierra el navegador habitual ni se modifican sus perfiles. Se requiere Edge o Chrome instalado; se usa un perfil temporal y no las cuentas guardadas en el navegador habitual. No se modifica iOS, el Worker ni la biblioteca. Compilación y aceptación física pendientes.
