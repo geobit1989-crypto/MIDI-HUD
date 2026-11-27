@@ -105,6 +105,8 @@ try{
   const commit=(id,parents,library)=>({format:kind,version:1,id,parents,deviceId:'cloud-device',createdAt:new Date().toISOString(),library});
   const versions=[commit(id1,[],central)];
   let uploads=0;
+  let releaseDownload;
+  const allowDownload=new Promise(resolve=>{releaseDownload=resolve;});
   await syncPage.route('https://midihudaut.midihudapp.workers.dev/**',async route=>{
    const path=new URL(route.request().url()).pathname;
    let value;
@@ -113,6 +115,7 @@ try{
    else if(path==='/drive/request'){
     const req=route.request().postDataJSON();
     if(req.method==='POST'){uploads++;throw Error('Read-only sync must not upload demo data');}
+    if(req.query?.alt==='media')await allowDownload;
     value=req.query?.alt==='media'?versions.find(v=>req.path.endsWith(v.id)):{files:versions.map(v=>({id:v.id,appProperties:{kind,commitId:v.id,...Object.fromEntries(v.parents.map((p,i)=>['parent'+i,p]))}}))};
    }else throw Error('Unexpected request '+path);
    await route.fulfill({json:value,headers:{'Access-Control-Allow-Origin':'*'}});
@@ -124,6 +127,14 @@ try{
    stale.repertoires.push({id:'stale-rep',name:'Repertorio anterior',songIds:[stale.songs[0].id]});
    localStorage.setItem('midiHudTest:hudLibraryV34',JSON.stringify(stale));
   },central);
+  await syncPage.goto(base+'v03.html');
+  await syncPage.waitForFunction(()=>!!window.MIDIHUD_LIVE);
+  await syncPage.locator('.topbar .settings').click();
+  await syncPage.locator('summary').filter({hasText:'REPERTORIOS'}).click();
+  assert.match(await syncPage.locator('#hud-library-status').textContent(),/datos de ejemplo/i);
+  releaseDownload();
+  await syncPage.getByRole('radio',{name:/Biblioteca central/}).waitFor({state:'attached'});
+  assert.doesNotMatch(await syncPage.locator('#hud-library-status').textContent(),/datos de ejemplo/i);
   await syncPage.goto(base+'index.html');
   await syncPage.getByRole('dialog',{name:'MIDI HUD',exact:true}).waitFor();
   await syncPage.waitForFunction(()=>window.MIDIHUD_LIVE?.getLibrary().repertoires.some(r=>r.name==='Biblioteca central'));

@@ -20,7 +20,7 @@ test("V3 editor connects saved repertoire changes to private Drive sync",()=>{
 test("LIVE receives shared repertoires without interrupting the current song",()=>{
  assert.match(read("live/settings-qa.mjs"),/id="hud-sync-root"/);
  assert.match(livePage,/mode:'live'/);
- assert.match(livePage,/const safeToRefresh=\(\)=>!!document\.querySelector\('\.hud-home\[open\]'\)\|\|dialog\.open&&returnToHome/);
+ assert.match(livePage,/const safeToRefresh=\(\)=>!usingSavedLibrary\|\|!!document\.querySelector\('\.hud-home\[open\]'\)\|\|dialog\.open&&returnToHome/);
  assert.match(livePage,/canApply:safeToRefresh/);
  assert.match(livePage,/if\(!safeToRefresh\(\)\)throw error/);
  assert.match(syncUI,/inline&&canApply\(options\)/);

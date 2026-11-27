@@ -4,7 +4,7 @@
 <link rel="icon" type="image/svg+xml" href="./core/brand/midi-hud.svg">
 <link rel="apple-touch-icon" href="./core/brand/apple-touch-icon.png">
   <meta charset="utf-8">
-<meta name="midi-hud-build" content="v8.2-unified-library-qa-drive6">
+<meta name="midi-hud-build" content="v8.2-unified-library-qa-drive7">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#03080d">
   <title>MIDI HUD LIVE</title>
@@ -287,12 +287,12 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
   transform:translateX(-50%);
 }
 </style>
-<link rel="stylesheet" href="./live/responsive-v1.css?v=20261127-drive6">
-<link rel="stylesheet" href="./live/config-menu-v2.css?v=20261127-drive6">
-<link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261127-drive6">
-<link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261127-drive6">
+<link rel="stylesheet" href="./live/responsive-v1.css?v=20261127-drive7">
+<link rel="stylesheet" href="./live/config-menu-v2.css?v=20261127-drive7">
+<link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261127-drive7">
+<link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261127-drive7">
 <link rel="stylesheet" href="./live/home-qa.css">
-<link rel="stylesheet" href="./live/settings-qa.css?v=20261127-drive6">
+<link rel="stylesheet" href="./live/settings-qa.css?v=20261127-drive7">
 </head>
 <body>
   <!-- MIDI HUD recibe mensajes para visualizar estados; no envía MIDI al hardware. -->
@@ -406,18 +406,18 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 
 <!-- Integracion funcional v1: el diseno de LIVE v0.3 permanece sin alteraciones estructurales. -->
 <script type="module">
-import {appStorage as localStorage} from "./core/environment.mjs?v=20261127-drive6";
-import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261127-drive6";
-import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34.mjs?v=20261127-drive6";
-import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261127-drive6";
-import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261127-drive6";
-import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-drive6";
-import {renderLiveModules} from "./live/modules-v34.mjs?v=20261127-drive6";
-import {readLibrarySource} from "./core/library-storage.mjs?v=20261127-drive6";
-import {installHome} from "./live/home-qa.mjs?v=20261127-drive6";
+import {appStorage as localStorage} from "./core/environment.mjs?v=20261127-drive7";
+import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261127-drive7";
+import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34.mjs?v=20261127-drive7";
+import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261127-drive7";
+import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261127-drive7";
+import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-drive7";
+import {renderLiveModules} from "./live/modules-v34.mjs?v=20261127-drive7";
+import {readLibrarySource} from "./core/library-storage.mjs?v=20261127-drive7";
+import {installHome} from "./live/home-qa.mjs?v=20261127-drive7";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {installMidiDevices} from "./live/midi-devices.mjs";
-import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261127-drive6";
+import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261127-drive7";
 import {installLiveViewMode} from "./live/view-mode.mjs";
 import {createSettings,installChannelPicker} from "./live/settings-qa.mjs";
 const SETTINGS=readSettings(localStorage);
@@ -432,7 +432,8 @@ gear.setAttribute("aria-label","Abrir configuración MIDI HUD");
 const dialog=createSettings();
 let returnToHome=false;
 let unsubscribeEngine;
-const safeToRefresh=()=>!!document.querySelector('.hud-home[open]')||dialog.open&&returnToHome;
+// A demo is a placeholder. Only an already adopted library needs LIVE protection.
+const safeToRefresh=()=>!usingSavedLibrary||!!document.querySelector('.hud-home[open]')||dialog.open&&returnToHome;
 let cloud;
 function popup(open){
  if(open){if(!dialog.open)dialog.showModal();}
@@ -464,7 +465,7 @@ function applyLiveLibrary(next){
  try{engine.updateLibrary(withFullRepertoire(next));}
  catch(error){
   if(!safeToRefresh())throw error;
-  // HOME can safely select an available song if the old demo/session is absent.
+  // Rebuild when the new library lacks the selection from HOME or the demo.
   const updated=withFullRepertoire(next),selection=resolveLiveSelection(updated,localStorage);
   const midiChannel=engine.getState().midiChannel||readSettings(localStorage).midiChannel;
   const replacement=createEngine(updated,{midiChannel,...selection});
@@ -604,7 +605,7 @@ function render(){
  const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
  renderLiveModules(document.querySelector(".switch-grid"),vm);
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
- dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261127-drive6&repertoire='+
+ dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261127-drive7&repertoire='+
   encodeURIComponent(vm.repertoire.id)+'&song='+encodeURIComponent(vm.song.id);
 }
 (async()=>{
