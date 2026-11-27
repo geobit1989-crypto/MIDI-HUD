@@ -53,6 +53,27 @@ try{
  assert.equal(await settings.evaluate(node=>node.querySelector('header').getBoundingClientRect().width),390);
  await settings.locator('main > details > summary').last().click();
  assert.equal(await settings.getByRole('radio',{name:/cancion/}).count()>0,true);
+ // Settings SVG regression: explicit bounds on both axes and independent text/choice columns.
+ for (const summary of await settings.locator('main > details > summary').all()) {
+  if (!await summary.evaluate(el=>el.parentElement.open)) await summary.click();
+ }
+ for (const [width,height] of [[320,568],[390,844],[393,852],[844,390],[800,1280],[1440,900]]) {
+  await page.setViewportSize({width,height});
+  const geometry=await settings.evaluate(root=>{
+   const icons=[...root.querySelectorAll('summary > svg,.hud-settings-repertoire > span > svg,.hud-settings-drive > svg')];
+   const rows=[...root.querySelectorAll('.hud-settings-repertoire > span')];
+   return {icons:icons.map(icon=>{const b=icon.getBoundingClientRect();return {w:b.width,h:b.height};}),
+    rows:rows.map(row=>{const [icon,text,choice]=[...row.children].map(el=>el.getBoundingClientRect());return icon.right<=text.left+0.5&&text.right<=choice.left+0.5;}),
+    fits:root.scrollWidth<=root.clientWidth+1};
+  });
+  assert.ok(geometry.icons.length>=5, 'Settings icons must be present');
+  assert.ok(geometry.icons.every(b=>b.w>=20&&b.w<=29.1&&Math.abs(b.w-b.h)<0.5), JSON.stringify({width,height,geometry}));
+  assert.ok(geometry.rows.length>0&&geometry.rows.every(Boolean)&&geometry.fits, JSON.stringify({width,height,geometry}));
+ }
+ await page.setViewportSize({width:390,height:844});
+ await mkdir('build/browser',{recursive:true});
+ await settings.screenshot({path:`build/browser/${browserName}-settings-390.png`});
+
  await page.locator('#hud-close-btn').click();
  await home.getByRole('button',{name:'LIVE',exact:true}).click();
  assert.equal(await home.isVisible(),false);

@@ -50,3 +50,12 @@
 .hud-settings-drive:is([data-state="error"],[data-state="offline"]) circle { fill:#ff6268; }
 #hud-midi-choice:not([hidden]) { display:inline-block; margin-top:8px; }
 #hud-settings-overlay [hidden] { display:none; }
+
+/* Bound every Settings icon in both axes, including WebKit grid SVG sizing. */
+#hud-settings-overlay { --hud-summary-icon:clamp(24px, 5vmin, 29px); --hud-repertoire-icon:clamp(20px, 4.5vmin, 24px); --hud-drive-icon:clamp(24px, 5vmin, 28px); }
+#hud-settings-overlay summary > svg { display:block; width:var(--hud-summary-icon); height:var(--hud-summary-icon); max-width:100%; flex:none; }
+#hud-settings-overlay .hud-settings-repertoire > span { grid-template-columns:var(--hud-repertoire-icon) minmax(0,1fr) 20px; }
+#hud-settings-overlay .hud-settings-repertoire > span > svg { display:block; width:var(--hud-repertoire-icon); height:var(--hud-repertoire-icon); max-width:100%; min-width:0; justify-self:center; }
+#hud-settings-overlay .hud-settings-repertoire > span > span:nth-child(2) { min-width:0; }
+#hud-settings-overlay .hud-settings-drive > svg { display:block; width:var(--hud-drive-icon); height:var(--hud-drive-icon); max-width:100%; flex:none; }
+#hud-settings-overlay .hud-settings-drive > div { flex:1; min-width:0; }

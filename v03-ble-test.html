@@ -4,6 +4,7 @@
 <link rel="icon" type="image/svg+xml" href="./core/brand/midi-hud.svg">
 <link rel="apple-touch-icon" href="./core/brand/apple-touch-icon.png">
   <meta charset="utf-8">
+<meta name="midi-hud-build" content="v8.1-settings-responsive-qa">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#03080d">
   <title>MIDI HUD LIVE</title>
@@ -291,7 +292,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261015-fit3">
 <link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261124">
 <link rel="stylesheet" href="./live/home-qa.css">
-<link rel="stylesheet" href="./live/settings-qa.css">
+<link rel="stylesheet" href="./live/settings-qa.css?v=20261127-settings1">
 </head>
 <body>
   <!-- MIDI HUD recibe mensajes para visualizar estados; no envía MIDI al hardware. -->
@@ -413,7 +414,7 @@ import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261016
 import {installCloudSync} from "./core/sync-ui.mjs?v=20261016-native1";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261124";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
-import {installHome} from "./live/home-qa.mjs";
+import {installHome} from "./live/home-qa.mjs?v=20261127-settings1";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {installMidiDevices} from "./live/midi-devices.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
@@ -586,7 +587,7 @@ function render(){
  const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
  renderLiveModules(document.querySelector(".switch-grid"),vm);
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
- dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261016-repertoires1&repertoire='+
+ dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261127-settings1&repertoire='+
   encodeURIComponent(vm.repertoire.id)+'&song='+encodeURIComponent(vm.song.id);
 }
 (async()=>{
