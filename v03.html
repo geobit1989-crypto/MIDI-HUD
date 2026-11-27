@@ -287,12 +287,12 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
   transform:translateX(-50%);
 }
 </style>
-<link rel="stylesheet" href="./live/responsive-v1.css?v=20261015-iphone2">
-<link rel="stylesheet" href="./live/config-menu-v2.css?v=20261016-repertoires1">
-<link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261015-fit3">
-<link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261124">
+<link rel="stylesheet" href="./live/responsive-v1.css?v=20261127-unified3">
+<link rel="stylesheet" href="./live/config-menu-v2.css?v=20261127-unified3">
+<link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261127-unified3">
+<link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261127-unified3">
 <link rel="stylesheet" href="./live/home-qa.css">
-<link rel="stylesheet" href="./live/settings-qa.css?v=20261127-settings1">
+<link rel="stylesheet" href="./live/settings-qa.css?v=20261127-unified3">
 </head>
 <body>
   <!-- MIDI HUD recibe mensajes para visualizar estados; no envía MIDI al hardware. -->
@@ -407,17 +407,17 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <!-- Integracion funcional v1: el diseno de LIVE v0.3 permanece sin alteraciones estructurales. -->
 <script type="module">
 import {appStorage as localStorage} from "./core/environment.mjs";
-import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261016-repertoires1";
-import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34.mjs?v=20261016-repertoires1";
-import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261016-repertoires1";
-import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261016-transfer1";
-import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-sync2";
-import {renderLiveModules} from "./live/modules-v34.mjs?v=20261124";
-import {readLibrarySource} from "./core/library-storage.mjs?v=20261016-patch2";
-import {installHome} from "./live/home-qa.mjs?v=20261127-sync2";
+import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261127-unified3";
+import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34.mjs?v=20261127-unified3";
+import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261127-unified3";
+import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261127-unified3";
+import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-unified3";
+import {renderLiveModules} from "./live/modules-v34.mjs?v=20261127-unified3";
+import {readLibrarySource} from "./core/library-storage.mjs?v=20261127-unified3";
+import {installHome} from "./live/home-qa.mjs?v=20261127-unified3";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {installMidiDevices} from "./live/midi-devices.mjs";
-import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261015-fit3";
+import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261127-unified3";
 import {installLiveViewMode} from "./live/view-mode.mjs";
 import {createSettings,installChannelPicker} from "./live/settings-qa.mjs";
 const SETTINGS=readSettings(localStorage);
@@ -604,7 +604,7 @@ function render(){
  const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
  renderLiveModules(document.querySelector(".switch-grid"),vm);
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
- dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261127-sync2&repertoire='+
+ dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261127-unified3&repertoire='+
   encodeURIComponent(vm.repertoire.id)+'&song='+encodeURIComponent(vm.song.id);
 }
 (async()=>{

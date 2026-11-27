@@ -1,7 +1,7 @@
 name: MIDI HUD iOS and synchronization
 on:
   push:
-    branches: [qa/midi-device-flow-20261126, 'integration/**', 'test/ios-midi-hud-20261123']
+    branches: [qa/midi-device-flow-20261126, 'integration/**', 'test/ios-midi-hud-20261123', 'fix/**']
   workflow_dispatch:
 permissions:
   contents: read

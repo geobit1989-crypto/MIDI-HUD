@@ -1,9 +1,9 @@
 name: Windows QA
 on:
   push:
-    branches: [qa/midi-device-flow-20261126, feature/windows-native-qa-20261126, integration/ajustes-aj18-windows]
+    branches: [qa/midi-device-flow-20261126, feature/windows-native-qa-20261126, integration/ajustes-aj18-windows, 'fix/**']
   pull_request:
-    branches: [feature/android-native-qa-20261126]
+    branches: [feature/android-native-qa-20261126, 'fix/**']
     paths: ['native/windows/**', 'core/**', 'tests/**', '.github/workflows/native-windows.yml']
 permissions:
   contents: read
