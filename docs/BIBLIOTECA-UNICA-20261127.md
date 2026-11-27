@@ -11,3 +11,7 @@ Web móvil y escritorio, Windows, Android e iOS usan la misma biblioteca en Goog
 El motor QA acepta solo revisiones de la nueva identidad que descienden de su revisión inicial. Una cuenta que todavía no tiene esa revisión no puede inicializar la biblioteca desde una copia local. El almacenamiento de bibliotecas, borradores y bases de sincronización se separa del historial anterior. Las preferencias de dispositivo y las sesiones OAuth conservan sus claves. En HOME puede aplicarse una sincronización compatible. Durante LIVE, el motor conserva la interpretación activa. El Editor conserva borradores de la biblioteca nueva.
 
 La escritura y lectura de la revisión inicial se verificaron en Drive. La instalación y sincronización bidireccional con la cuenta real en los cuatro clientes requieren aceptación por dispositivo. El respaldo anterior se conserva íntegro y permanece fuera de las rutas de recuperación de los clientes nuevos. Para recuperarlo, utilizar el respaldo privado, cotejar su SHA-256 con el registro canónico y autorizar expresamente una restauración antes de importarlo.
+
+## Verificación de arranque Android — incidencia #9
+
+El APK anterior omitía `assets/v03-ble-test.html`. El empaquetador vigente incluye esa entrada y CI comprueba su igualdad con `v03.html` y la redirección HOME dentro del APK. Se solicita una nueva compilación QA mediante este commit documental. La aceptación física online/offline y la compatibilidad de firma para actualizar sin pérdida de datos siguen pendientes. No se modifica la biblioteca ni producción.
