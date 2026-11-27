@@ -13,7 +13,7 @@ if target.exists():
 target.mkdir(parents=True)
 for name in ("core", "editor", "live", "config"):
     shutil.copytree(ROOT / name, target / name)
-for name in ("index.html", "v03.html", "README.md", "privacy.html", "privacy-en.html", "terms.html", "terms-en.html"):
+for name in ("index.html", "v03.html", "v03-ble-test.html", "README.md", "privacy.html", "privacy-en.html", "terms.html", "terms-en.html"):
     shutil.copy2(ROOT / name, target / name)
 manifest = {str(p.relative_to(target)): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in sorted(target.rglob("*")) if p.is_file()}

@@ -154,7 +154,7 @@ class MainActivity : Activity() {
         web.loadUrl(HudPolicy.ORIGIN + HudPolicy.PATH + "index.html")
     }
     private fun updateScreen(url: String) {
-        if (Uri.parse(url).path?.endsWith("/v03.html") == true)
+        if (Uri.parse(url).lastPathSegment in setOf("v03.html", "v03-ble-test.html"))
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }

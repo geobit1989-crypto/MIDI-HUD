@@ -27,7 +27,7 @@ val prepareHud = tasks.register<Exec>("prepareHud") {
     val root = rootProject.projectDir.resolve("../..").canonicalFile
     val target = layout.buildDirectory.dir("generated/hudAssets")
     inputs.files(root.resolve("core"), root.resolve("editor"), root.resolve("live"), root.resolve("lab"), root.resolve("config"),
-        root.resolve("index.html"), root.resolve("v03.html"), root.resolve("README.md"),
+        root.resolve("index.html"), root.resolve("v03.html"), root.resolve("v03-ble-test.html"), root.resolve("README.md"),
         root.resolve("privacy.html"), root.resolve("privacy-en.html"), root.resolve("terms.html"), root.resolve("terms-en.html"),
         rootProject.file("prepare_web.py"))
     outputs.dir(target)

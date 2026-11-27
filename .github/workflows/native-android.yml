@@ -63,6 +63,30 @@ jobs:
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging native/android/app/build/outputs/apk/debug/app-debug.apk | grep -F "application-label:'MIDI HUD'"
           python3 assets/brand/verify_android.py
+      - name: Verify the Android WebView startup route in the APK
+        run: |
+          apk=native/android/app/build/outputs/apk/debug/app-debug.apk
+          unzip -p "$apk" assets/index.html > /tmp/midihud-android-index.html
+          unzip -p "$apk" assets/v03.html > /tmp/midihud-android-live.html
+          unzip -p "$apk" assets/v03-ble-test.html > /tmp/midihud-android-ble.html
+          test -s /tmp/midihud-android-live.html
+          cmp /tmp/midihud-android-live.html /tmp/midihud-android-ble.html
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          import {runInNewContext} from 'node:vm';
+          const html = readFileSync('/tmp/midihud-android-index.html', 'utf8');
+          const start = new URL('https://appassets.androidplatform.net/android-qa/index.html');
+          let target;
+          runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], {
+            URL,
+            navigator: {userAgent: 'Mozilla/5.0 (Linux; Android 15; wv)'},
+            location: {href: start.href, search: '', hash: '', replace: url => target = new URL(url)},
+          });
+          assert.equal(target.origin, start.origin);
+          assert.equal(target.pathname, '/android-qa/v03-ble-test.html');
+          assert.equal(target.searchParams.get('home'), '1');
+          JS
       - name: Verify APK signature
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs native/android/app/build/outputs/apk/debug/app-debug.apk
