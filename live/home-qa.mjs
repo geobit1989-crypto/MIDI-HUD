@@ -33,7 +33,7 @@ export function installHome({settings, editor, syncRoot}) {
   const about = document.createElement('dialog');
   about.className = 'hud-about';
   about.setAttribute('aria-label', 'Acerca de MIDI HUD');
-  about.innerHTML = '<h2>MIDI HUD</h2><p>Entorno de pruebas · v8.2 QA · 27/11/2026</p><p><a href="./privacy.html">Privacidad</a> · <a href="./terms.html">Condiciones</a> · <a href="./privacy-en.html">Privacy</a> · <a href="./terms-en.html">Terms</a></p><form method="dialog"><button>Cerrar</button></form>';
+  about.innerHTML = '<h2>MIDI HUD</h2><p>Entorno de pruebas · v8.2 QA · Biblioteca 27/11 · drive6</p><p><a href="./privacy.html">Privacidad</a> · <a href="./terms.html">Condiciones</a> · <a href="./privacy-en.html">Privacy</a> · <a href="./terms-en.html">Terms</a></p><form method="dialog"><button>Cerrar</button></form>';
   function tile(name, label, color, action) {
     const node = document.createElement(name === 'editor' ? 'a' : 'button');
     if (name === 'editor') {

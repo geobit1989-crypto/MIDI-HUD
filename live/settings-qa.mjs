@@ -19,7 +19,7 @@ export function createSettings() {
     accordion('account','CUENTA','<div class="hud-settings-drive">'+homeIcon('drive')+'<div id="hud-sync-root"></div></div>')+
     accordion('devices','DISPOSITIVOS','<div id="hud-midi-devices"><button id="hud-midi-btn" type="button">Buscar dispositivos</button> <button id="hud-midi-disconnect" type="button" hidden>Desconectar</button><label id="hud-midi-choice" hidden>Dispositivo <select id="hud-midi-input"></select></label> <button id="hud-midi-connect" type="button" hidden>Conectar</button><p id="hud-midi-status" role="status"></p></div><fieldset id="hud-channel"><legend>Canal de recepción MIDI</legend></fieldset>')+
     accordion('library','REPERTORIOS','<fieldset id="hud-repertoire-list"><legend>Setlist activa</legend></fieldset><p id="hud-library-status" role="status"></p>')+
-    '</main><a id="hud-editor-link" href="./editor/v3.html?v=20261127-drive5" hidden></a>';
+    '</main><a id="hud-editor-link" href="./editor/v3.html?v=20261127-drive6" hidden></a>';
   const drive = dialog.querySelector('#hud-sync-root');
   new MutationObserver(() => {
     drive.parentElement.dataset.state = drive.querySelector('[data-sync-state]')?.dataset.syncState || '';

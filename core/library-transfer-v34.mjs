@@ -45,7 +45,7 @@ export async function createLibraryTransferUrl(library,{repertoireId,songId},edi
   }catch{}
  }
  const url=new URL('../v03.html',editorUrl);
- url.searchParams.set('v','20261016-transfer1');
+ url.searchParams.set('v','20261127-drive6');
  url.searchParams.set('repertoire',repertoireId);url.searchParams.set('song',songId);
  url.hash=PREFIX.slice(1)+'v1.'+mode+'.'+base64(bytes);
  return url.href;
