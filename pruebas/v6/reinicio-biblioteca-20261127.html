@@ -6,8 +6,7 @@
 <title>Reinicio de biblioteca MIDI HUD QA</title>
 <main>
 <h1>Reinicio de biblioteca MIDI HUD QA</h1>
-<label>Respaldo verificado <input id="backup" type="file" accept=".json"></label>
-<label>Biblioteca de una canción <input id="candidate" type="file" accept=".json"></label>
+<p>La biblioteca preparada contiene solo «Quão Grande É o Meu Deus». Conecta la misma cuenta de Google que usas en MIDI HUD QA.</p>
 <button id="authorize" disabled>Conectar con Google</button>
 <button id="activate" disabled>Crear biblioteca en Drive</button>
 <p id="status" role="status">Cargando.</p>
@@ -20,29 +19,49 @@ const byId=id=>document.getElementById(id);
 const status=message=>byId('status').textContent=message;
 const kind='midi-hud-test-sync-20261127-v1';
 const revision='9e7965fd-52eb-4ddd-baf8-9e50381fedcc';
-const legacy='midi-hud-test-sync-v1';
-let auth, archive, candidate;
-async function readInput(id,expected){
- const file=byId(id).files[0];
- if(!file||file.size>3_000_000)throw Error('Selecciona los dos archivos verificados.');
- const bytes=await file.arrayBuffer();
- const sha=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
- if(sha!==expected)throw Error('El archivo seleccionado no coincide con la copia verificada.');
- return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+const sourceHash="a316bf2311086cac3a335902589927ca2f47fba8c7d9b0ee03c21d6cd8076de2";
+const initialHash="b5516734752cc05f33fcb311e7c0d13c2b9b33e98674eaa47efbf9ed91e8ed76";
+const exportedAt="2026-11-27T20:31:44.389Z";
+let auth, account, candidate;
+const ordered=value=>Array.isArray(value)?value.map(ordered):
+ value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,ordered(value[key])])):value;
+async function digest(value){
+ const bytes=new TextEncoder().encode(JSON.stringify(ordered(value)));
+ return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(n=>n.toString(16).padStart(2,'0')).join('');
 }
 async function oldHistory(){
  const history=new DriveHistory(request=>auth.request(request));
  const {graph,heads}=await history.list();
- if(!graph.size||graph.size!==archive.versions.length||canonical(heads)!==canonical(archive.heads))throw Error('La cuenta o el historial no coinciden con el respaldo.');
- for(const {fileId,commit} of archive.versions){
-  const entry=graph.get(commit.id);
-  if(entry?.fileId!==fileId)throw Error('El archivo de Drive difiere del respaldo.');
-  const content=await getFile(fileId);
-  validateCommit(content,entry);
-  if(canonical(content)!==canonical(commit))throw Error('El contenido de Drive difiere del respaldo.');
+ if(graph.size!==4||canonical(heads)!==canonical(["881f916d-e9bf-49f4-bc44-44e2edb9fab0"]))throw Error('La cuenta o el historial no coinciden con el respaldo.');
+ const versions=[];
+ for(const entry of graph.values()){
+  const commit=await getFile(entry.fileId);
+  validateCommit(commit,entry);
+  versions.push({fileId:entry.fileId,commit});
  }
+ versions.sort((a,b)=>a.commit.id.localeCompare(b.commit.id));
+ if(await digest({heads,versions})!==sourceHash)throw Error('El contenido de Drive difiere del respaldo.');
  const current=await history.list();
  if(canonical([...current.graph].sort())!==canonical([...graph].sort()))throw Error('El historial cambió durante el cotejo.');
+ return versions.find(item=>item.commit.id===heads[0]).commit.library;
+}
+async function buildCandidate(library){
+ const song=library.songs.find(item=>item.id==='quao-grande');
+ const states=library.states.filter(state=>state.songId===song.id);
+ const stateIds=new Set(states.map(state=>state.id));
+ const indicatorIds=new Set(states.flatMap(state=>(state.indicators||[]).map(indicator=>indicator.id)));
+ const repertoire=library.repertoires.find(item=>item.songIds.includes(song.id));
+ const bindings=library.bindings.flatMap(binding=>{
+  const actions=binding.actions.filter(action=>
+   (!action.songId||action.songId===song.id)&&(!action.stateId||stateIds.has(action.stateId))&&(!action.indicatorId||indicatorIds.has(action.indicatorId)));
+  return actions.length?[{...binding,actions}]:[];
+ });
+ const initial={...library,libraryId:'midi-hud-qa-20261127',revision:1,
+  repertoires:[{id:repertoire.id,name:repertoire.name,songIds:[song.id]}],
+  songs:[song],states,bindings,updatedAt:exportedAt};
+ checkedLibrary(initial);
+ if(await digest(initial)!==initialHash)throw Error('La biblioteca preparada no coincide con la copia verificada.');
+ return initial;
 }
 function getFile(id){
  if(!/^[A-Za-z0-9_-]{8,100}$/.test(id))throw Error('Identificador de Drive inválido.');
@@ -72,15 +91,8 @@ async function put(){
  return auth.request({method:'POST',path:'/upload/drive/v3/files',query:{uploadType:'multipart',fields:'id'},headers:{'Content-Type':'multipart/related; boundary='+boundary},body:part(metadata)+part(commit)+'--'+boundary+'--\r\n'});
 }
 async function prepare(){
- const [saved,initial]=await Promise.all([
-  readInput('backup','b0910a6dbe5c6af462b505f167e643923f7a8ffac4688c4134be8eab29b37b70'),
-  readInput('candidate','a83cb52afda5d3acad31536bcb4c1cdc1e8d506f096ac038f4337394703b1389')
- ]);
- if(saved.kind!==legacy)throw Error('El respaldo pertenece a otro historial.');
- checkedLibrary(initial);
- if(initial.libraryId!=='midi-hud-qa-20261127'||initial.songs.length!==1||initial.songs[0].id!=='quao-grande'||initial.repertoires.length!==1)throw Error('Se esperaba exclusivamente Quão Grande É o Meu Deus.');
- archive=saved;candidate=initial;
- await oldHistory();
+ status('Cotejando el respaldo con Drive…');
+ candidate=await buildCandidate(await oldHistory());
  const existing=await listNew();
  if(existing.length){await verify(existing);return;}
  status('Respaldo cotejado con Drive. Lista para crear la biblioteca de una canción.');
@@ -91,13 +103,16 @@ try{
  if(!config.ok)throw Error('Falta la configuración de Google.');
  const {googleWebClientId}=await config.json();
  auth=new GoogleDriveAuth({clientId:googleWebClientId});
+ account=await auth.restore();
  await loadGoogleIdentity();
- status('Selecciona el respaldo y la biblioteca verificada.');
+ status('Biblioteca preparada. Conecta tu cuenta de MIDI HUD QA.');
  byId('authorize').disabled=false;
  byId('authorize').onclick=()=>{
   byId('authorize').disabled=true;
   byId('activate').disabled=true;
-  auth.restore().then(account=>account||auth.connect()).then(prepare).catch(e=>status(e.message)).finally(()=>byId('authorize').disabled=false);
+  status(account?'Restableciendo la sesión de MIDI HUD QA…':'Elige la cuenta en la ventana de Google…');
+  (account?Promise.resolve(account):auth.connect()).then(next=>{account=next;return prepare();})
+   .catch(error=>{account=null;status(error.message);}).finally(()=>byId('authorize').disabled=false);
  };
  byId('activate').onclick=async()=>{
   byId('activate').disabled=true;
