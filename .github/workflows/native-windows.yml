@@ -59,3 +59,5 @@ jobs:
           name: midi-hud-windows-qa-x64
           path: dist/windows/
           if-no-files-found: error
+      - name: Verify Chrome callback window closes without closing an existing window
+        run: dotnet run --project native/windows-tests/OAuthWindowSmoke.csproj -c Release
