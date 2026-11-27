@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {PersistentDriveAuth,DEFAULT_WORKER} from "../core/persistent-drive-auth.mjs";
+import {PersistentDriveAuth,DEFAULT_WORKER,readOAuthSettingsReturn} from "../core/persistent-drive-auth.mjs";
 const SESSION_KEY="midiHudTrustedDeviceSessionV1";
 function storage(){
  const data=new Map();
@@ -103,4 +103,24 @@ test("cancelled native authorization removes pending proof without polling",asyn
  }};
  await assert.rejects(new PersistentDriveAuth({native,store:()=>cache}).connect(),/cancelada/);
  assert.equal(cache.getItem("midiHudOAuthHandoffProofV1"),null);
+});
+
+test("web OAuth preserves the Settings origin, including cancellation, without altering the return allowlist",async()=>{
+ for(const view of ["home","live"]){
+  const cache=storage(),transient=storage(),path="/MIDI-HUD/pruebas/v6/v03.html",start=new URL("https://geobit1989-crypto.github.io"+path);
+  let requested;
+  const auth=new PersistentDriveAuth({store:()=>cache,transient:()=>transient,location:()=>start,getReturnView:()=>view,
+   fetcher:async(_url,options)=>{requested=JSON.parse(options.body);return reply({authorizeUrl:"https://accounts.google.com/o/oauth2/v2/auth?state=example"});},
+   navigate:()=>{throw Error("navigation simulated");}});
+  await assert.rejects(auth.connect(),/navigation simulated/);
+  assert.equal(requested.returnPath,path);
+  assert.equal(readOAuthSettingsReturn({location:start,store:cache,transient}),null);
+  for(const query of ["hud_auth_ticket=example","hud_auth_error=cancelled"]){
+   const location=new URL(start.href+"?"+query);
+   assert.equal(readOAuthSettingsReturn({location,store:cache,transient}),view);
+   assert.equal(readOAuthSettingsReturn({location,store:cache,transient:storage()}),view);
+   assert.equal(readOAuthSettingsReturn({location,store:cache,transient,time:Date.now()+601000}),null);
+  }
+  assert.equal(readOAuthSettingsReturn({location:new URL("https://geobit1989-crypto.github.io/MIDI-HUD/v03.html?hud_auth_ticket=example"),store:cache,transient}),null);
+ }
 });

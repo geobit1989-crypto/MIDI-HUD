@@ -2,7 +2,7 @@ import {appStorage as localStorage,appSessionStorage as sessionStorage,IS_TEST_E
 import {DriveHistory,createSyncController,lastSuccessfulSync} from './drive-sync.mjs?v=20261127-drive4';
 import {GoogleDriveAuth,loadGoogleIdentity} from './google-drive-auth.mjs?v=20261018-autosync1';
 import {readLibrarySource} from './library-storage.mjs';
-import {PersistentDriveAuth} from './persistent-drive-auth.mjs?v=20261127-sync2';
+import {PersistentDriveAuth} from './persistent-drive-auth.mjs?v=20261127-return8';
 
 const make=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
 const button=(text,callback)=>{const node=make('button',text);node.type='button';node.onclick=callback;return node;};
@@ -34,7 +34,7 @@ function chooseConflict(info){
 }
 /** Copia local siempre utilizable. En LIVE solo se aplican cambios por elección
  * explícita o antes de crear el motor, nunca durante una interpretación. */
-export function installCloudSync({host,storage=localStorage,getLocal=()=>{const raw=readLibrarySource(storage);return raw?JSON.parse(raw):null;},canApply=()=>true,onApplied=()=>{},mode='editor',inline=false,hasPendingLiveLibrary=()=>false}={}){
+export function installCloudSync({host,storage=localStorage,getLocal=()=>{const raw=readLibrarySource(storage);return raw?JSON.parse(raw):null;},canApply=()=>true,onApplied=()=>{},mode='editor',inline=false,hasPendingLiveLibrary=()=>false,getOAuthReturnView=()=>null}={}){
  installStyle();
  const autoKey='midiHudAutoSync';
  let auto=IS_TEST_ENVIRONMENT||storage.getItem(autoKey)!=='off';
@@ -225,7 +225,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
     const response=await globalThis.fetch(new URL('../config/cloud-sync.json',import.meta.url),{cache:'no-store'});
     if(!response.ok)throw Error('No se pudo leer la configuración de sincronización.');
     const config=await response.json();
-    const persistent=new PersistentDriveAuth();
+    const persistent=new PersistentDriveAuth({getReturnView:getOAuthReturnView});
     const callback=globalThis.location.search.includes('hud_auth_ticket=')||
      globalThis.location.search.includes('hud_auth_error=');
     if(IS_TEST_ENVIRONMENT||callback||persistent.hasSession||await persistent.ready()){

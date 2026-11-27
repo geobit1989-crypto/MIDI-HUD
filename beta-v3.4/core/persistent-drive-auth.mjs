@@ -10,6 +10,16 @@ const now=()=>Date.now();
 const random=()=>urlSafe(crypto.getRandomValues(new Uint8Array(32)));
 const digest=async value=>urlSafe(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value))));
 const parse=raw=>{try{return JSON.parse(raw);}catch{return null;}};
+// UI context is local, short-lived and bound to the existing OAuth handoff.
+export function readOAuthSettingsReturn({location=globalThis.location,store=localStorage,transient=sessionStorage,time=now()}={}){
+ if(!location?.href)return null;
+ const url=new URL(location.href);
+ if(!url.searchParams.has("hud_auth_ticket")&&!url.searchParams.has("hud_auth_error"))return null;
+ let pending;try{pending=parse(transient?.getItem(PROOF_KEY))||parse(store?.getItem(PROOF_KEY));}catch{return null;}
+ if(!/^[A-Za-z0-9_-]{43}$/.test(pending?.value||"")||!Number.isFinite(pending.created)||
+  time-pending.created>600000||time<pending.created-60000||pending.returnPath!==url.pathname)return null;
+ return ["home","live"].includes(pending.returnView)?pending.returnView:null;
+}
 export class PersistentDriveAuth {
  constructor({
   workerUrl=DEFAULT_WORKER,
@@ -18,12 +28,12 @@ export class PersistentDriveAuth {
   fetcher=(...args)=>globalThis.fetch(...args),
   location=()=>globalThis.location,
   history=()=>globalThis.history,
-  navigate=address=>globalThis.location.assign(address),native=null
+  navigate=address=>globalThis.location.assign(address),native=null,getReturnView=()=>null
  }={}){
   if(workerUrl!==DEFAULT_WORKER)throw Error("La dirección del servidor de MIDI HUD no está permitida.");
   this.workerUrl=workerUrl;this.store=store;this.transient=transient;this.fetcher=fetcher;
   this.location=location;this.history=history;this.navigate=navigate;
-  this.session=null;this.account=null;this.clientId="";this.native=native;
+  this.session=null;this.account=null;this.clientId="";this.native=native;this.getReturnView=getReturnView;
  }
  get configured(){return true;}
  get isPersistent(){return true;}
@@ -140,7 +150,8 @@ export class PersistentDriveAuth {
   let returnPath="/MIDI-HUD/editor/v3.html";
   if(this.location().pathname==="/MIDI-HUD/v03.html")returnPath="/MIDI-HUD/v03.html";
   if(this.location().pathname.startsWith('/MIDI-HUD/pruebas/v6/'))returnPath=/\/v03(?:-ble-test)?\.html$/.test(this.location().pathname)?'/MIDI-HUD/pruebas/v6/v03.html':'/MIDI-HUD/pruebas/v6/editor/v3.html';
-  const pending=JSON.stringify({value:proof,created:now()});
+  const returnView=this.getReturnView();
+   const pending=JSON.stringify({value:proof,created:now(),returnPath,...(["home","live"].includes(returnView)?{returnView}:{})});
   try{this.transient()?.setItem(PROOF_KEY,pending);}catch{}
   this.store()?.setItem(PROOF_KEY,pending);
   const next=await this.call("/auth/start",{method:"POST",body:{returnPath,proofHash},token:null});
