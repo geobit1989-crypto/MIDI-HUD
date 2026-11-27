@@ -63,6 +63,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
    panel.querySelector('[data-last-sync]').textContent=timestamp?'Última sincronización correcta: '+new Date(timestamp).toLocaleString():'Sin sincronizaciones registradas para esta cuenta.';
   }
   const connect=panel.querySelector('[data-connect]');connect.disabled=busy||!configured||!identityReady;connect.textContent=account?'Cambiar cuenta de Google':'Conectar con Google';
+  const manage=panel.querySelector('[data-manage-devices]');if(manage)manage.hidden=!auth?.isPersistent;
   panel.querySelector('[data-sync]').disabled=busy||!account;panel.querySelector('[data-disconnect]').disabled=busy||!account;
  };
  async function synchronize(options={}){
@@ -200,7 +201,7 @@ export function installCloudSync({host,storage=localStorage,getLocal=()=>{const 
     }
    }catch(error){container.append(make('p',error.message));}
   });
-  manage.hidden=!auth?.isPersistent;
+  manage.dataset.manageDevices='';manage.hidden=!auth?.isPersistent;
   actions.append(connect,sync,disconnect,manage,button('Historial de versiones',recoveries));
   if(!inline)actions.append(button('Cerrar',()=>panel.close()));
   panel.append(actions);

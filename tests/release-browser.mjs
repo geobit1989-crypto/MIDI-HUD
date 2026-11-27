@@ -88,6 +88,49 @@ try{
  await page.goto(base+'lab/midi-v1.html');
  page.once('dialog',dialog=>dialog.accept());await page.locator('#clone').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('midiHudTest:hudLabLibraryV1')).songs.some(s=>s.title==='Guardado completo de pruebas'));
  assert.equal(await page.getByRole('link',{name:'Editor',exact:true}).getAttribute('href'),'../editor/v3.html');
+
+ // A fresh QA browser with only demo data must adopt the same central library
+ // while HOME is displayed; a subsequent remote update must not change LIVE.
+ const syncContext=await browser.newContext({viewport:{width:390,height:844}});
+ try{
+  const syncPage=await syncContext.newPage();
+  const central=JSON.parse(await readFile(new URL('../config/midi-hud-data-v2.json',import.meta.url),'utf8'));
+  central.repertoires[0].name='Biblioteca central';
+  central.repertoires.push({id:'central-extra',name:'Setlist central',songIds:[central.songs[0].id]});
+  const account={id:'google-account-000001',email:'qa@example.test'},kind='midi-hud-test-sync-v1';
+  const bearer='B'.repeat(64),id1='qa-cloud-00000001',id2='qa-cloud-00000002';
+  const commit=(id,parents,library)=>({format:kind,version:1,id,parents,deviceId:'cloud-device',createdAt:new Date().toISOString(),library});
+  const versions=[commit(id1,[],central)];
+  let uploads=0;
+  await syncPage.route('https://midihudaut.midihudapp.workers.dev/**',async route=>{
+   const path=new URL(route.request().url()).pathname;
+   let value;
+   if(path==='/health')value={service:'midi-hud-auth',oauthEnabled:true};
+   else if(path==='/session')value={account,device:{id:'device-qa',expiresAt:Date.now()+86400000}};
+   else if(path==='/drive/request'){
+    const req=route.request().postDataJSON();
+    if(req.method==='POST'){uploads++;throw Error('Read-only sync must not upload demo data');}
+    value=req.query?.alt==='media'?versions.find(v=>req.path.endsWith(v.id)):{files:versions.map(v=>({id:v.id,appProperties:{kind,commitId:v.id,...Object.fromEntries(v.parents.map((p,i)=>['parent'+i,p]))}}))};
+   }else throw Error('Unexpected request '+path);
+   await route.fulfill({json:value,headers:{'Access-Control-Allow-Origin':'*'}});
+  });
+  await syncPage.goto(base+'privacy.html');
+  await syncPage.evaluate(({account,bearer})=>localStorage.setItem('midiHudTest:midiHudTrustedDeviceSessionV1',JSON.stringify({origin:'https://midihudaut.midihudapp.workers.dev',token:bearer,account,deviceId:'device-qa',expiresAt:Date.now()+86400000})),{account,bearer});
+  await syncPage.goto(base+'index.html');
+  await syncPage.getByRole('dialog',{name:'MIDI HUD',exact:true}).waitFor();
+  await syncPage.waitForFunction(()=>window.MIDIHUD_LIVE?.getLibrary().repertoires.some(r=>r.name==='Setlist central'));
+  await syncPage.getByRole('button',{name:'LIVE',exact:true}).click();
+  const before=await syncPage.evaluate(()=>MIDIHUD_LIVE.getEngine().getState());
+  const updated=structuredClone(central);updated.repertoires.push({id:'central-third',name:'Nueva setlist',songIds:[updated.songs[0].id]});
+  versions.push(commit(id2,[id1],updated));
+  await syncPage.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await syncPage.waitForFunction(()=>JSON.parse(localStorage.getItem('midiHudTest:hudLibraryV34')).repertoires.some(r=>r.name==='Nueva setlist'));
+  assert.equal(await syncPage.evaluate(()=>MIDIHUD_LIVE.getLibrary().repertoires.some(r=>r.name==='Nueva setlist')),false);
+  assert.deepEqual(await syncPage.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
+  await syncPage.goto(base+'editor/v3.html');
+  await syncPage.waitForFunction(()=>window.MIDIHUD_EDITOR?.getLibrary().repertoires.some(r=>r.name==='Nueva setlist'));
+  assert.equal(uploads,0);
+ }finally{await syncContext.close();}
  const source=JSON.parse(await readFile(new URL('./fixtures/main-v04.json',import.meta.url),'utf8'));
  const demo=JSON.parse(await readFile(new URL('../config/midi-hud-data-v2.json',import.meta.url),'utf8'));
  source.songs[0].leadSheet=demo.songs[0].leadSheet;

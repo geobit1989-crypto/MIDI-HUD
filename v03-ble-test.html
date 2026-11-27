@@ -628,6 +628,9 @@ function render(){
    if(!response.ok)throw Error("No se encontró la biblioteca v2");
    data=await response.json();
   }
+  // A download may finish while the bundled example is being fetched.
+  const latestRaw=readLibrarySource(localStorage);
+  if(latestRaw&&latestRaw!==loadedRaw){data=normalizeLibrary(JSON.parse(latestRaw));loadedRaw=latestRaw;usingSavedLibrary=true;}
   data=withFullRepertoire(data);
   initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});

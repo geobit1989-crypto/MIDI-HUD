@@ -4,3 +4,5 @@ La autorización nativa utiliza el navegador del sistema y una prueba de un solo
 Aceptación pendiente: CI, despliegue del Worker, builds nativos, autorización de la misma cuenta en los cuatro clientes y verificación bidireccional física de repertorios. No declarar sincronización validada hasta completar esta prueba. No migrar ni borrar historial automáticamente.
 
 Sincronización automática obligatoria en QA; la antigua preferencia off se normaliza a on. Una caché sin base verificable no puede sobrescribir Drive. Si no existe biblioteca remota, la primera publicación exige confirmación explícita desde el dispositivo correcto. La aceptación se prueba con cuatro clientes simulados y posteriormente con dispositivos físicos.
+
+Revisión de regresión: el contrato de LIVE permite adoptar la revisión remota en HOME/Ajustes desde HOME y protege el motor en LIVE. La prueba web debe verificar una descarga real simulada, el almacenamiento compartido con Editor y ausencia de publicaciones de la demo.
