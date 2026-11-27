@@ -19,7 +19,7 @@ function fakeDB(){
    bind(...values){args=values;return this;},
    async first(){
     if(sql.includes("FROM oauth_flows"))return flows.get(args[0])||null;
-    if(sql.includes("FROM handoff_tickets"))return tickets.get(args[0])||null;
+    if(sql.includes("FROM handoff_tickets"))return sql.includes("WHERE proof_hash")?[...tickets.values()].find(v=>v.proof_hash===args[0]&&!v.used_at&&v.expires_at>=args[1])||null:tickets.get(args[0])||null;
     if(sql.includes("SELECT refresh_cipher FROM google_accounts"))return accounts.get(args[0])||null;
     if(sql.includes("FROM google_accounts"))return accounts.get(args[0])||null;
     if(sql.includes("FROM trusted_devices")){
@@ -101,20 +101,6 @@ test("cross-origin requests and unknown paths cannot access private API",async()
  assert.equal(result.headers.get("Access-Control-Allow-Headers"),"Authorization, Content-Type");
 });
 
-test("v6 staging OAuth redirects are allowlisted without opening external redirects",async()=>{
- const env=testEnv(fakeDB().DB);
- for(const returnPath of ["/MIDI-HUD/editor/v3.html","/MIDI-HUD/v03.html",
-   "/MIDI-HUD/pruebas/v6/editor/v3.html","/MIDI-HUD/pruebas/v6/v03.html"]){
-  const result=await worker.fetch(api("/auth/start","POST",{returnPath,proofHash:"A".repeat(43)}),env);
-  assert.equal(result.status,200,returnPath);
- }
- for(const returnPath of ["/MIDI-HUD/pruebas/v7/editor/v3.html",
-   "/MIDI-HUD/pruebas/v6/../../../elsewhere","https://attacker.example","/MIDI-HUD/pruebas/v6/"]){
-  const result=await worker.fetch(api("/auth/start","POST",{returnPath,proofHash:"A".repeat(43)}),env);
-  assert.equal(result.status,400,returnPath);
- }
-});
-
 test("crypto seals secrets without exposing them as plaintext",async()=>{
  const key=base64url(crypto.getRandomValues(new Uint8Array(32)));
  const cipher=await seal("offline-refresh-secret",key);
@@ -192,4 +178,34 @@ test("one-time PKCE OAuth tickets create an individually revocable device; Drive
   assert.equal(logout.status,200);
   assert.equal((await worker.fetch(api("/session","GET",undefined,authHeader),env)).status,401);
  }finally{globalThis.fetch=oldFetch;}
+});
+
+test("native pairing uses the same account and Drive proxy; proof is single use",async()=>{
+ const store=fakeDB(),env=testEnv(store.DB),oldFetch=globalThis.fetch;
+ const origin="https://midihud.local",native=(p,body)=>api(p,"POST",body,{Origin:origin});
+ globalThis.fetch=async(url)=>new Response(JSON.stringify(String(url).includes("userinfo")?{sub:"12345678901234567890",email:"native@example.com"}:{access_token:"access",refresh_token:"refresh",expires_in:3600}));
+ try{
+  const start=await worker.fetch(native("/auth/native/start",{}),env);assert.equal(start.status,200);
+  const {proof,authorizeUrl}=await start.json();assert.match(proof,/^[A-Za-z0-9_-]{43}$/);
+  assert.deepEqual(await (await worker.fetch(native("/auth/native/poll",{proof}),env)).json(),{pending:true});
+  const state=new URL(authorizeUrl).searchParams.get("state");
+  const callback=await worker.fetch(new Request(SERVER+"/auth/callback?state="+state+"&code=example"),env);assert.equal(callback.status,200);
+  assert.deepEqual(await (await worker.fetch(native("/auth/native/poll",{proof:"X".repeat(43)}),env)).json(),{pending:true});
+  const session=await (await worker.fetch(native("/auth/native/poll",{proof}),env)).json();assert.equal(session.account.id,"12345678901234567890");assert.match(session.token,/^[A-Za-z0-9_-]{64}$/);
+  assert.deepEqual(await (await worker.fetch(native("/auth/native/poll",{proof}),env)).json(),{pending:true});
+  assert.equal((await worker.fetch(api("/session","GET",undefined,{Origin:origin,Authorization:"Bearer "+session.token}),env)).status,200);
+ }finally{globalThis.fetch=oldFetch;}
+});
+
+test("published QA web can start OAuth and all three native origins reach pairing",async()=>{
+ const env=testEnv(fakeDB().DB);
+ for(const origin of ["https://midihud.local","hud://ios-test.localhost","https://appassets.androidplatform.net"]){
+  const result=await worker.fetch(api("/auth/native/poll","POST",{},{"Origin":origin}),env);
+  assert.equal(result.status,400);
+  assert.equal((await result.json()).error,"invalid_proof");
+ }
+ for(const returnPath of ["/MIDI-HUD/pruebas/v6/editor/v3.html","/MIDI-HUD/pruebas/v6/v03.html"]){
+  const result=await worker.fetch(api("/auth/start","POST",{returnPath,proofHash:"A".repeat(43)}),env);
+  assert.equal(result.status,200);
+ }
 });

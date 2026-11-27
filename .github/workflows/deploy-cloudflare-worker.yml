@@ -72,3 +72,18 @@ jobs:
           done
           echo "::error::Worker published, but persistent OAuth is not ready. Check Cloudflare Worker secrets and D1 database binding."
           exit 1
+
+      - name: Verify deployed native OAuth routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          for origin in https://midihud.local hud://ios-test.localhost https://appassets.androidplatform.net; do
+            status=$(curl -sS --max-time 12 -o /tmp/midi-hud-native.json -w '%{http_code}' \
+              -H "Origin: $origin" -H 'Content-Type: application/json' -d '{}' \
+              'https://midihudaut.midihudapp.workers.dev/auth/native/poll')
+            if [ "$status" != 400 ] || ! node -e 'process.exit(require("/tmp/midi-hud-native.json").error === "invalid_proof" ? 0 : 1)'; then
+              echo "::error::Native OAuth routing rejected $origin (HTTP $status)"
+              exit 1
+            fi
+            echo "Native OAuth routing verified for $origin"
+          done
