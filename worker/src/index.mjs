@@ -4,6 +4,22 @@ import {prepareInitialSchema} from "./schema.mjs";
 const APP_ORIGIN="https://geobit1989-crypto.github.io";
 const NATIVE_ORIGINS=new Set(["https://appassets.androidplatform.net","https://midihud.local","hud://ios-test.localhost"]);
 const NATIVE_RETURN="native-qa";
+const IOS_RETURN="midihud-oauth://complete";
+const WINDOWS_RETURN=/^http:\/\/127\.0\.0\.1:([1-9][0-9]{0,4})\/oauth\/[a-f0-9]{64}$/;
+function nativeReturnPath(origin,requested){
+ if(requested===undefined)return NATIVE_RETURN;
+ if(origin==="hud://ios-test.localhost"&&requested===IOS_RETURN)return requested;
+ const match=typeof requested==="string"&&WINDOWS_RETURN.exec(requested);
+ if(origin==="https://midihud.local"&&match&&Number(match[1])<=65535)return requested;
+ fail(400,"invalid_native_return");
+}
+const isNativeReturn=path=>path===NATIVE_RETURN||path===IOS_RETURN||WINDOWS_RETURN.test(path);
+function completeNative(path,ok){
+ if(path===NATIVE_RETURN)return nativeDone(ok);
+ const dest=new URL(path);
+ dest.searchParams.set("status",ok?"ok":"cancelled");
+ return new Response(null,{status:303,headers:{...JSON_HEADERS,Location:dest.toString()}});
+}
 const SERVICE_URL="https://midihudaut.midihudapp.workers.dev";
 const GOOGLE_AUTH="https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN="https://oauth2.googleapis.com/token";
@@ -73,7 +89,7 @@ async function accountFromGoogle(accessToken){
 }
 async function startAuth(request,env,native=false){
  const data=await parseJson(request,2048);
- if(native)data.returnPath=NATIVE_RETURN;
+ if(native)data.returnPath=nativeReturnPath(request.headers.get("Origin"),data.returnTo);
  let proof=null;
  if(native){proof=randomToken(32);data.proofHash=await sha256(proof);}
  if(!native&&!ALLOWED_RETURN.has(data.returnPath))fail(400,"invalid_return_path");
@@ -89,7 +105,7 @@ async function startAuth(request,env,native=false){
   scope:SCOPE,access_type:"offline",prompt:"consent select_account",
   include_granted_scopes:"true",state,code_challenge:challenge,code_challenge_method:"S256"
  }))url.searchParams.set(key,value);
- return response({authorizeUrl:url.toString(),expiresIn:600,...(native?{proof}:{})});
+ return response({authorizeUrl:url.toString(),expiresIn:600,...(native?{proof,returnTo:data.returnPath}:{})});
 }
 async function googleCallback(request,env){
  const url=new URL(request.url),state=url.searchParams.get("state")||"",code=url.searchParams.get("code")||"";
@@ -100,11 +116,12 @@ async function googleCallback(request,env){
  const consumed=await env.DB.prepare("DELETE FROM oauth_flows WHERE state_hash = ?").bind(stateHash).run();
  if(consumed.meta?.changes!==1)fail(400,"replayed_state");
  if(!code||url.searchParams.has("error")){
-  if(flow.return_path===NATIVE_RETURN)return nativeDone(false);
+  if(isNativeReturn(flow.return_path))return completeNative(flow.return_path,false);
   const back=new URL(APP_ORIGIN+flow.return_path);
   back.searchParams.set("hud_auth_error","cancelled");
   return new Response(null,{status:303,headers:{"Location":back.toString(),"Cache-Control":"no-store","Referrer-Policy":"no-referrer"}});
  }
+ try {
  const verifier=await unseal(flow.verifier_cipher,env.TOKEN_ENCRYPTION_KEY);
  const tokens=await googleToken({code,code_verifier:verifier,grant_type:"authorization_code",redirect_uri:SERVICE_URL+"/auth/callback"},env);
  if(!tokens.access_token)fail(502,"missing_google_access_token");
@@ -122,11 +139,15 @@ async function googleCallback(request,env){
  const ticket=randomToken(32);
  await env.DB.prepare("INSERT INTO handoff_tickets(ticket_hash,proof_hash,account_id,expires_at) VALUES(?,?,?,?)")
   .bind(await sha256(ticket),flow.proof_hash,user.id,now()+180).run();
- if(flow.return_path===NATIVE_RETURN)return nativeDone(true);
+ if(isNativeReturn(flow.return_path))return completeNative(flow.return_path,true);
  const dest=new URL(APP_ORIGIN+flow.return_path);
  dest.searchParams.set("hud_auth_ticket",ticket);
  // The ticket by itself is useless: exchanging it also requires the client-held random proof.
  return new Response(null,{status:303,headers:{"Location":dest.toString(),"Cache-Control":"no-store","Referrer-Policy":"no-referrer"}});
+ }catch(error){
+  if(isNativeReturn(flow.return_path)&&flow.return_path!==NATIVE_RETURN)return completeNative(flow.return_path,false);
+  throw error;
+ }
 }
 function nativeDone(ok){
  return new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>MIDI HUD</title><h1>MIDI HUD</h1><p>'+(ok?'Autorización completada. Regresa a MIDI HUD para sincronizar.':'Autorización cancelada. Regresa a MIDI HUD e inténtalo de nuevo.')+'</p>',{headers:{...JSON_HEADERS,"Content-Type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'"}});

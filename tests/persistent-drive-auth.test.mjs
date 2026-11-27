@@ -75,3 +75,32 @@ test("an expired trusted-device session is not silently reused",async()=>{
  assert.equal(await auth.restore(),null);
  assert.equal(cache.getItem(SESSION_KEY),null);
 });
+
+test("native return completes before proof redemption on iOS and Windows",async()=>{
+ for(const platform of ["ios","windows"]){
+  const cache=storage(),calls=[],account={id:"12345",email:"me@example.com"};
+  const returnTo=platform==="ios"?"midihud-oauth://complete":"http://127.0.0.1:49152/oauth/"+"a".repeat(64);
+  const native={platform,async call(command,payload){
+   calls.push({command,payload});
+   if(command==="broker.prepare")return returnTo;
+   if(command==="broker.open")return true;
+   if(payload.path==="/auth/native/start"){assert.deepEqual(payload.body,{returnTo});return {status:200,data:{returnTo,proof:"P".repeat(43),authorizeUrl:"https://accounts.google.com/o/oauth2/v2/auth?state=example"}};}
+   if(payload.path==="/auth/native/poll"){assert.equal(payload.body.proof,"P".repeat(43));return {status:200,data:{token:"K".repeat(64),deviceId:"device",expiresAt:Date.now()+10000,account}};}
+   throw Error("Unexpected call");
+  }};
+  const auth=new PersistentDriveAuth({native,store:()=>cache});
+  assert.deepEqual(await auth.connect(),account);
+  assert(calls.findIndex(x=>x.command==="broker.open")<calls.findIndex(x=>x.payload?.path==="/auth/native/poll"));
+  assert.equal(cache.getItem("midiHudOAuthHandoffProofV1"),null);
+ }
+});
+test("cancelled native authorization removes pending proof without polling",async()=>{
+ const cache=storage(),returnTo="midihud-oauth://complete";
+ const native={platform:"ios",async call(command,payload){
+  if(command==="broker.open")return false;
+  assert.equal(payload.path,"/auth/native/start");
+  return {status:200,data:{returnTo,proof:"P".repeat(43),authorizeUrl:"https://accounts.google.com/o/oauth2/v2/auth?state=example"}};
+ }};
+ await assert.rejects(new PersistentDriveAuth({native,store:()=>cache}).connect(),/cancelada/);
+ assert.equal(cache.getItem("midiHudOAuthHandoffProofV1"),null);
+});

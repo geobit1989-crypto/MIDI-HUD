@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Net;
+using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -26,6 +29,10 @@ internal sealed class HudWindow : Window
     private CoreWebView2? core;
     private long page;
     private bool closed;
+    private TcpListener? oauthListener;
+    private CancellationTokenSource? oauthTimeout;
+    private string? oauthPath;
+    private bool oauthWaiting;
     private static bool Local(string? raw)=>Uri.TryCreate(raw,UriKind.Absolute,out var u)&&u.Scheme=="https"&&u.Host=="midihud.local"&&u.IsDefaultPort&&u.UserInfo.Length==0&&u.AbsolutePath.StartsWith(Prefix,StringComparison.Ordinal)&&!Uri.UnescapeDataString(u.AbsolutePath).Contains('\\')&&!Uri.UnescapeDataString(u.AbsolutePath).Split('/').Any(x=>x is "." or "..");
     public HudWindow()
     {
@@ -44,7 +51,7 @@ internal sealed class HudWindow : Window
         menu.Items.Add(manager);menu.Items.Add(about);DockPanel.SetDock(menu,Dock.Top);
         panel.Children.Add(menu);panel.Children.Add(web);Content=panel;
         Loaded+=async(_,_)=>await InitializeAsync();
-        Closed+=(_,_)=>{closed=true;midi?.Dispose();web.Dispose();};
+        Closed+=(_,_)=>{closed=true;StopOAuth();midi?.Dispose();web.Dispose();};
     }
     private async Task InitializeAsync()
     {
@@ -87,6 +94,58 @@ internal sealed class HudWindow : Window
             await core.AddScriptToExecuteOnDocumentCreatedAsync("if(window===window.top && location.origin==='https://midihud.local' && location.pathname.startsWith('/windows-qa/')){\n"+source+"\n}");
             core.Navigate(Origin+Prefix+"index.html");
         }catch(Exception e){MessageBox.Show(this,"No se pudo iniciar MIDI HUD. Comprueba WebView2 Runtime.\n"+e.Message,"MIDI HUD");Close();}
+    }
+    private void StopOAuth()
+    {
+        oauthTimeout?.Cancel();oauthTimeout?.Dispose();oauthTimeout=null;
+        oauthListener?.Stop();oauthListener=null;oauthPath=null;
+    }
+    private string PrepareOAuth()
+    {
+        if(oauthWaiting)throw new InvalidOperationException("Ya hay una autorización en curso.");
+        StopOAuth();
+        var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();
+        oauthListener=listener;oauthTimeout=new CancellationTokenSource(TimeSpan.FromMinutes(10));
+        oauthTimeout.Token.Register(()=>listener.Stop());
+        oauthPath="/oauth/"+Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        return $"http://127.0.0.1:{((IPEndPoint)listener.LocalEndpoint).Port}{oauthPath}";
+    }
+    private async Task<bool> OpenOAuth(Uri url)
+    {
+        var listener=oauthListener??throw new InvalidOperationException("No se preparó el retorno de Google.");
+        var path=oauthPath!;var token=oauthTimeout!.Token;
+        if(oauthWaiting)throw new InvalidOperationException("Ya hay una autorización en curso.");
+        oauthWaiting=true;
+        try{
+            Process.Start(new ProcessStartInfo(url.AbsoluteUri){UseShellExecute=true});
+            while(!token.IsCancellationRequested){
+                using var client=await listener.AcceptTcpClientAsync(token);
+                using var requestTimeout=CancellationTokenSource.CreateLinkedTokenSource(token);
+                requestTimeout.CancelAfter(TimeSpan.FromSeconds(3));
+                using var stream=client.GetStream();
+                var bytes=new List<byte>();var one=new byte[1];
+                try{
+                    while(bytes.Count<2048&&await stream.ReadAsync(one.AsMemory(),requestTimeout.Token)>0){
+                        if(one[0]==10)break;bytes.Add(one[0]);
+                    }
+                    var parts=Encoding.ASCII.GetString(bytes.ToArray()).TrimEnd('\r').Split(' ');
+                    var ok=parts.Length==3&&parts[0]=="GET"&&parts[1]==path+"?status=ok";
+                    var cancelled=parts.Length==3&&parts[0]=="GET"&&parts[1]==path+"?status=cancelled";
+                    if(!ok&&!cancelled)continue;
+                    var html="<!doctype html><meta charset=utf-8><title>MIDI HUD</title><script>window.close()</script><p>MIDI HUD</p>";
+                    var response="HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nConnection: close\r\nContent-Length: "+Encoding.UTF8.GetByteCount(html)+"\r\n\r\n"+html;
+                    try{await stream.WriteAsync(Encoding.UTF8.GetBytes(response).AsMemory(),requestTimeout.Token);}catch(IOException){}
+                    if(!closed){
+                        if(WindowState==WindowState.Minimized)WindowState=WindowState.Normal;
+                        var wasTopmost=Topmost;Topmost=true;Activate();Topmost=wasTopmost;Focus();
+                    }
+                    return ok;
+                }catch(OperationCanceledException) when(!token.IsCancellationRequested){}
+                catch(IOException) when(!token.IsCancellationRequested){}
+            }
+            return false;
+        }catch(Exception) when(token.IsCancellationRequested){return false;}
+        finally{oauthWaiting=false;StopOAuth();}
     }
     private void OpenController()
     {
@@ -144,10 +203,11 @@ internal sealed class HudWindow : Window
                     Process.Start(new ProcessStartInfo("ms-settings:bluetooth"){UseShellExecute=true});result=new{opened=true};break;
                 case "controller.open": OpenController();result=true;break;
                 case "broker.request":result=await BrokerRequest(payload);break;
+                case "broker.prepare": result=PrepareOAuth();break;
                 case "broker.open":
                     var authUrl=new Uri(payload.GetProperty("url").GetString()??"");
                     if(authUrl.Scheme!="https"||authUrl.Host!="accounts.google.com"||!authUrl.IsDefaultPort||authUrl.UserInfo.Length!=0||authUrl.AbsolutePath!="/o/oauth2/v2/auth")throw new InvalidOperationException("URL no autorizada.");
-                    Process.Start(new ProcessStartInfo(authUrl.AbsoluteUri){UseShellExecute=true});result=true;break;
+                    result=await OpenOAuth(authUrl);break;
                 case "cloud.config":result=new{configured=false};break;
                 case "cloud.restore":case "cloud.disconnect":result=null;break;
                 case "cloud.connect":case "cloud.request":throw new InvalidOperationException("Google Drive aún no está configurado para Windows.");

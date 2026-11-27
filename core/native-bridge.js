@@ -11,13 +11,13 @@
  const midiName=platform==='ios'?'Core MIDI':platform==='windows'?'Windows MIDI':'Android MIDI';
  const pending=new Map();
  let sequence=0;
- const allowedCommands=new Set(['midi.open','midi.list','midi.select','midi.bluetooth','cloud.config','cloud.restore','cloud.connect','cloud.disconnect','cloud.request','broker.request','broker.open','share.text','controller.open']);
+ const allowedCommands=new Set(['midi.open','midi.list','midi.select','midi.bluetooth','cloud.config','cloud.restore','cloud.connect','cloud.disconnect','cloud.request','broker.request','broker.prepare','broker.open','share.text','controller.open']);
  function call(command,payload={}){
   if(!allowedCommands.has(command))return Promise.reject(new Error('Acción no disponible.'));
   if(platform==='ios')return Promise.resolve().then(()=>ios.postMessage({command,payload}));
   return new Promise((resolve,reject)=>{
    const id=String(++sequence);
-   const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Tiempo de espera del servicio nativo agotado.'));},command==='cloud.connect'||command==='midi.bluetooth'||command==='share.text'?120000:30000);
+   const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Tiempo de espera del servicio nativo agotado.'));},command==='broker.open'&&platform==='windows'?630000:command==='cloud.connect'||command==='midi.bluetooth'||command==='share.text'?120000:30000);
    pending.set(id,{resolve,reject,timer});
    try{host.postMessage(JSON.stringify({id,command,payload}));}
    catch(error){clearTimeout(timer);pending.delete(id);reject(error);}

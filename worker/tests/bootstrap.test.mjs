@@ -196,3 +196,28 @@ test("native pairing uses the same account and Drive proxy; proof is single use"
   assert.equal((await worker.fetch(api("/session","GET",undefined,{Origin:origin,Authorization:"Bearer "+session.token}),env)).status,200);
  }finally{globalThis.fetch=oldFetch;}
 });
+
+test("native automatic return only permits platform-specific callback destinations",async()=>{
+ const store=fakeDB(),env=testEnv(store.DB),oldFetch=globalThis.fetch;
+ globalThis.fetch=async(url)=>new Response(JSON.stringify(String(url).includes("userinfo")?{sub:"12345678901234567890",email:"native@example.com"}:{access_token:"access",refresh_token:"refresh",expires_in:3600}));
+ const ios="hud://ios-test.localhost",windows="https://midihud.local",loop="http://127.0.0.1:49152/oauth/"+"a".repeat(64);
+ try{
+  for(const [origin,returnTo] of [[ios,"https://evil.example"],[windows,"http://localhost:49152/oauth/"+"a".repeat(64)],[ios,loop],[windows,"midihud-oauth://complete"]]){
+   assert.equal((await worker.fetch(api("/auth/native/start","POST",{returnTo},{Origin:origin}),env)).status,400);
+  }
+  for(const [origin,returnTo] of [[ios,"midihud-oauth://complete"],[windows,loop]]){
+   const start=await worker.fetch(api("/auth/native/start","POST",{returnTo},{Origin:origin}),env);
+   assert.equal(start.status,200);
+   const data=await start.json();assert.equal(data.returnTo,returnTo);
+   const state=new URL(data.authorizeUrl).searchParams.get("state");
+   const callback=await worker.fetch(new Request(SERVER+"/auth/callback?state="+state+"&code=example"),env);
+   assert.equal(callback.status,303);assert.equal(callback.headers.get("Location"),returnTo+"?status=ok");
+   const poll=await worker.fetch(api("/auth/native/poll","POST",{proof:data.proof},{Origin:origin}),env);
+   assert.match((await poll.json()).token,/^[A-Za-z0-9_-]{64}$/);
+   const cancelled=await (await worker.fetch(api("/auth/native/start","POST",{returnTo},{Origin:origin}),env)).json();
+   const cancelState=new URL(cancelled.authorizeUrl).searchParams.get("state");
+   const result=await worker.fetch(new Request(SERVER+"/auth/callback?state="+cancelState+"&error=access_denied"),env);
+   assert.equal(result.status,303);assert.equal(result.headers.get("Location"),returnTo+"?status=cancelled");
+  }
+ }finally{globalThis.fetch=oldFetch;}
+});

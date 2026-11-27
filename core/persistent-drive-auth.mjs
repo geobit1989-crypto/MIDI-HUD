@@ -117,14 +117,20 @@ export class PersistentDriveAuth {
   this.store()?.removeItem(PROOF_KEY);
  }
  async connectNative(){
-  const next=await this.call("/auth/native/start",{method:"POST",body:{},token:null});
+  const platform=this.native.platform;
+  const returnTo=platform==="ios"?"midihud-oauth://complete":platform==="windows"?await this.native.call("broker.prepare"):undefined;
+  const next=await this.call("/auth/native/start",{method:"POST",body:returnTo?{returnTo}:{},token:null});
+  if(returnTo&&next.returnTo!==returnTo)throw Error("El servidor todavía no admite el retorno automático.");
   if(!/^[A-Za-z0-9_-]{43}$/.test(next.proof||"")||!next.authorizeUrl?.startsWith("https://accounts.google.com/o/oauth2/v2/auth?"))throw Error("Autorización nativa inválida.");
   const created=now();this.store()?.setItem(PROOF_KEY,JSON.stringify({value:next.proof,created}));
-  if(!await this.native.call("broker.open",{url:next.authorizeUrl}))throw Error('No se pudo abrir Google en el navegador del sistema.');
+  try{
+   if(!await this.native.call("broker.open",{url:next.authorizeUrl}))throw Error("Autorización cancelada.");
+  }catch(error){this.store()?.removeItem(PROOF_KEY);throw error;}
   while(now()-created<600000){
-   await new Promise(resolve=>setTimeout(resolve,2500));
+   if(!returnTo)await new Promise(resolve=>setTimeout(resolve,2500));
    const result=await this.call("/auth/native/poll",{method:"POST",body:{proof:next.proof},token:null});
    if(!result.pending){this.acceptNative(result);return this.account;}
+   if(returnTo)await new Promise(resolve=>setTimeout(resolve,2500));
   }
   throw Error("La autorización caducó. Vuelve a conectar Google.");
  }

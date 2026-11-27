@@ -10,7 +10,7 @@
  <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
  <key>LSRequiresIPhoneOS</key><true/>
  <key>GIDClientID</key><string>$(GOOGLE_IOS_CLIENT_ID)</string>
- <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>$(GOOGLE_REVERSED_CLIENT_ID)</string></array></dict></array>
+ <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>$(GOOGLE_REVERSED_CLIENT_ID)</string></array></dict><dict><key>CFBundleURLSchemes</key><array><string>midihud-oauth</string></array></dict></array>
  <key>NSBluetoothAlwaysUsageDescription</key><string>MIDI HUD conecta tu controlador Bluetooth MIDI para mostrar los estados mientras tocas.</string>
  <key>NSBluetoothPeripheralUsageDescription</key><string>MIDI HUD utiliza Bluetooth para conectar dispositivos MIDI.</string>
  <key>UILaunchScreen</key><dict/>

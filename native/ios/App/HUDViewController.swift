@@ -1,12 +1,13 @@
 import UIKit
 import WebKit
 import CoreAudioKit
+import AuthenticationServices
 
 private final class BrokerNoRedirect: NSObject, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
 }
 
-final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply {
+final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply, ASWebAuthenticationPresentationContextProviding {
     private let webHost = "ios-test.localhost"
     private(set) var webView: WKWebView!
     private let midi = MIDIManager()
@@ -38,6 +39,45 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         let (data,response) = try await brokerSession.data(for:request)
         guard data.count <= 3_200_000, let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return ["status":http.statusCode,"data":try JSONSerialization.jsonObject(with:data)]
+    }
+    private var oauthSession: ASWebAuthenticationSession?
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        view.window ?? ASPresentationAnchor()
+    }
+    @MainActor private func openOAuth(_ url: URL) async throws -> Bool {
+        guard oauthSession == nil else { throw URLError(.resourceUnavailable) }
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "midihud-oauth") { [weak self] callback, error in
+                Task { @MainActor in
+                    guard let self = self, self.oauthSession != nil else { return }
+                    self.oauthSession = nil
+                    if let error = error {
+                        if (error as NSError).domain == ASWebAuthenticationSessionError.errorDomain &&
+                            (error as NSError).code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                            continuation.resume(returning: false)
+                        } else { continuation.resume(throwing: error) }
+                        return
+                    }
+                    guard let callback = callback, callback.scheme == "midihud-oauth", callback.host == "complete",
+                          let status = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "status" })?.value else {
+                        continuation.resume(throwing: URLError(.badServerResponse)); return
+                    }
+                    continuation.resume(returning: status == "ok")
+                }
+            }
+            session.presentationContextProvider = self
+            session.prefersEphemeralWebBrowserSession = false
+            oauthSession = session
+            if !session.start() {
+                oauthSession = nil
+                continuation.resume(throwing: URLError(.cannotOpenFile))
+            } else {
+                Task { @MainActor [weak self, weak session] in
+                    try? await Task.sleep(nanoseconds: 600_000_000_000)
+                    if let session = session, self?.oauthSession === session { session.cancel() }
+                }
+            }
+        }
     }
     private var scheme: BundleSchemeHandler?
     override func viewDidLoad() {
@@ -104,7 +144,7 @@ final class HUDViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
                 case "broker.request": result = try await brokerRequest(payload)
                 case "broker.open":
                     guard let raw = payload["url"] as? String, let url = URL(string:raw), url.scheme == "https", url.host == "accounts.google.com", url.port == nil, url.user == nil, url.path == "/o/oauth2/v2/auth" else { throw URLError(.unsupportedURL) }
-                    result = await UIApplication.shared.open(url)
+                    result = try await openOAuth(url)
                 case "cloud.config": result = ["configured": drive.configured]
                 case "cloud.restore": result = try await drive.restore() as Any? ?? NSNull()
                 case "cloud.connect": result = try await drive.connect(presenting: self)
