@@ -34,7 +34,7 @@ final class MIDIHUDTests: XCTestCase {
         try await until("!!document.querySelector('.hud-home[open]')", in: web)
         let usbHidden = try await web.evaluateJavaScript("!document.querySelector('.hud-home [data-link=usb]')") as? Bool
         XCTAssertEqual(usbHidden, true)
-        _ = try await web.evaluateJavaScript("document.querySelector('.hud-home a.hud-tile').click()")
+        _ = try await web.evaluateJavaScript("localStorage.setItem('midiHudTest:hudLibraryV34','legacy-library'); document.querySelector('.hud-home a.hud-tile').click()")
         try await until("!!window.MIDIHUD_EDITOR", in: web)
         let midiType = try await web.evaluateJavaScript("typeof navigator.requestMIDIAccess") as? String
         XCTAssertEqual(midiType, "function")
@@ -55,8 +55,10 @@ final class MIDIHUDTests: XCTestCase {
         let isolated = try await web.callAsyncJavaScript("""
             const {appStorage} = await import('/core/environment.mjs');
             const {COMMIT_KIND} = await import('/core/drive-sync.mjs');
-            return COMMIT_KIND === 'midi-hud-test-sync-v1' &&
-                !!appStorage.getItem('hudLibraryV34') && localStorage.getItem('hudLibraryV34') === null;
+            return COMMIT_KIND === 'midi-hud-test-sync-20261127-v1' &&
+                !!appStorage.getItem('hudLibraryV34') &&
+                localStorage.getItem('hudLibraryV34') === null &&
+                localStorage.getItem('midiHudTest:hudLibraryV34') === 'legacy-library';
             """, arguments: [:], in: nil, contentWorld: .page) as? Bool
         XCTAssertEqual(isolated, true)
         _ = window // Mantener visible durante toda la prueba del WKWebView real.
