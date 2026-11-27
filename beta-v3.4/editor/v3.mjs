@@ -1,14 +1,14 @@
-import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive4";
+import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive5";
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
-import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261127-drive4";
-import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261127-drive4";
-import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261127-drive4";
-import {createLibraryTransferUrl} from "../core/library-transfer-v34.mjs?v=20261127-drive4";
-import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive4";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261127-drive4";
+import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261127-drive5";
+import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261127-drive5";
+import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261127-drive5";
+import {createLibraryTransferUrl} from "../core/library-transfer-v34.mjs?v=20261127-drive5";
+import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive5";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261127-drive5";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
-import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261127-drive4";
+import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261127-drive5";
 import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
 import {migrateCatalog,recordCatalogChanges,versionLabel,searchCatalog,versionUsage,duplicateCatalogRepertoire,archiveCatalogVersion,restoreCatalogHistory,setRepertoireNote} from "../core/catalog-v1.mjs";
 import {prepareLeadSheetText} from "./lead-sheet-text.mjs";
@@ -20,7 +20,7 @@ import {
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
  addConfiguredModule,renameModule,setModulePurpose,modulePurpose,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261127-drive4";
+} from "./editor-model.mjs?v=20261127-drive5";
 
 /**
  * Editor MIDI HUD v3
@@ -348,7 +348,7 @@ function sidebar(){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261127-drive4&repertoire='+encodeURIComponent(activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261127-drive5&repertoire='+encodeURIComponent(activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";

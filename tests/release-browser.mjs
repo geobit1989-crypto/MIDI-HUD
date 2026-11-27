@@ -98,7 +98,8 @@ try{
   const central=JSON.parse(await readFile(new URL('../config/midi-hud-data-v2.json',import.meta.url),'utf8'));
   central.libraryId=QA_LIBRARY_ID;
   central.repertoires[0].name='Biblioteca central';
-  central.repertoires.push({id:'central-extra',name:'Setlist central',songIds:[central.songs[0].id]});
+  central.repertoires=[central.repertoires[0]];
+  central.repertoires[0].songIds=central.songs.filter(song=>!song.catalog?.archived).map(song=>song.id);
   const account={id:'google-account-000001',email:'qa@example.test'},kind=QA_LIBRARY_KIND;
   const bearer='B'.repeat(64),id1=QA_LIBRARY_ROOT,id2='qa-cloud-00000002';
   const commit=(id,parents,library)=>({format:kind,version:1,id,parents,deviceId:'cloud-device',createdAt:new Date().toISOString(),library});
@@ -125,13 +126,16 @@ try{
   },central);
   await syncPage.goto(base+'index.html');
   await syncPage.getByRole('dialog',{name:'MIDI HUD',exact:true}).waitFor();
-  await syncPage.waitForFunction(()=>window.MIDIHUD_LIVE?.getLibrary().repertoires.some(r=>r.name==='Setlist central'));
+  await syncPage.waitForFunction(()=>window.MIDIHUD_LIVE?.getLibrary().repertoires.some(r=>r.name==='Biblioteca central'));
+  assert.equal(await syncPage.evaluate(()=>MIDIHUD_LIVE.getLibrary().repertoires.length),1);
   await syncPage.getByRole('button',{name:'LIVE',exact:true}).click();
   const before=await syncPage.evaluate(()=>MIDIHUD_LIVE.getEngine().getState());
   const updated=structuredClone(central);updated.repertoires.push({id:'central-third',name:'Nueva setlist',songIds:[updated.songs[0].id]});
   versions.push(commit(id2,[id1],updated));
   await syncPage.evaluate(()=>window.dispatchEvent(new Event('online')));
   await syncPage.waitForFunction(()=>JSON.parse(localStorage.getItem('midiHudTest:midiHudQa20261127:hudLibraryV34')).repertoires.some(r=>r.name==='Nueva setlist'));
+  const accountStatus=syncPage.locator('#hud-sync-root [data-status]');
+  assert.match(await accountStatus.textContent(),/se aplicará al volver a HOME/i);
   assert.equal(await syncPage.evaluate(()=>MIDIHUD_LIVE.getLibrary().repertoires.some(r=>r.name==='Nueva setlist')),false);
   assert.deepEqual(await syncPage.evaluate(()=>MIDIHUD_LIVE.getEngine().getState()),before);
   await syncPage.goto(base+'editor/v3.html');
