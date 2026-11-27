@@ -8,7 +8,6 @@
 <h1>Reinicio de biblioteca MIDI HUD QA</h1>
 <p>La biblioteca preparada contiene solo «Quão Grande É o Meu Deus». Conecta la misma cuenta de Google que usas en MIDI HUD QA.</p>
 <button id="authorize" disabled>Conectar con Google</button>
-<button id="activate" disabled>Crear biblioteca en Drive</button>
 <p id="status" role="status">Cargando.</p>
 </main>
 <script type="module">
@@ -90,14 +89,22 @@ async function put(){
  const part=value=>'--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(value)+'\r\n';
  return auth.request({method:'POST',path:'/upload/drive/v3/files',query:{uploadType:'multipart',fields:'id'},headers:{'Content-Type':'multipart/related; boundary='+boundary},body:part(metadata)+part(commit)+'--'+boundary+'--\r\n'});
 }
-async function prepare(){
+async function migrate(){
  status('Cotejando el respaldo con Drive…');
  candidate=await buildCandidate(await oldHistory());
- const existing=await listNew();
+ let existing=await listNew();
  if(existing.length){await verify(existing);return;}
- status('Respaldo cotejado con Drive. Lista para crear la biblioteca de una canción.');
- byId('activate').disabled=false;
+ status('Creando la biblioteca de una canción en Drive…');
+ const result=await put();
+ if(!result.id)throw Error('Drive no confirmó la nueva revisión.');
+ for(let attempt=0;attempt<5;attempt++){
+  existing=await listNew();
+  if(existing.length)break;
+  await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
+ }
+ await verify(existing);
 }
+
 try{
  const config=await fetch('./config/cloud-sync.json',{cache:'no-store'});
  if(!config.ok)throw Error('Falta la configuración de Google.');
@@ -109,25 +116,9 @@ try{
  byId('authorize').disabled=false;
  byId('authorize').onclick=()=>{
   byId('authorize').disabled=true;
-  byId('activate').disabled=true;
   status(account?'Restableciendo la sesión de MIDI HUD QA…':'Elige la cuenta en la ventana de Google…');
-  (account?Promise.resolve(account):auth.connect()).then(next=>{account=next;return prepare();})
+  (account?Promise.resolve(account):auth.connect()).then(next=>{account=next;return migrate();})
    .catch(error=>{account=null;status(error.message);}).finally(()=>byId('authorize').disabled=false);
- };
- byId('activate').onclick=async()=>{
-  byId('activate').disabled=true;
-  byId('authorize').disabled=true;
-  try{
-   await oldHistory();
-   let existing=await listNew();
-   if(!existing.length){
-    const result=await put();
-    if(!result.id)throw Error('Drive no confirmó la nueva revisión.');
-    existing=await listNew();
-   }
-   await verify(existing);
-  }catch(e){status(e.message+' Comprueba el estado antes de reintentar.');}
-  finally{byId('authorize').disabled=false;}
  };
 }catch(e){status(e.message);}
 </script>
