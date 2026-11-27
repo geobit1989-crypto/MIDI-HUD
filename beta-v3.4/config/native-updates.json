@@ -1,0 +1,11 @@
+{
+  "windows": {
+    "provider": "appInstaller",
+    "channels": {
+      "qa": {"identity": "MidiHud.WindowsQA", "tag": "windows-qa", "profile": "WindowsQA"},
+      "stable": {"identity": "MidiHud.Windows", "tag": "windows-stable", "profile": "Windows"}
+    }
+  },
+  "android": {"enabled": false, "stable": "googlePlay", "qa": "googlePlayInternal"},
+  "ios": {"enabled": false, "stable": "appStore", "qa": "testFlight"}
+}

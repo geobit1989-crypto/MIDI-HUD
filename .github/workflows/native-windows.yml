@@ -1,7 +1,7 @@
 name: Windows QA
 on:
   push:
-    branches: [qa/midi-device-flow-20261126, feature/windows-native-qa-20261126, integration/ajustes-aj18-windows]
+    branches: [qa/update-engine-20261126, qa/midi-device-flow-20261126, feature/windows-native-qa-20261126, integration/ajustes-aj18-windows]
   pull_request:
     branches: [feature/android-native-qa-20261126]
     paths: ['native/windows/**', 'core/**', 'tests/**', '.github/workflows/native-windows.yml']
@@ -19,6 +19,8 @@ jobs:
       - run: node --test worker/tests/*.test.mjs
       - run: node scripts/check-site.mjs
       - run: python3 scripts/sync-web-resources.py --check
+      - if: github.ref == 'refs/heads/qa/update-engine-20261126'
+        run: python3 -m unittest discover -s native/windows -p test_package_updates.py
   windows:
     runs-on: windows-latest
     needs: regression
@@ -56,3 +58,7 @@ jobs:
           name: midi-hud-windows-qa-x64
           path: dist/windows/
           if-no-files-found: error
+      - name: Exercise Windows package validation and upgrade
+        if: github.ref == 'refs/heads/qa/update-engine-20261126'
+        shell: pwsh
+        run: ./native/windows/test_update_package.ps1 -Publish (Resolve-Path dist/windows).Path
