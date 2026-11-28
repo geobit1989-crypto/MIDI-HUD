@@ -10,11 +10,11 @@ export function sheetRowCounts(sections,columns=chooseSheetColumns(sections)){
  return (sections||[]).map(s=>Math.max(1,Math.ceil((s?.bars?.length||0)/columns)));
 }
 export function occupiedBeatSpans(beats){
- const taken=(Array.isArray(beats)?beats:[]).slice(0,4)
+ const taken=(Array.isArray(beats)?beats:[])
    .map((value,index)=>({index,text:String(value??"").trim()}))
    .filter(x=>x.text);
  return taken.map(({index,text},i)=>({
-   text,start:index+1,span:(taken[i+1]?.index??4)-index
+   text,start:index+1,span:(taken[i+1]?.index??beats.length)-index
  }));
 }
 export function installAdaptiveLeadSheet(root){

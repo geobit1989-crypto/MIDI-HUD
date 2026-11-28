@@ -1,3 +1,4 @@
+import {expressionPercent} from "../core/module-midi.mjs";
 import {normalizeSlot,resolveModuleVisual} from '../core/module-visuals.mjs?v=20261016-overlays1';
 import {moduleRows} from '../core/layout-v3.4.mjs';
 
@@ -89,7 +90,7 @@ export function renderLiveModules(grid,vm){
   const i=Number(tile.dataset.hudIndex);
   const slot=slots[i],cc=slot?.expressionCC,value=vm.expressions?.[cc];
   const readout=tile.querySelector('.value'),meter=tile.querySelector('.exmeter');
-  if(readout&&meter){const known=Number.isInteger(value);readout.hidden=!known;meter.hidden=!known;if(known){const percent=Math.round(value*100/127);readout.textContent=percent+'%';tile.style.setProperty('--fill',percent+'%');}}
+  if(readout&&meter){const known=Number.isInteger(value);readout.hidden=!known;meter.hidden=!known;if(known){const percent=expressionPercent(slot,value);readout.textContent=percent+'%';tile.style.setProperty('--fill',percent+'%');}}
   if(tile.dataset.momentary)continue;
   const indicators=vm.state.indicators.filter(ind=>ind.displayIndex===i);
   const lit=indicators.some(ind=>ind.active);

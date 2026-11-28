@@ -1,3 +1,5 @@
+import {beatCount,normalizeMeter} from "./meter.mjs";
+import {validateModuleMidi,midiCCFor,expressionRange} from "./module-midi.mjs";
 import {createClockTracker} from './midi-clock.mjs';
 /**
  * MIDI HUD - Motor de visualizacion v1.0 (MIDI 1.0).
@@ -114,6 +116,7 @@ export function validateLibrary(raw) {
     insist(typeof s.title === "string" && !!s.title.trim(), "titulo de cancion vacio");
     insist(s.tono == null || (typeof s.tono === "string" && s.tono.length <= 20), "tono invalido");
     insist(s.tempoBpm == null || (Number.isFinite(s.tempoBpm) && s.tempoBpm>=30 && s.tempoBpm<=300), "BPM invalido");
+    normalizeMeter(s.meter);
     insist(s.leadSheet == null || isObject(s.leadSheet), "lead sheet invalido");
     if(s.leadSheet != null) {
       insist(Array.isArray(s.leadSheet.sections) && s.leadSheet.sections.length>0
@@ -123,8 +126,8 @@ export function validateLibrary(raw) {
           && typeof section.letter==="string" && Array.isArray(section.bars)
           && section.bars.length<=32, "lead sheet: seccion invalida");
         for(const bar of section.bars) {
-          insist(Array.isArray(bar) && bar.length===4 &&
-            bar.every(v=>typeof v==="string" && v.length<=30), "lead sheet: cuatro pulsos por compas");
+          insist(Array.isArray(bar) && bar.length===beatCount(s.meter) &&
+            bar.every(v=>typeof v==="string" && v.length<=30), "lead sheet: número de posiciones incompatible con la métrica");
         }
       }
     }
@@ -153,15 +156,7 @@ export function validateLibrary(raw) {
       const {cc0,pc}=song.midiAddress,key=cc0+':'+pc;
       insist(integer(cc0,0,127)&&integer(pc,0,127)&&!addresses.has(key),'dirección CC0/PC inválida o duplicada');addresses.add(key);
     }
-    insist((song.displaySlots||[]).filter(slot=>slot.expressionCC===11).length<=1,'CC11 permite Wah o Whammy, no ambos');
-    const controls=new Set(),effects=new Set();
-    for(const slot of song.displaySlots||[]){
-      if(slot.midiValue!=null){
-        const values=slot.stateMode==='effect'?effects:controls;
-        insist(integer(slot.midiValue,0,127)&&!values.has(slot.midiValue),'valor MIDI de módulo inválido o duplicado');values.add(slot.midiValue);
-      }
-      insist(slot.expressionCC==null||[7,91,11].includes(slot.expressionCC),'CC de expresión inválido');
-    }
+    validateModuleMidi(song.displaySlots||[]);
 
     if(song.leadSheets!==undefined){
       const sheets=unique(song.leadSheets,'lead sheets');
@@ -175,7 +170,7 @@ export function validateLibrary(raw) {
         if(sheet.leadSheet!==null){
           const sections=sheet.leadSheet.sections;
           insist(Array.isArray(sections)&&sections.length>0&&sections.length<=4,'secciones de lead sheet inválidas');
-          for(const section of sections)insist(isObject(section)&&typeof section.label==='string'&&typeof section.letter==='string'&&Array.isArray(section.bars)&&section.bars.length<=32&&section.bars.every(bar=>Array.isArray(bar)&&bar.length===4&&bar.every(v=>typeof v==='string'&&v.length<=30)),'compases de lead sheet inválidos');
+          for(const section of sections)insist(isObject(section)&&typeof section.label==='string'&&typeof section.letter==='string'&&Array.isArray(section.bars)&&section.bars.length<=32&&section.bars.every(bar=>Array.isArray(bar)&&bar.length===beatCount(song.meter)&&bar.every(v=>typeof v==='string'&&v.length<=30)),'compases de lead sheet inválidos');
         }
       }
     }
@@ -349,7 +344,7 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
     const rep=repertoireFor(songId);
     const sheet=resolveLeadSheet(song,rep);
     return duplicate({
-      song:{id:song.id,title:song.title,author:song.author||"",tono:sheet?sheet.tono:song.tono,tempoBpm:song.tempoBpm,
+      song:{id:song.id,title:song.title,author:song.author||"",tono:sheet?sheet.tono:song.tono,tempoBpm:song.tempoBpm,meter:normalizeMeter(song.meter),
         leadSheet:sheet?sheet.leadSheet:song.leadSheet,leadSheetId:sheet?.id??null,leadSheetName:sheet?.name??null,bank:song.bank,displaySlots:song.displaySlots||[],moduleLayout:song.moduleLayout||"auto",
         position:rep.songIds.indexOf(song.id)+1,total:rep.songIds.length},
       repertoire:{id:rep.id,name:rep.name},
@@ -428,19 +423,18 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
         const song=songs.get(next.activeSongId);
         if(!song)break;
         const slots=song.displaySlots||[];
-        if([7,91,11].includes(event.cc)){
-          if(event.cc!==11||slots.some(slot=>slot.kind==='expression'&&slot.expressionCC===11)){
-            next.expressions[event.cc]=event.value;matched=true;
-          }
-        }else if(event.cc===80){
-          const index=slots.findIndex(slot=>slot.kind!=='expression'&&slot.stateMode!=='effect'&&slot.midiValue===event.value);
-          const target=db.states.find(st=>st.songId===song.id&&st.displayIndex===index);
-          if(index>=0&&target){activateState(next,target.id);matched=true;}
-        }else if(event.cc===81){
-          const slot=slots.find(slot=>slot.stateMode==='effect'&&slot.midiValue===event.value);
-          if(slot?.indicatorId){
+        const expression=slots.some(slot=>slot.kind==="expression"&&slot.expressionCC===event.cc);
+        if(expression||[7,91].includes(event.cc)){
+          next.expressions[event.cc]=event.value;matched=true;
+        }else{
+          const index=slots.findIndex(slot=>slot.kind!=="expression"&&midiCCFor(slot)===event.cc&&slot.midiValue!=null&&(slot.midiValue===event.value||slot.stateMode==="effect"&&slot.midiMode==="onoff"&&slot.midiOffValue===event.value));
+          const slot=slots[index];
+          if(slot?.stateMode==="effect"&&slot.indicatorId){
             const current=states.get(next.activeStateId)?.indicators?.find(i=>i.id===slot.indicatorId)?.active||false;
-            next.indicatorOverrides[slot.indicatorId]=!(next.indicatorOverrides[slot.indicatorId]??current);matched=true;
+            next.indicatorOverrides[slot.indicatorId]=slot.midiMode==="onoff"?event.value===slot.midiValue:!(next.indicatorOverrides[slot.indicatorId]??current);matched=true;
+          }else if(slot){
+            const target=db.states.find(st=>st.songId===song.id&&st.displayIndex===index);
+            if(target){activateState(next,target.id);matched=true;}
           }
         }
         if(matched){next.previewSongId=null;next.previewStateId=null;next.previewModuleIndex=null;changed=JSON.stringify(next)!==JSON.stringify(session);break;}

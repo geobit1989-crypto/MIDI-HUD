@@ -1,13 +1,18 @@
-import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor8a";
+import {normalizeMeter,meterLabel,meterGroups,beatCount,groupBoundaries,resizeScore} from "../core/meter.mjs";
+import {midiModuleText,midiCCFor,expressionRange,validateModuleMidi} from "../core/module-midi.mjs";
+import {createBrowserMidiSession} from "../core/midi-session-browser.mjs";
+import {connectBleMidi} from "../core/midi-ble-android.mjs";
+import {readSettings} from "../core/settings-v1.mjs";
+import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor8b";
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive7";
 import {scanNotation} from "./chord-notation.mjs";
-import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
+import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs?v=20261128-editor8b";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261127-drive7";
-import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-library2";
+import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-editor8b";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261128-library2";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive7";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor8a";
-import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs?v=20261128-editor8a";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor8b";
+import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs?v=20261128-editor8b";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261127-drive7";
 import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
 import {migrateCatalog,recordCatalogChanges,versionLabel,searchCatalog,versionUsage,duplicateCatalogRepertoire,archiveCatalogVersion,restoreCatalogHistory,setRepertoireNote} from "../core/catalog-v1.mjs";
@@ -20,7 +25,7 @@ import {
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
  addConfiguredModule,renameModule,setModulePurpose,modulePurpose,deleteSelectedModule,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261128-editor8a";
+} from "./editor-model.mjs?v=20261128-editor8b";
 
 /**
  * Editor MIDI HUD v3
@@ -281,14 +286,14 @@ async function save(){
    const song=next.songs.find(s=>s.leadSheets?.some(x=>x.id===sheetId));
    if(!song)continue;
    const sheet=song.leadSheets.find(x=>x.id===sheetId);
-   if(source===formatLeadSheetText(sheet.leadSheet))continue;
+   if(source===formatLeadSheetText(sheet.leadSheet)&&(sheet.leadSheet?.sections||[]).every(s=>s.bars.every(b=>b.length===beatCount(song.meter))))continue;
    if(!source.trim()&&sheet.leadSheet&&!window.confirm("¿Eliminar la partitura «"+sheet.name+"»?"))return;
    if(sheet.notation==="grados"){
-    const prepared=prepareLeadSheetText(sheet.leadSheet,source);
+    const prepared=prepareLeadSheetText(sheet.leadSheet,source,song.meter);
     if(prepared.errors.length)throw Error("Corrige los errores del lead sheet «"+sheet.name+"».");
     sheet.leadSheet=prepared.leadSheet;
    }else{
-    const prepared=await prepareLeadSheetSave(source,{preferredNotation:sheet.chordNotation||song.chordNotation,chooseNotation:awaitNotationChoice});
+    const prepared=await prepareLeadSheetSave(source,{preferredNotation:sheet.chordNotation||song.chordNotation,chooseNotation:awaitNotationChoice,meter:song.meter});
     if(!prepared)return;
     Object.assign(sheet,prepared);
     if(sheet.id===song.defaultLeadSheetId)song.chordNotation=prepared.chordNotation;
@@ -460,7 +465,7 @@ function renderIdentification(){
  $("songAuthorSummary").hidden=!song||$("songAuthor").hidden===false;
  $("songToneSummary").textContent=song?(currentSheet()?.tono||"—"):"—";
  $("songBpmSummary").textContent=song?.tempoBpm?song.tempoBpm+" BPM":"— BPM";
- $("songBankSummary").textContent=song?.bank||"—";
+ $("songBankSummary").textContent=song?.bank||"—";$("meterSummary").textContent=meterLabel(song?.meter);$("meterOpen").disabled=!song;
 }
 function showSongTools(kind){
  const song=currentSong();if(!song)return;
@@ -473,7 +478,7 @@ function showSongTools(kind){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261128-editor8a&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261128-editor8b&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";updatePresetLabels();
@@ -494,7 +499,6 @@ function ensureSlots(){
  s.displaySlots??=Array.from({length:4},()=>({name:"—",sub:"Sin asignar",kind:"control"}));
 }
 function normalSlot(index){return normalizeSlot(currentSlot(index),index);}
-function midiModuleText(slot){return slot.kind==="expression"?(slot.expressionCC==null?"Sin asignar":"CC"+slot.expressionCC+" · 0–127"):(slot.midiValue==null?"Sin asignar":"CC"+(slot.stateMode==="effect"?81:80)+" = "+slot.midiValue);}
 function renderModules(){
  $("moduleLayout").value=currentSong().moduleLayout||"auto";
  const slots=currentSong().displaySlots||[];
@@ -933,7 +937,7 @@ function paintLead(){
   "Cifrado: sin acordes todavía";
  if(notation.families.length===1&&!notation.invalid.length)$("sheetNotation").value=notation.families[0];
  const textarea=$("leadText");
- leadParse=prepareLeadSheetText(currentSheet().leadSheet,leadSource);
+ leadParse=prepareLeadSheetText(currentSheet().leadSheet,leadSource,currentSong().meter);
  const lines=leadSource.split("\n"),bad=new Set(leadParse.errors.map(x=>x.line));
  const gutter=$("leadGutter");gutter.replaceChildren();
  lines.forEach((_,i)=>{
@@ -981,6 +985,7 @@ function paintLead(){
     }else cell.append(make("span","/"));
    }else{
     cell.style.gridTemplateColumns="repeat("+bar.length+",minmax(0,1fr))";
+    const boundaries=groupBoundaries(currentSong().meter);if(boundaries.length)cell.style.backgroundImage="linear-gradient(to right,"+boundaries.map(x=>{const pct=x/bar.length*100;return "transparent "+pct+"%,#53687b88 "+pct+"%,#53687b88 calc("+pct+"% + 1px),transparent calc("+pct+"% + 1px)";}).join(",")+")";
     const occupied=bar.map((text,index)=>({text,index})).filter(x=>x.text);
     for(const [j,{text,index}] of occupied.entries()){const chord=make("span",text);chord.style.gridColumn=(index+1)+" / span "+((occupied[j+1]?.index??bar.length)-index);cell.append(chord);}
    }
@@ -1127,7 +1132,7 @@ function render(){
   node.hidden=empty||node.dataset.panel!==activeTab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
  if(!empty&&["states","midi"].includes(activeTab))layoutModuleGrid(true);
- if(empty)$("liveLink").href="../v03.html?v=20261128-editor8a";
+ if(empty)$("liveLink").href="../v03.html?v=20261128-editor8b";
  syncStatus();
 }
 function registerIdentity(){
@@ -1142,37 +1147,155 @@ function registerIdentity(){
 function updatePresetLabels(){
  for(const [id,display] of [["songCC0","presetBankDisplay"],["songPC","presetPCDisplay"]])$(display).textContent=$(id).value===""?"—":$(id).value;
 }
+function commitPreset(){
+  const cc0=$('songCC0').value,pc=$('songPC').value;
+  if([cc0,pc].some(x=>x!==""&&(!Number.isInteger(Number(x))||Number(x)<0||Number(x)>127)))return;
+  currentSong().midiAddress=cc0===''&&pc===''?null:{cc0:cc0===''?null:Number(cc0),pc:pc===''?null:Number(pc)};dirty();
+ updatePresetLabels();
+}
 function directNumber(displayId,inputId,onFinish){
  const display=$(displayId),input=$(inputId);
  display.onclick=()=>{display.hidden=true;input.hidden=false;input.focus();};
  input.addEventListener("blur",()=>{if(input.value!==""&&(!Number.isInteger(Number(input.value))||Number(input.value)<0||Number(input.value)>127)){input.value=display.textContent==="—"?"":display.textContent;notice("Valor MIDI entre 0 y 127.",true);}display.textContent=input.value===""?"—":input.value;input.hidden=true;display.hidden=false;onFinish?.();});
  input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();input.blur();}});
 }
+let midiDraft=null,learnSession=null,learnBle=null,learnToken=0,learnActive=false,learnPhase=0;
+const draftNum=id=>$(id).value===""?null:Number($(id).value);
+function refreshMidiDraft(){
+ if(!midiDraft)return;
+ const slot=normalSlot(activeModule),exp=slot.kind==="expression",fx=slot.stateMode==="effect";
+ const cc=draftNum("midiDraftCC"),value=draftNum("midiDraftValue");
+ const candidate={...slot,midiCC:cc,midiValue:value,midiMode:midiDraft.mode,midiOffValue:draftNum("midiDraftOff"),expressionCC:exp?cc:slot.expressionCC,expressionMin:draftNum("midiDraftMin"),expressionMax:draftNum("midiDraftMax")};
+ $("midiSub").textContent=midiModuleText(candidate);
+ $("midiValueWrap").hidden=exp;$("midiExpressionWrap").hidden=!exp;$("midiEffectMode").hidden=!fx;
+ $("midiOffWrap").hidden=!fx||midiDraft.mode!=="onoff";
+ $("midiValueLabel").textContent=fx&&midiDraft.mode==="onoff"?"ON":"Valor";
+ $("midiToggleMode").setAttribute("aria-pressed",String(midiDraft.mode==="toggle"));$("midiOnOffMode").setAttribute("aria-pressed",String(midiDraft.mode==="onoff"));
+ return candidate;
+}
+function setMidiNumber(input,display,value){$(input).value=value??"";$(display).textContent=value??"—";}
 function openMidiModule(){
  if(!Number.isInteger(activeModule)||!currentSong().displaySlots?.[activeModule])return;
- const slot=normalSlot(activeModule),exp=slot.kind==="expression";
+ const slot=normalSlot(activeModule),exp=slot.kind==="expression",{min,max}=expressionRange(slot);
+ midiDraft={mode:slot.midiMode||"toggle"};
  paintDialogPreview("midi");
- $("midiSub").textContent=midiModuleText(slot);
- $("midiFixedCC").hidden=exp;$("midiValueWrap").hidden=exp;$("midiExpressionWrap").hidden=!exp;
- $("midiFixedNumber").textContent=slot.stateMode==="effect"?"81":"80";
- $("midiDraftValue").value=slot.midiValue??"";$("midiValueDisplay").textContent=slot.midiValue??"—";
- $("midiDraftExpression").value=slot.expressionCC??"";
- $("midiModuleDialog").showModal();
+ setMidiNumber("midiDraftCC","midiCCDisplay",midiCCFor(slot));setMidiNumber("midiDraftValue","midiValueDisplay",slot.midiValue);
+ setMidiNumber("midiDraftOff","midiOffDisplay",slot.midiOffValue??0);setMidiNumber("midiDraftMin","midiMinDisplay",min);setMidiNumber("midiDraftMax","midiMaxDisplay",max);
+ $("midiDialogError").hidden=true;$("midiLearnStatus").hidden=true;$("midiLearnChoice").hidden=true;
+ refreshMidiDraft();$("midiModuleDialog").showModal();
+}
+function stopMidiLearn(){
+ ++learnToken;learnActive=false;learnPhase=0;
+ const session=learnSession,ble=learnBle;learnSession=null;learnBle=null;
+ void session?.close().catch(()=>{});ble?.disconnect();
+ $("midiLearnLabel").textContent="MIDI Learn";$("midiLearnChoice").hidden=true;$("midiLearnStatus").hidden=true;
+}
+function learnStatus(message){$("midiLearnStatus").hidden=false;$("midiLearnStatus").textContent=message;}
+function captureMidi(message,token){
+ if(!learnActive||token!==learnToken||!midiDraft||message.type!=="MIDI_CC"||message.channel!==readSettings(localStorage).midiChannel)return;
+ if(message.cc===0){learnStatus("CC0 está reservado al Preset.");return;}
+ const slot=normalSlot(activeModule);
+ if(slot.kind==="expression"){setMidiNumber("midiDraftCC","midiCCDisplay",message.cc);}
+ else{
+  if([7,11,91].includes(message.cc)){learnStatus("CC reservado a expresión. Envía otro mensaje.");return;}
+  if(slot.stateMode==="effect"&&midiDraft.mode==="onoff"&&learnPhase===1){
+   if(message.cc!==draftNum("midiDraftCC")||message.value===draftNum("midiDraftValue"))return;
+   setMidiNumber("midiDraftOff","midiOffDisplay",message.value);
+  }else{
+   setMidiNumber("midiDraftCC","midiCCDisplay",message.cc);setMidiNumber("midiDraftValue","midiValueDisplay",message.value);
+   if(slot.stateMode==="effect"&&midiDraft.mode==="onoff"){learnPhase=1;refreshMidiDraft();learnStatus("Envía ahora el mensaje OFF.");return;}
+  }
+ }
+ refreshMidiDraft();stopMidiLearn();
+}
+async function startMidiLearn(){
+ if(learnActive){stopMidiLearn();return;}
+ const token=++learnToken;learnActive=true;learnPhase=0;$("midiLearnLabel").textContent="Escuchando…";learnStatus("Buscando entrada MIDI…");
+ const onMessage=msg=>captureMidi(msg,token);
+ try{
+  const native=globalThis.MidiHudNative,nav=globalThis.navigator;
+  const webBle=!native&&nav?.bluetooth?.requestDevice&&(!nav.requestMIDIAccess||/Android/i.test(nav.userAgent||""));
+  if(webBle){
+   const preferred=localStorage.getItem("hudMidiBleDevice");let device;
+   if(preferred&&nav.bluetooth.getDevices)device=(await nav.bluetooth.getDevices()).find(x=>x.id===preferred);
+   const connection=await connectBleMidi(onMessage,{device,onDisconnected:()=>{if(token===learnToken){stopMidiLearn();learnStatus("Bluetooth desconectado.");}}});
+   if(token!==learnToken){connection.disconnect();return;}learnBle=connection;
+  }else{
+   const session=createBrowserMidiSession({storage:localStorage,onMessage});learnSession=session;
+   const ok=await session.start();if(token!==learnToken)return;
+   if(!ok){
+    const devices=await session.discover();if(token!==learnToken)return;
+    if(!devices.length)throw Error("No hay entradas MIDI. Conecta el controlador en Ajustes.");
+    entries("midiLearnDevice",devices.map(d=>[d.id,d.name]),devices[0].id);
+    $("midiLearnChoice").hidden=false;learnStatus("Selecciona la entrada MIDI.");return;
+   }
+  }
+  if(token===learnToken)learnStatus("Acciona el controlador · canal "+readSettings(localStorage).midiChannel);
+ }catch(error){if(token===learnToken){stopMidiLearn();learnStatus(error.message);}}
+}
+function applyMidiModule(){
+ try{
+  const next=refreshMidiDraft();if(!next)return;
+  if(next.kind==="expression"){delete next.midiCC;delete next.midiValue;delete next.midiMode;delete next.midiOffValue;}
+  else {if(next.midiValue!=null&&draftNum("midiDraftCC")==null)throw Error("Indica el número CC.");delete next.expressionMin;delete next.expressionMax;}
+  const slots=currentSong().displaySlots.map((s,i)=>i===activeModule?next:s);
+  validateModuleMidi(slots);currentSong().displaySlots=slots;dirty();$("midiModuleDialog").close();renderStates();renderMidi();
+ }catch(error){$("midiDialogError").textContent=error.message;$("midiDialogError").hidden=false;}
+}
+
+let meterDraft=null;
+const meterPresets=["2/4","3/4","4/4","6/8","9/8","12/8","5/4","7/8"];
+function renderMeterDraft(){
+ const current=meterLabel(meterDraft);
+ const area=$("meterOptions");area.replaceChildren();
+ for(const label of [...meterPresets,"Otra"]){
+  const b=button(label,()=>{if(label==="Otra"){$("meterCustom").hidden=false;return;}const [numerator,denominator]=label.split("/").map(Number);meterDraft=normalizeMeter({numerator,denominator});$("meterCustom").hidden=true;$("meterNumerator").value=numerator;$("meterDenominator").value=denominator;$("meterGroups").value=meterDraft.groups.join("+");renderMeterDraft();});
+  b.setAttribute("aria-pressed",String(label===current));area.append(b);
+ }
+}
+function openMeter(){
+ meterDraft=normalizeMeter(currentSong().meter);$("meterNumerator").value=meterDraft.numerator;$("meterDenominator").value=meterDraft.denominator;$("meterGroups").value=meterDraft.groups.join("+");
+ $("meterCustom").hidden=meterPresets.includes(meterLabel(meterDraft));$("meterError").hidden=true;renderMeterDraft();$("meterDialog").showModal();
+}
+function applyMeter(){
+ try{
+  const raw=$("meterGroups").value.trim(),next=normalizeMeter({numerator:Number($("meterNumerator").value),denominator:Number($("meterDenominator").value),...(raw?{groups:raw.split("+").map(Number)}:{})});
+  const song=currentSong(),old=normalizeMeter(song.meter);
+  if(JSON.stringify(next)===JSON.stringify(old)){$("meterDialog").close();return;}
+  const drafts=[];
+  if(next.numerator!==old.numerator){
+   for(const sheet of song.leadSheets||[]){
+    const source=leadDrafts.get(sheet.id);
+    const prepared=source===undefined?{leadSheet:sheet.leadSheet,errors:[]}:prepareLeadSheetText(sheet.leadSheet,source,old);
+    if(prepared.errors.length)throw Error("Corrige la variante «"+sheet.name+"» antes de cambiar la métrica.");
+    const converted=resizeScore(prepared.leadSheet,next);
+    if(converted)drafts.push([sheet.id,formatLeadSheetText(converted)]);
+   }
+  }
+  // The confirmation preserves the ordinal positions of existing chord changes.
+  if((song.leadSheets||[]).some(s=>s.leadSheet)&&!window.confirm("Cambiar a "+meterLabel(next)+" en todas las variantes de esta canción. Se conservan las posiciones existentes; revisa la interpretación rítmica. ¿Continuar?"))return;
+  song.meter=next;for(const [id,source] of drafts)leadDrafts.set(id,source);
+  refreshLeadSource();dirty();$("meterDialog").close();render();
+ }catch(error){$("meterError").textContent=error.message;$("meterError").hidden=false;}
 }
 function register(){
  registerIdentity();
- directNumber("presetBankDisplay","songCC0",updatePresetLabels);directNumber("presetPCDisplay","songPC",updatePresetLabels);
- directNumber("midiValueDisplay","midiDraftValue",()=>{const slot=normalSlot(activeModule);$("midiSub").textContent=midiModuleText({...slot,midiValue:$("midiDraftValue").value===""?null:Number($("midiDraftValue").value)});});
- $("midiDraftExpression").onchange=()=>{$("midiSub").textContent=midiModuleText({...normalSlot(activeModule),expressionCC:$("midiDraftExpression").value===""?null:Number($("midiDraftExpression").value)});};
+ $("meterOpen").onclick=openMeter;$("meterApply").onclick=applyMeter;$("meterX").onclick=$("meterCancel").onclick=()=>$("meterDialog").close();
+ for(const id of ["meterNumerator","meterDenominator"])$(id).onchange=()=>{const n=Number($("meterNumerator").value),d=Number($("meterDenominator").value);if(Number.isInteger(n)&&n>0&&n<=32)$("meterGroups").value=meterGroups(n,d).join("+");};
+ directNumber("presetBankDisplay","songCC0",commitPreset);directNumber("presetPCDisplay","songPC",commitPreset);
+ for(const [display,input] of [["midiCCDisplay","midiDraftCC"],["midiValueDisplay","midiDraftValue"],["midiOffDisplay","midiDraftOff"],["midiMinDisplay","midiDraftMin"],["midiMaxDisplay","midiDraftMax"]]){
+  directNumber(display,input,refreshMidiDraft);$(input).addEventListener("input",()=>{const v=draftNum(input);if(v===null||Number.isInteger(v)&&v>=0&&v<=127)refreshMidiDraft();});
+ }
+ $("midiToggleMode").onclick=()=>{midiDraft.mode="toggle";refreshMidiDraft();};
+ $("midiOnOffMode").onclick=()=>{midiDraft.mode="onoff";refreshMidiDraft();};
  $("midiModuleEdit").onclick=openMidiModule;
  $("midiModuleX").onclick=$("midiModuleCancel").onclick=()=>$("midiModuleDialog").close();
- $("midiModuleApply").onclick=()=>{const slot=normalSlot(activeModule),exp=slot.kind==="expression",raw=$(exp?"midiDraftExpression":"midiDraftValue").value,n=raw===""?null:Number(raw);if(n!==null&&(!Number.isInteger(n)||n<0||n>127))return;setSlotProperty(exp?"expressionCC":"midiValue",n);$("midiModuleDialog").close();renderStates();renderMidi();};
+ $("midiModuleDialog").addEventListener("close",()=>{stopMidiLearn();midiDraft=null;});
+ $("midiModuleApply").onclick=applyMidiModule;$("midiLearn").onclick=startMidiLearn;
+ $("midiLearnConnect").onclick=async()=>{try{if(await learnSession?.select($("midiLearnDevice").value)){$("midiLearnChoice").hidden=true;learnStatus("Acciona el controlador.");}else learnStatus("No se pudo conectar.");}catch(error){learnStatus(error.message);}};
+
  $("midiModulePagePrev").onclick=()=>changeModulePage(-1);$("midiModulePageNext").onclick=()=>changeModulePage(1);
- for(const field of ['songCC0','songPC'])$(field).addEventListener('input',()=>{
-  const cc0=$('songCC0').value,pc=$('songPC').value;
-  if([cc0,pc].some(x=>x!==""&&(!Number.isInteger(Number(x))||Number(x)<0||Number(x)>127)))return;
-  currentSong().midiAddress=cc0===''&&pc===''?null:{cc0:cc0===''?null:Number(cc0),pc:pc===''?null:Number(pc)};dirty();
- });
+ for(const field of ['songCC0','songPC'])$(field).addEventListener('input',commitPreset);
  $('moduleMidiValue').addEventListener('input',()=>{setSlotProperty('midiValue',$('moduleMidiValue').value===''?null:Number($('moduleMidiValue').value));});
  $('moduleExpressionCC').addEventListener('change',()=>{setSlotProperty('expressionCC',$('moduleExpressionCC').value===''?null:Number($('moduleExpressionCC').value));});
 
@@ -1392,7 +1515,7 @@ function register(){
   if(scan.invalid.length){notice("No se convirtió: acorde inválido en línea "+scan.invalid[0].line+": "+scan.invalid[0].token,true);return;}
   if(leadSource.trim() && !confirm("¿Convertir todos los acordes de esta canción a cifrado "+target+"?"))return;
   try{
-   leadSource=convertLeadSheetDraft(leadSource,target);
+   leadSource=convertLeadSheetDraft(leadSource,target,currentSong().meter);
    currentSheet().chordNotation=target;
    $("leadText").value=leadSource;leadDrafts.set(currentSheet().id,leadSource);dirty();paintLead();
    notice("Cifrado convertido a "+target+". Pulsa Guardar para publicarlo.");
@@ -1592,8 +1715,9 @@ function renderLeadSheetFields(){
  $("leadSheetScope").textContent=catalogMode?"Editas un lead sheet del Repertorio. Las listas que lo usan reciben sus correcciones.":"Esta elección pertenece solo a «"+currentRep().name+"». Guardar el contenido o la tonalidad actualiza las listas que usan este mismo lead sheet.";
 }
 function registerCatalog(){
- for(const [id,mode] of [["sheetEditOpen","edit"],["sheetNewOpen","new"]])$(id).onclick=()=>{const create=mode==="new";$("sheetVariantTitle").textContent=create?"Nueva variante":"Editar Lead Sheet";$("leadSheetName").parentElement.hidden=create;$("newVariantName").parentElement.hidden=!create;$("versionNew").hidden=!create;$("sheetVariantDialog").showModal();};
+ for(const [id,mode] of [["sheetEditOpen","edit"],["sheetNewOpen","new"]])$(id).onclick=()=>{const create=mode==="new";renderLeadSheetFields();$("sheetVariantTitle").textContent=create?"Nueva variante":"Editar Lead Sheet";$("leadSheetName").parentElement.hidden=create;$("newVariantName").parentElement.hidden=!create;$("versionNew").hidden=!create;$("sheetVariantApply").hidden=create;$("sheetVariantDialog").showModal();};
  $("sheetVariantX").onclick=$("sheetVariantCancel").onclick=()=>$("sheetVariantDialog").close();
+ $("sheetVariantApply").onclick=()=>{const name=$("leadSheetName").value.trim();if(!name){notice("Indica un nombre.",true);return;}currentSheet().name=name;currentSheet().notation=$("leadNotation").value;dirty();$("sheetVariantDialog").close();renderLeadSheetFields();paintLead();};
  for(const [id,preview] of [["sheetTextTab",false],["sheetPreviewTab",true]])$(id).onclick=()=>{$("sheetWorkspace").classList.toggle("show-preview",preview);$("sheetTextTab").setAttribute("aria-pressed",String(!preview));$("sheetPreviewTab").setAttribute("aria-pressed",String(preview));};
  $("masterSearch").oninput=renderCatalog;$("masterArchived").onchange=renderCatalog;
  $("versionSave").onclick=save;
@@ -1604,17 +1728,17 @@ function registerCatalog(){
   else immediate(db=>selectPlaylistLeadSheet(db,activeRep,activeSong,id),"Lead sheet seleccionado solo para esta lista.");
  };
  for(const [id,key] of [["leadSheetName","name"],["songTone","tono"],["leadNotation","notation"]]){
-  const change=()=>{currentSheet()[key]=$(id).value.trim()||(key==="tono"?null:"");dirty();};
+  const change=()=>{if(id!=="songTone"&&$("sheetVariantDialog").open)return;currentSheet()[key]=$(id).value.trim()||(key==="tono"?null:"");dirty();};
   $(id).addEventListener(id==="leadNotation"?"change":"input",change);
  }
  $("versionNew").onclick=()=>{
   const previousMaster=masterSheetId;
   try{
-   const parsed=prepareLeadSheetText(currentSheet().leadSheet,leadSource);
+   const parsed=prepareLeadSheetText(currentSheet().leadSheet,leadSource,currentSong().meter);
    if(leadSource.trim()&&parsed.errors.length)throw Error("Corrige la partitura antes de crear la variante.");
    const next=copy(working),song=next.songs.find(s=>s.id===activeSong),draft=currentSheet();
    const id=createLeadSheetVariant(song,{name:$("newVariantName").value,sourceId:draft.id,
-    leadSheet:parsed.leadSheet,tono:draft.tono,notation:draft.notation});
+    leadSheet:parsed.leadSheet,tono:draft.tono,notation:$("sheetVariantDialog").open?$("leadNotation").value:draft.notation});
    // Crear desde borrador bifurca las ediciones hacia la nueva variante.
    // El guardado global no debe aplicarlas también al original confirmado.
    const original=committed.songs.find(s=>s.id===song.id)?.leadSheets?.find(s=>s.id===draft.id);

@@ -1,4 +1,5 @@
-import {chordParts} from "./chord-notation.mjs";
+import {beatCount} from "../core/meter.mjs";
+import {chordParts} from "./chord-notation.mjs?v=20261128-editor8b";
 /**
  * Parser del mini-lenguaje aprobado en MIDI HUD Lead Sheet LAB v0.4.
  * Entrada humana: «A - Intro», «| C | F Am | / |», «|: C | G :|».
@@ -11,7 +12,8 @@ const uniqueInts = value => [...new Set(value || [])].filter(Number.isInteger);
 function problem(errors,line,message,section=null,bar=null){
   errors.push({line,message,section,bar});
 }
-export function parseLeadSheetText(input){
+export function parseLeadSheetText(input,meter){
+  const count=beatCount(meter);
   const sourceText=String(input ?? "").replace(/\r\n?/g,"\n");
   const sections=[],errors=[];
   let current=null;
@@ -53,15 +55,16 @@ export function parseLeadSheetText(input){
       if(repeat&&bar===1)
         problem(errors,lineNo,"/ no puede ser el primer compás de una sección.",current.letter,bar);
       const chords=repeat?[]:text.split(/\s+/);
-      const explicit=chords.includes(".")||chords.length===4;
-      if(explicit?chords.length!==4:chords.length>2)problem(errors,lineNo,"Usa cuatro posiciones con puntos o la abreviatura de uno o dos acordes.",current.letter,bar);
+      const explicit=chords.includes(".")||chords.length===count;
+      if(!repeat&&(explicit?chords.length!==count:chords.length>1&&!(chords.length===2&&count%2===0)))problem(errors,lineNo,"Usa "+count+" posiciones con puntos para indicar los cambios de acorde.",current.letter,bar);
       for(const chord of chords){
         if(chord!=="."&&!chordParts(chord)&&!chordPattern.test(chord))
           problem(errors,lineNo,"Acorde «"+chord+"» inválido. Usa A–G, #/b opcional y m opcional, o grados I–VII / 1–7 escritos manualmente.",current.letter,bar);
       }
-      const beats=repeat?["/","","",""]:
-        explicit?chords.map(chord=>chord==="."?"":chord):
-        chords.length===2?[chords[0],"",chords[1],""]:[chords[0]||"","","",""];
+      const beats=Array(count).fill("");
+      if(repeat)beats[0]="/";
+      else if(explicit)chords.slice(0,count).forEach((chord,i)=>beats[i]=chord==="."?"":chord);
+      else {beats[0]=chords[0]||"";if(chords.length===2&&count%2===0)beats[count/2]=chords[1];}
       current.bars.push(beats);
     }
     if(start)current.repeatStartBars.push(initial);
@@ -77,8 +80,8 @@ export function parseLeadSheetText(input){
   return {sections,errors,sourceText,
     totalBars:sections.reduce((n,s)=>n+s.bars.length,0)};
 }
-export function compileLeadSheetText(input){
-  const result=parseLeadSheetText(input);
+export function compileLeadSheetText(input,meter){
+  const result=parseLeadSheetText(input,meter);
   if(result.errors.length)return {valid:false,errors:result.errors,leadSheet:null};
   return {valid:true,errors:[],leadSheet:{
     sourceText:result.sourceText,
@@ -88,14 +91,15 @@ export function compileLeadSheetText(input){
 /** A name/key-only edit or a new view must not recompile an existing score.
  * Older scores may contain empty bars or metadata not represented by this editor.
  * Edited text still goes through the existing parser and its error reporting. */
-export function prepareLeadSheetText(existing,input){
+export function prepareLeadSheetText(existing,input,meter){
+ const count=beatCount(meter);
  const source=String(input??'');
- if(source===formatLeadSheetText(existing)){
+ if(source===formatLeadSheetText(existing)&&(existing?.sections||[]).every(s=>s.bars.every(b=>b.length===count))){
   const leadSheet=existing==null?null:JSON.parse(JSON.stringify(existing));
   const sections=leadSheet?.sections||[];
   return {leadSheet,sections,errors:[],sourceText:source,totalBars:sections.reduce((n,s)=>n+s.bars.length,0)};
  }
- const result=source.trim()?parseLeadSheetText(source):{sections:[],errors:[],totalBars:0,sourceText:source};
+ const result=source.trim()?parseLeadSheetText(source,meter):{sections:[],errors:[],totalBars:0,sourceText:source};
  return {...result,leadSheet:source.trim()?{...(existing||{}),sourceText:source,sections:result.sections}:null};
 }
 function compactBar(bar){
@@ -103,7 +107,7 @@ function compactBar(bar){
   if(bar[0]==="/"&&bar.slice(1).every(x=>!x))return "/";
   const occupied=bar.map((x,i)=>x?i:-1).filter(i=>i>=0);
   if(occupied.length===1&&occupied[0]===0)return bar[0];
-  if(occupied.length===2&&occupied[0]===0&&occupied[1]===2)return bar[0]+" "+bar[2];
+  if(bar.length%2===0&&occupied.length===2&&occupied[0]===0&&occupied[1]===bar.length/2)return bar[0]+" "+bar[bar.length/2];
   return bar.map(x=>x||".").join(" ");
 }
 /** Reconstruye texto editable sin destruir partituras guardadas. */

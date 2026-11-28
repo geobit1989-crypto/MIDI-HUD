@@ -73,8 +73,8 @@ try{
  assert.equal(await page.locator('#songList .song-row').count(),2);
  await page.locator('#libraryClose').click();
  await page.locator('[data-tab="sheet"]').click();
- await page.locator('#newVariantName').fill('Grados');await page.locator('#leadNotation').selectOption('grados');await page.locator('#songToneSummaryEdit').click();await page.locator('#songTone').fill('G');
- await page.locator('#leadText').fill('A - Intro\n| I | V | vi | IV |');await page.locator('#versionNew').click();await page.locator('#saveAll').click();
+ await page.locator('#songToneSummaryEdit').click();await page.locator('#songTone').fill('G');await page.locator('#songTone').press('Enter');
+ await page.locator('#leadText').fill('A - Intro\n| I | V | vi | IV |');await page.locator('#sheetNewOpen').click();await page.locator('#newVariantName').fill('Grados');await page.locator('#leadNotation').selectOption('grados');await page.locator('#versionNew').click();await page.locator('#saveAll').click();
  await page.waitForFunction(()=>window.MIDIHUD_EDITOR.getLibrary().songs.some(s=>s.leadSheets?.some(v=>v.name==='Grados')));
  await mkdir('build/browser',{recursive:true});await page.screenshot({path:'build/browser/editor-portrait.png',fullPage:true});
  await editorMenuAction('#liveLink');await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
