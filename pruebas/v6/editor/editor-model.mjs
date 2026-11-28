@@ -397,6 +397,23 @@ export function removeModule(db,songId,index){
  remapModuleReferences(db,songId,i=>i===index?null:i>index?i-1:i);
  return Math.max(0,Math.min(index,slots.length-1));
 }
+/** Remove a selected module and its associated musical state or activation indicators. */
+export function deleteSelectedModule(db,songId,index){
+ const next=copy(db),song=locate(next.songs,songId,"canción"),slot=song.displaySlots?.[index];
+ requireThat(Number.isInteger(index)&&!!slot,"módulo inexistente");
+ const linked=next.states.find(st=>st.songId===songId&&st.displayIndex===index),musical=modulePurpose(next,songId,index)==='control';
+ if(linked&&musical)requireThat(song.stateIds.length>1,"la canción necesita al menos un estado musical");
+ const ids=new Set(slot.indicatorId?[slot.indicatorId]:[]);
+ for(const st of next.states.filter(st=>st.songId===songId)){
+  for(const ind of st.indicators||[])if(ind.displayIndex===index)ids.add(ind.id);
+  st.indicators=(st.indicators||[]).filter(ind=>ind.displayIndex!==index);
+ }
+ if(linked&&musical)deleteState(next,linked.id);
+ removeModule(next,songId,index);
+ const known=new Set(next.states.flatMap(st=>(st.indicators||[]).map(ind=>ind.id)));
+ pruneActions(next,a=>a.type==="SET_INDICATOR"&&ids.has(a.indicatorId)&&!known.has(a.indicatorId));
+ validateLibrary(next);Object.assign(db,next);
+}
 function lead(db,songId){
  const song=locate(db.songs,songId,"canción");
  if(!song.leadSheet)song.leadSheet={sections:[{letter:"A",label:"INTRO",bars:[["","","",""]]}]};

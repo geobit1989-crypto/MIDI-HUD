@@ -1,4 +1,4 @@
-import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor4";
+import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor5";
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive7";
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
@@ -6,7 +6,7 @@ import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} fro
 import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-library2";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261128-library2";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive7";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261127-drive7";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor5";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261127-drive7";
 import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
@@ -18,9 +18,9 @@ import {
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
  chocolateMatrix,actionDescription,diagnostics,addModule,moveModule,removeModule,
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
- addConfiguredModule,renameModule,setModulePurpose,modulePurpose,
+ addConfiguredModule,renameModule,setModulePurpose,modulePurpose,deleteSelectedModule,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261128-editor4";
+} from "./editor-model.mjs?v=20261128-editor5";
 
 /**
  * Editor MIDI HUD v3
@@ -39,6 +39,7 @@ let committed=null,working=null,activeRep=null,activeSong=null,activeState=null;
 let activeModule=0,activeTab="states",hasDraft=false,cc=20,value=127;
 let leadSource="",leadParse=null,catalogMode=false,masterSheetId=null;
 let libraryView="lists",pickerIds=[],pickerTarget=null,dragSong=null,deleteTarget=null;
+let modulePage=0,modulePageSong=null;
 let saving=false,leadDrafts=new Map(),isLeaving=false,draftStoreError=false,editSequence=0;
 const DRAFT_KEY="midiHudEditorDraftV6";
 function draftBase(){return [committed.libraryId??null,committed.revision??0,committed.updatedAt??null];}
@@ -465,7 +466,7 @@ function showSongTools(kind){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261128-editor4&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261128-editor5&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";
@@ -492,6 +493,12 @@ function renderModules(){
  if(activeModule!==null&&activeModule>=slots.length)activeModule=null;
  const hasModule=Number.isInteger(activeModule)&&!!slots[activeModule];
  $("moduleRemove").disabled=!hasModule;
+ $("moduleDeleteSelected").hidden=!hasModule;
+ const lastState=hasModule&&modulePurpose(working,activeSong,activeModule)==='control'&&linkedState()&&currentSong().stateIds.length===1;
+ $("moduleDeleteSelected").disabled=!!lastState;
+ $("moduleDeleteSelected").title=lastState?"La canción necesita al menos un estado musical":"Eliminar módulo seleccionado";
+ $("moduleEditOpen").hidden=!hasModule&&!currentState();
+ $("moduleAddOpen").disabled=slots.length>=256;
  $("moduleUp").disabled=!hasModule||activeModule===0;
  $("moduleDown").disabled=!hasModule||activeModule===slots.length-1;
  $("moduleAdd").disabled=slots.length>=256;
@@ -500,21 +507,18 @@ function renderModules(){
  const area=$("moduleGrid");area.replaceChildren();
  if(!slots.length)area.append(make('p','Sin módulos. Añade un estado musical, efecto o expresión.','help'));
  for(let i=0;i<slots.length;i++){
-  const slot=normalSlot(i),visual=resolveModuleVisual(slot,i),connected=linkedState(i);
+  const slot=normalSlot(i),connected=linkedState(i);
   const tile=button("",()=>{activeModule=i;activeState=connected?.id??null;renderStates();},
     "module-select-tile"+(i===activeModule?" is-selected":""));
-  tile.style.background="linear-gradient(160deg,"+visual.color+","+visual.dark+")";
-  tile.title="Editar módulo "+(i+1)+" · "+slot.name;
-  tile.setAttribute("aria-pressed",String(i===activeModule));
-  tile.append(make("span",i+1,"tile-num"));
-  tile.append(make("span",visual.glyph||" ","tile-symbol"));
-  tile.append(make("span",slot.name,"tile-name"));
-  tile.append(make("span",slot.sub,"tile-sub"));
-  const device=make("span",slot.deviceTag,"tile-device");
-  device.hidden=!slot.deviceTag;tile.append(device);
-  if(slot.hidden)tile.style.opacity=".35";
-  area.append(tile);
+  tile.dataset.moduleIndex=String(i);
+  const initial=make("span","☆","tile-initial");initial.setAttribute("aria-label","Estado inicial");
+  initial.hidden=connected?.id!==currentSong().initialStateId;
+  const content=make("span",undefined,"tile-content");
+  content.append(make("span",slot.name,"tile-name"),make("span",slot.sub,"tile-sub"));
+  const device=make("span",slot.deviceTag,"tile-device");device.hidden=!slot.deviceTag;
+  tile.append(initial,content,device);paintEditorTile(tile,i);area.append(tile);
  }
+ layoutModuleGrid(true);
  $("selectedModuleLabel").textContent=hasModule?String(activeModule+1):'—';
  const slot=normalSlot(activeModule),visual=resolveModuleVisual(slot,activeModule);
  $("moduleName").disabled=!hasModule&&!currentState();
@@ -544,6 +548,74 @@ function renderModules(){
  }
  entries(stateSelect,stateChoices,linkedState()?.id||'');
  renderModuleActivation();
+}
+function paintEditorTile(tile,index){
+ const slot=normalSlot(index),visual=resolveModuleVisual(slot,index),on=index===activeModule;
+ const activity=on?visual.active:visual.inactive;
+ tile.style.setProperty("--tile-bg",activity.background);
+ tile.style.setProperty("--tile-fg",activity.foreground);
+ tile.style.background=activity.background;tile.style.color=activity.foreground;
+ tile.dataset.activity=on?"active":"inactive";
+ tile.dataset.moduleHidden=String(slot.hidden);
+ tile.title="Editar módulo "+(index+1)+" · "+slot.name;
+ tile.setAttribute("aria-label",slot.name+(slot.deviceTag?" · "+slot.deviceTag:"")+(slot.hidden?" · Oculto en LIVE":""));
+ tile.setAttribute("aria-pressed",String(on));
+}
+function layoutModuleGrid(reveal=false){
+ const area=$("moduleGrid"),song=currentSong();if(!song)return;
+ const slots=song.displaySlots||[],tiles=Array.from(area.children);
+ if(modulePageSong!==song.id){modulePage=0;modulePageSong=song.id;}
+ const width=area.clientWidth||0,height=area.clientHeight||0;
+ if(!width||!height){$("modulePaging").hidden=true;return;}
+ const cols=Math.max(1,Math.min(6,Math.floor(width/132))),rowCapacity=Math.max(1,Math.floor((height+7)/91));
+ const pages=[],rows=[];
+ if(song.moduleLayout==="manual"){
+  let row=[];
+  for(let i=0;i<slots.length;i++){
+   if(row.length&&(slots[i].rowBreakBefore||row.length>=cols)){rows.push(row);row=[];}
+   row.push(i);
+  }
+  if(row.length)rows.push(row);
+  for(let i=0;i<rows.length;i+=rowCapacity)pages.push(rows.slice(i,i+rowCapacity));
+ }else{
+  const capacity=cols*rowCapacity;
+  for(let offset=0;offset<slots.length;offset+=capacity){
+   const count=Math.min(capacity,slots.length-offset),columnCount=Math.min(cols,Math.max(1,Math.ceil(Math.sqrt(count*width/Math.max(height,1)))));
+   const rowCount=Math.min(rowCapacity,Math.ceil(count/columnCount));
+   const base=Math.floor(count/rowCount),extra=count%rowCount;
+   let p=offset;pages.push(Array.from({length:rowCount},(_,r)=>Array.from({length:base+(r<extra?1:0)},()=>p++)));
+  }
+ }
+ if(reveal&&Number.isInteger(activeModule)){const n=pages.findIndex(rows=>rows.some(row=>row.includes(activeModule)));if(n>=0)modulePage=n;}
+ modulePage=Math.max(0,Math.min(modulePage,pages.length-1));
+ const page=pages[modulePage]||[];
+ for(const tile of tiles)tile.hidden=slots.length>0;
+ area.style.gridTemplateRows="repeat("+Math.max(1,page.length)+",minmax(0,1fr))";
+ for(const [r,row] of page.entries())for(const [c,i] of row.entries()){
+  const tile=tiles[i],span=60/row.length;
+  tile.hidden=false;tile.style.gridRow=String(r+1);tile.style.gridColumn=(Math.round(c*span)+1)+" / "+(Math.round((c+1)*span)+1);
+ }
+ $("modulePaging").hidden=pages.length<=1;
+ $("modulePageLabel").textContent=(modulePage+1)+" / "+Math.max(1,pages.length);
+ $("modulePagePrev").disabled=modulePage===0;$("modulePageNext").disabled=modulePage>=pages.length-1;
+}
+function changeModulePage(delta){activeModule=null;activeState=null;modulePage+=delta;renderStates();layoutModuleGrid();}
+function openModuleSettings(){
+ if(!Number.isInteger(activeModule)&&!currentState())return;
+ if(!$("moduleSettingsDialog").open)$("moduleSettingsDialog").showModal();
+}
+function requestModuleDeletion(){
+ if($("moduleDeleteSelected").disabled||!Number.isInteger(activeModule))return;
+ const musical=modulePurpose(working,activeSong,activeModule)==="control"&&linkedState();
+ $("moduleDeleteMessage").textContent="¿Eliminar «"+normalSlot(activeModule).name+"»"+(musical?" y su estado musical con las asignaciones MIDI que lo usan?":" y sus asociaciones de activación?");
+ $("moduleDeleteDialog").showModal();
+}
+function confirmModuleDeletion(){
+ if(!Number.isInteger(activeModule))return;
+ try{
+  deleteSelectedModule(working,activeSong,activeModule);activeState=null;activeModule=null;
+  $("moduleDeleteDialog").close();dirty();renderStates();renderSong();
+ }catch(error){$("moduleDeleteDialog").close();notice(error.message,true);}
 }
 function renderModuleActivation(){
  const config=Number.isInteger(activeModule)?moduleActivation(working,activeSong,activeModule):null;
@@ -628,20 +700,10 @@ function setSlotProperty(key,value){
  refreshModuleTile(activeModule);
 }
 function refreshModuleTile(index){
- const slot=currentSlot(index),visual=resolveModuleVisual(slot,index);
- // Refrescar solo la matriz (sin borrar campos en curso).
- const tiles=$("moduleGrid").children;
- const tile=tiles[index];
- if(tile){
-  tile.style.background="linear-gradient(160deg,"+visual.color+","+visual.dark+")";
-  tile.title='Editar módulo '+(index+1)+' · '+slot.name;
-  tile.querySelector(".tile-symbol").textContent=visual.glyph||" ";
-  tile.querySelector(".tile-name").textContent=normalSlot(index).name;
-  tile.querySelector(".tile-sub").textContent=normalSlot(index).sub;
-  tile.querySelector(".tile-device").textContent=normalSlot(index).deviceTag;
-  tile.querySelector(".tile-device").hidden=!normalSlot(index).deviceTag;
-  tile.style.opacity=slot.hidden?".35":"1";
- }
+ const slot=normalSlot(index),tile=$("moduleGrid").children[index];
+ if(tile){paintEditorTile(tile,index);tile.querySelector(".tile-name").textContent=slot.name;
+  tile.querySelector(".tile-sub").textContent=slot.sub;tile.querySelector(".tile-device").textContent=slot.deviceTag;
+  tile.querySelector(".tile-device").hidden=!slot.deviceTag;}
 }
 function linkState(id,index){
  if(!Number.isInteger(index))return;
@@ -698,7 +760,8 @@ function addEditorModule(purpose){
  try{
   const result=addConfiguredModule(working,activeSong,purpose);
   activeModule=result.index;activeState=result.stateId;dirty();renderStates();renderSong();
-  $("moduleName").focus();$("moduleName").select?.();
+  if($("moduleAddDialog").open)$("moduleAddDialog").close();
+  openModuleSettings();$("moduleName").focus();$("moduleName").select?.();
  }catch(error){notice(error.message,true);}
 }
 function renderLead(){
@@ -885,6 +948,7 @@ function render(){
  if(!working)return;
  selected();sidebar();renderCatalog();if(libraryView==="picker")renderPicker();
  const empty=!currentSong();
+ document.body?.classList?.toggle("state-edit-mode",!empty&&activeTab==="states");
  $("emptyPlaylist").hidden=!empty;
  for(const node of document.querySelectorAll("[data-tab]"))node.disabled=empty;
  if(!empty){ensureSlots();renderSong();renderStates();}
@@ -898,7 +962,8 @@ function render(){
  for(const node of document.querySelectorAll("[data-panel]"))
   node.hidden=empty||node.dataset.panel!==activeTab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
- if(empty)$("liveLink").href="../v03.html?v=20261128-editor4";
+ if(!empty&&activeTab==="states")layoutModuleGrid(true);
+ if(empty)$("liveLink").href="../v03.html?v=20261128-editor5";
  syncStatus();
 }
 function registerIdentity(){
@@ -1012,6 +1077,19 @@ function register(){
   catch(error){renderSong();notice(error.message,true);}
  };
  $("stateMakeInitial").onclick=makeSelectionInitial;
+ $("moduleAddOpen").onclick=()=>$("moduleAddDialog").showModal();
+ $("moduleAddClose").onclick=()=>$("moduleAddDialog").close();
+ $("moduleLayoutOpen").onclick=()=>$("moduleLayoutDialog").showModal();
+ $("moduleLayoutClose").onclick=()=>$("moduleLayoutDialog").close();
+ $("moduleEditOpen").onclick=openModuleSettings;
+ $("moduleSettingsClose").onclick=()=>$("moduleSettingsDialog").close();
+ $("moduleDeleteSelected").onclick=requestModuleDeletion;
+ $("moduleDeleteCancel").onclick=()=>$("moduleDeleteDialog").close();
+ $("moduleDeleteConfirm").onclick=confirmModuleDeletion;
+ $("modulePagePrev").onclick=()=>changeModulePage(-1);
+ $("modulePageNext").onclick=()=>changeModulePage(1);
+ $("moduleGrid").onclick=event=>{if(event.target===$("moduleGrid")){activeModule=null;activeState=null;renderStates();}};
+ if(typeof ResizeObserver!=="undefined")new ResizeObserver(()=>{if(working&&activeTab==="states"&&currentSong())layoutModuleGrid(true);}).observe($("moduleGrid"));
  $("moduleAdd").onclick=()=>addEditorModule('control');
  $("moduleEffectAdd").onclick=()=>addEditorModule('effect');
  $("moduleExpressionAdd").onclick=()=>addEditorModule('expression');
