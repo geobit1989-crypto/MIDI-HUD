@@ -66,6 +66,35 @@ try{
  assert.equal(await startup.locator('#hud-startup').isVisible(),false);
  assert.equal(await startup.locator('.screen').isVisible(),true);
 }finally{await startupContext.close();}
+ // Dedicated local fixture: never touches real Drive or a user's library.
+ const zeroContext=await browser.newContext({viewport:{width:390,height:844}});
+ try{
+  const zeroPage=await zeroContext.newPage();const zeroErrors=[];
+  zeroPage.on('pageerror',e=>zeroErrors.push(e.message));
+  await zeroPage.route('https://**',route=>route.abort());
+  const zero=migrateCatalog(JSON.parse(await readFile(new URL('../config/midi-hud-data-v2.json',import.meta.url),'utf8')));
+  zero.libraryId=QA_LIBRARY_ID;zero.repertoires=[];
+  await zeroPage.goto(base+'privacy.html');
+  await zeroPage.evaluate(library=>localStorage.setItem('midiHudTest:midiHudQa20261127:hudLibraryV34',JSON.stringify(library)),zero);
+  await zeroPage.goto(base+'v03.html');await zeroPage.waitForFunction(()=>!!window.MIDIHUD_LIVE);
+  assert.equal(await zeroPage.evaluate(()=>MIDIHUD_LIVE.getEngine().getState().activeRepertoireId),'@repertorio');
+  await zeroPage.locator('.topbar .settings').click();
+  await zeroPage.locator('summary').filter({hasText:'LISTAS'}).click();
+  assert.equal(await zeroPage.locator('#hud-repertoire-list input[type=radio]').count(),1);
+  assert.equal(await zeroPage.locator('#hud-repertoire-list input[type=radio]').isChecked(),true);
+  await zeroPage.goto(base+'editor/v3.html');await zeroPage.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
+  await zeroPage.locator('#libraryToggle').click();await zeroPage.locator('#libraryLists').click();
+  assert.equal(await zeroPage.locator('#startAddSongs').isDisabled(),true);
+  await zeroPage.locator('#repAdd').click();await zeroPage.locator('#repNameInput').fill('Domingo');await zeroPage.locator('#repFormSubmit').click();
+  await zeroPage.locator('#startAddSongs').click();await zeroPage.locator('#pickerResults .lib-picker-row').first().click();await zeroPage.locator('#confirmAddSongs').click();
+  await zeroPage.locator('#repOptions summary').click();zeroPage.once('dialog',dialog=>dialog.accept());await zeroPage.locator('#repRemove').click();
+  await zeroPage.locator('#libraryClose').click();await zeroPage.locator('#saveAll').click();
+  await zeroPage.waitForFunction(()=>!MIDIHUD_EDITOR.hasDraft());
+  assert.deepEqual(await zeroPage.evaluate(()=>MIDIHUD_EDITOR.getLibrary().repertoires),[]);
+  assert.deepEqual(await zeroPage.evaluate(()=>MIDIHUD_EDITOR.getLibrary().songs.map(s=>s.id)),zero.songs.map(s=>s.id));
+  assert.deepEqual(zeroErrors,[]);
+ }finally{await zeroContext.close();}
+
  await page.goto(base+'privacy.html');await page.evaluate(()=>{localStorage.setItem('hudLibraryV34','stable-library');localStorage.setItem('midiHudSettingsV1','stable-settings');localStorage.setItem('midiHudTrustedDeviceSessionV1','stable-auth');});
  await page.goto(base+'index.html');
  const home=page.getByRole('dialog',{name:'MIDI HUD',exact:true});
