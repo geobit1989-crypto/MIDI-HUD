@@ -4,16 +4,18 @@ import {prepareInitialSchema} from "./schema.mjs";
 const APP_ORIGIN="https://geobit1989-crypto.github.io";
 const NATIVE_ORIGINS=new Set(["https://appassets.androidplatform.net","https://midihud.local","hud://ios-test.localhost"]);
 const NATIVE_RETURN="native-qa";
+const ANDROID_RETURN="io.midihud.app.androidqa://oauth/complete";
 const IOS_RETURN="midihud-oauth://complete";
 const WINDOWS_RETURN=/^http:\/\/127\.0\.0\.1:([1-9][0-9]{0,4})\/oauth\/[a-f0-9]{64}$/;
 function nativeReturnPath(origin,requested){
  if(requested===undefined)return NATIVE_RETURN;
+ if(origin==="https://appassets.androidplatform.net"&&requested===ANDROID_RETURN)return requested;
  if(origin==="hud://ios-test.localhost"&&requested===IOS_RETURN)return requested;
  const match=typeof requested==="string"&&WINDOWS_RETURN.exec(requested);
  if(origin==="https://midihud.local"&&match&&Number(match[1])<=65535)return requested;
  fail(400,"invalid_native_return");
 }
-const isNativeReturn=path=>path===NATIVE_RETURN||path===IOS_RETURN||WINDOWS_RETURN.test(path);
+const isNativeReturn=path=>path===NATIVE_RETURN||path===ANDROID_RETURN||path===IOS_RETURN||WINDOWS_RETURN.test(path);
 function completeNative(path,ok){
  if(path===NATIVE_RETURN)return nativeDone(ok);
  const dest=new URL(path);

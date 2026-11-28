@@ -213,12 +213,12 @@ test("published QA web can start OAuth and all three native origins reach pairin
 test("native automatic return only permits platform-specific callback destinations",async()=>{
  const store=fakeDB(),env=testEnv(store.DB),oldFetch=globalThis.fetch;
  globalThis.fetch=async(url)=>new Response(JSON.stringify(String(url).includes("userinfo")?{sub:"12345678901234567890",email:"native@example.com"}:{access_token:"access",refresh_token:"refresh",expires_in:3600}));
- const ios="hud://ios-test.localhost",windows="https://midihud.local",loop="http://127.0.0.1:49152/oauth/"+"a".repeat(64);
+ const android="https://appassets.androidplatform.net",androidReturn="io.midihud.app.androidqa://oauth/complete",ios="hud://ios-test.localhost",windows="https://midihud.local",loop="http://127.0.0.1:49152/oauth/"+"a".repeat(64);
  try{
-  for(const [origin,returnTo] of [[ios,"https://evil.example"],[windows,"http://localhost:49152/oauth/"+"a".repeat(64)],[ios,loop],[windows,"midihud-oauth://complete"]]){
+  for(const [origin,returnTo] of [[ios,"https://evil.example"],[windows,"http://localhost:49152/oauth/"+"a".repeat(64)],[ios,loop],[windows,"midihud-oauth://complete"],[ios,androidReturn],[windows,androidReturn],[android,"midihud-oauth://complete"],[android,androidReturn+"/other"],[android,loop]]){
    assert.equal((await worker.fetch(api("/auth/native/start","POST",{returnTo},{Origin:origin}),env)).status,400);
   }
-  for(const [origin,returnTo] of [[ios,"midihud-oauth://complete"],[windows,loop]]){
+  for(const [origin,returnTo] of [[ios,"midihud-oauth://complete"],[windows,loop],[android,androidReturn]]){
    const start=await worker.fetch(api("/auth/native/start","POST",{returnTo},{Origin:origin}),env);
    assert.equal(start.status,200);
    const data=await start.json();assert.equal(data.returnTo,returnTo);
