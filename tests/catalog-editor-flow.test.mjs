@@ -89,7 +89,13 @@ test('crear, reabrir y llenar una lista vacía ejecuta handlers reales sin borra
  t.elements.get('startAddSongs').onclick();t.elements.get('pickerResults').children[0].onclick();t.elements.get('confirmAddSongs').onclick();
  saved=t.snapshot();assert.equal(saved.committed.songs.length,count);
  assert.equal(saved.working.repertoires.find(r=>r.id===id).songIds.length,1);
- t.elements.get('songList').children[0].children[2].children[1].children.at(-1).onclick();saved=t.snapshot();
+ t.elements.get('songList').children[0].children[2].children[1].children.at(-1).onclick();
+ assert.equal(t.elements.get('appConfirmDialog').open,true);
+ assert.equal(t.snapshot().working.repertoires.find(r=>r.id===id).songIds.length,1);
+ t.elements.get('appConfirmCancel').onclick();
+ assert.equal(t.snapshot().working.repertoires.find(r=>r.id===id).songIds.length,1);
+ t.elements.get('songList').children[0].children[2].children[1].children.at(-1).onclick();
+ t.elements.get('appConfirmContinue').onclick();saved=t.snapshot();
  assert.equal(saved.committed.songs.length,count);assert.equal(saved.activeSong,null);
 });
 
@@ -264,7 +270,19 @@ test('selección múltiple conserva filtro, orden, cancelación y evita duplicad
 test("quitar última lista conserva canciones y permite crear otra",async()=>{
  const t=setup({tab:'song'});
  const before=t.snapshot().working.songs.map(s=>s.id);
- while(t.snapshot().working.repertoires.length)t.elements.get('repRemove').onclick();
+ const initialCount=t.snapshot().working.repertoires.length;
+ t.elements.get('repRemove').onclick();
+ assert.equal(t.elements.get('appConfirmDialog').open,true);
+ assert.equal(t.snapshot().working.repertoires.length,initialCount);
+ t.elements.get('appConfirmCancel').onclick();
+ assert.equal(t.snapshot().working.repertoires.length,initialCount);
+ for(let remaining=initialCount;remaining>0;remaining--){
+  t.elements.get('repRemove').onclick();
+  assert.equal(t.elements.get('appConfirmDialog').open,true);
+  assert.equal(t.snapshot().working.repertoires.length,remaining);
+  t.elements.get('appConfirmContinue').onclick();
+  assert.equal(t.snapshot().working.repertoires.length,remaining-1);
+ }
  assert.deepEqual(t.snapshot().working.repertoires,[]);
  assert.deepEqual(t.snapshot().working.songs.map(s=>s.id),before);
  assert.equal(t.elements.get('startAddSongs').disabled,true);
