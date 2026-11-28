@@ -49,7 +49,7 @@ export function installHome({settings, editor, syncRoot}) {
     matrix.append(node);
   }
   tile('live', 'LIVE', '#305FF3', () => home.close());
-  tile('editor', 'EDITOR', '#9D8B25');
+  tile('editor', 'EDITOR', '#7654C4');
   if (windows) tile('controller', 'CONTROLLER', '#168B8E', () => native.call('controller.open').catch(error => alert(error.message)));
   tile('settings', 'AJUSTES', '#B56829', () => { home.close(); settings(); });
   tile('about', 'ACERCA DE', '#52657C', () => about.showModal());

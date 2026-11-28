@@ -156,8 +156,8 @@ function linkedState(i=activeModule){
 }
 function notice(message,error=false){
  $("editorNotice").textContent=message;
- $("editorNotice").style.background=error?"#3e1b26":"#0f3446";
- $("editorNotice").style.borderColor=error?"#a86167":"#37667b";
+ $("editorNotice").style.background=error?"#3e1b26":"var(--accent-bg)";
+ $("editorNotice").style.borderColor=error?"#a86167":"var(--accent)";
  syncStatus(error);
 }
 function syncStatus(error=false){

@@ -10,11 +10,11 @@ Sistema de coordenadas SVG: viewBox 0 0 108 108, origen superior izquierdo, unid
 |---|---:|---:|---:|---:|---:|---|---|
 | Fondo | 0 | 0 | 108 | 108 | 0 | #080A16 | 8, 10, 22 |
 | Superior izquierdo, activo | 15 | 15,5 | 38,25 | 38,25 | 7 | #305FF3 | 48, 95, 243 |
-| Superior derecho, inactivo | 54,75 | 15,5 | 38,25 | 38,25 | 7 | #555136 | 85, 81, 54 |
+| Superior derecho, inactivo | 54,75 | 15,5 | 38,25 | 38,25 | 7 | #5B3FA3 | 91, 63, 163 |
 | Inferior izquierdo, inactivo | 15 | 55,25 | 38,25 | 38,25 | 7 | #534230 | 83, 66, 48 |
 | Inferior derecho, inactivo | 54,75 | 55,25 | 38,25 | 38,25 | 7 | #4F2C32 | 79, 44, 50 |
 
-El azul representa el estado activo; los otros tres permanecen atenuados. No añadir letras, texto, sombras, contornos, biseles ni cambiar el orden. Los colores son sRGB representativos: medianas de parches interiores de 41 × 41 píxeles de la captura (709 × 1536) en fondo (110,650), azul (245,626), oliva (463,626), marrón (245,840), burdeos (463,840) fueron respectivamente (8,10,22), (48,95,243), (84,80,54), (83,66,48), (79,44,50); el oliva del SVG se conserva como aproximación de +1 en R y G. El icono no debe incluir la interfaz, esquinas blancas ni botón compartir de la captura.
+El azul representa el estado activo; los otros tres permanecen atenuados. El 28/11/2026 se aprueba sustituir el mostaza/oliva del módulo superior derecho por el violeta oscuro #5B3FA3 de la nueva identidad del Editor, sin cambiar geometría, orden ni el azul activo. No añadir letras, texto, sombras, contornos, biseles ni cambiar el orden. Los colores son sRGB representativos: medianas de parches interiores de 41 × 41 píxeles de la captura (709 × 1536) en fondo (110,650), azul (245,626), oliva (463,626), marrón (245,840), burdeos (463,840) fueron respectivamente (8,10,22), (48,95,243), (84,80,54), (83,66,48), (79,44,50); el oliva original del SVG era #555136; sustituido por violeta el 28/11. El icono no debe incluir la interfaz, esquinas blancas ni botón compartir de la captura.
 
 ## Exportación por plataforma
 - Windows: generar ICO 16, 24, 32, 48, 64, 128 y 256 px mediante native/windows/prepare_icon.py, antialias 4×4; embebido en el EXE y usado como icono de ventana. MSIX: generar logos reglamentarios a partir de la misma fuente cuando se cree el paquete. No generar otra identidad.
@@ -24,3 +24,5 @@ El azul representa el estado activo; los otros tres permanecen atenuados. No añ
 - Validar visualmente a tamaño real de acceso directo y launcher. El aspecto de la máscara y el antialias pueden variar según el SO. Mantener identificadores internos, canales QA y OAuth independientes del nombre visible.
 
 Estado: iconos Web incorporados en fuente QA. Favicon SVG y apple-touch-icon PNG opaco 180×180. Copias bajo core/brand y beta-v3.4 generadas, no editarlas independientemente. Sin publicar producción.
+
+Actualización 28/11/2026: fuente SVG, favicon, PNG de acceso directo iOS/web y vector Android actualizados coherentemente. Windows genera su ICO desde la fuente canónica en la próxima compilación. Sin recompilaciones nativas en esta fase.

@@ -2,7 +2,7 @@
   <title>MIDI HUD</title>
   <rect width="108" height="108" fill="#080A16"/>
   <rect x="15" y="15.5" width="38.25" height="38.25" rx="7" fill="#305FF3"/>
-  <rect x="54.75" y="15.5" width="38.25" height="38.25" rx="7" fill="#555136"/>
+  <rect x="54.75" y="15.5" width="38.25" height="38.25" rx="7" fill="#5B3FA3"/>
   <rect x="15" y="55.25" width="38.25" height="38.25" rx="7" fill="#534230"/>
   <rect x="54.75" y="55.25" width="38.25" height="38.25" rx="7" fill="#4F2C32"/>
 </svg>

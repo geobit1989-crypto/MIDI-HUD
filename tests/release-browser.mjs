@@ -111,6 +111,7 @@ try{
     group.lastElementChild?.dataset.link==='usb';
  }),true);
  assert.equal(await home.locator('.hud-tile').count(),4);
+ assert.equal(await home.getByText('EDITOR',{exact:true}).evaluate(el=>el.closest('.hud-tile').style.getPropertyValue('--tile').toLowerCase()),'#7654c4');
  assert.equal(await home.locator('[data-link="bluetooth"]').getAttribute('data-state'),'idle');
  for(const [width,height] of [[390,844],[844,390],[320,568],[1280,720]]){
   await page.setViewportSize({width,height});
@@ -154,6 +155,7 @@ try{
  await page.locator('#hud-close-btn').click();
  assert.equal(await home.isVisible(),false);
  await page.goto(base+'editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
+ assert.equal(await page.locator('#saveAll').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(118, 84, 196)');
  await page.locator('#songTitle').fill('Guardado completo de pruebas');await page.locator('[data-tab="states"]').click();await page.locator('#saveAll').click();
  await page.waitForFunction(()=>!!localStorage.getItem('midiHudTest:midiHudQa20261127:hudLibraryV34'));
  assert.equal(await page.evaluate(()=>localStorage.getItem('hudLibraryV34')),'stable-library');
