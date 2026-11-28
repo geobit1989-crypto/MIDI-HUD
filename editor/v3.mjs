@@ -1,11 +1,10 @@
-import {LIBRARY_ICONS} from "../core/library-icons.mjs";
+import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor1";
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive7";
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261127-drive7";
 import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-library2";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261128-library2";
-import {createLibraryTransferUrl} from "../core/library-transfer-v34.mjs?v=20261128-library2";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive7";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261127-drive7";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
@@ -166,6 +165,8 @@ function syncStatus(error=false){
  $("saveStatus").style.color=failed?"#ffb2ad":hasDraft?"#ffd38c":"#9fe6cc";
  $("lastConfirmedSave").textContent=confirmationTime();
  $("saveAll").disabled=saving||!hasDraft;
+ $("saveAll").textContent=saving?"Guardando…":"Guardar";
+ $("saveAll").setAttribute("data-state",failed?"error":saving?"saving":hasDraft?"pending":"confirmed");
  for(const tab of SECTIONS){
   const label=$(tab+"Dirty"),btn=$(tab+"Save");
   if(label){label.textContent=hasDraft?"Borrador protegido; guardar al finalizar":"Sin cambios pendientes";label.classList.toggle("pending",hasDraft);}
@@ -173,7 +174,7 @@ function syncStatus(error=false){
  }
 }
 function dirty(){
- editSequence++;hasDraft=true;persistDraft();syncStatus();
+ editSequence++;hasDraft=true;persistDraft();syncStatus();renderIdentification();
  if(!draftStoreError)$("editorNotice").textContent="Borrador protegido. Cambia de pestaña libremente; pulsa «Guardar» al finalizar.";
 }
 function selected(){
@@ -204,7 +205,8 @@ function toggleLibrary(force){
  sidebar.setAttribute("aria-hidden",String(!open));
  $("libraryBackdrop").hidden=!open;
  toggle.setAttribute("aria-expanded",String(open));
- toggle.textContent=open?"Cerrar biblioteca":"Biblioteca";
+ toggle.setAttribute("aria-label",open?"Cerrar biblioteca":"Biblioteca");
+ toggle.title=open?"Cerrar biblioteca":"Biblioteca";
  if(open){showLibraryView(catalogMode?"master":"lists");$("libraryClose").focus();}
  else if(libraryView==="picker"){pickerIds=[];pickerTarget=null;showLibraryView("lists");}
  else if(sidebar.contains(document.activeElement))toggle.focus();
@@ -241,26 +243,6 @@ function persistLibrary(next,message){
  refreshLeadSource();
  render();notice(message);
  window.dispatchEvent?.(new Event('hud-library-saved'));
-}
-function showMidiLink(link){
- const dialog=make('dialog');
- dialog.style.cssText='width:min(620px,calc(100vw - 24px));background:#112638;color:#fff;border:1px solid #5b879d;border-radius:12px;padding:20px';
- const title=make('h2','Abrir en el navegador MIDI');
- const help=make('p','Copia este enlace y pégalo en la barra de direcciones del navegador MIDI. Se cargarán tus repertorios y asignaciones, sin gestionar archivos JSON.');
- const field=make('textarea');field.value=link;field.readOnly=true;field.setAttribute('aria-label','Enlace con una copia de la biblioteca');
- const status=make('p','El enlace lleva una copia de lo guardado ahora. Después puedes editar y usar LIVE dentro del navegador MIDI.','help');status.setAttribute('role','status');
- const actions=make('div',undefined,'ctrlrow');
- actions.append(button('Copiar enlace',async()=>{
-  try{await navigator.clipboard.writeText(link);status.textContent='Enlace copiado. Pégalo en el navegador MIDI.';}
-  catch{field.focus();field.select();status.textContent='Selecciona y copia el enlace del campo.';}
- },'primary'));
- if(typeof navigator.share==='function')actions.append(button('Compartir enlace',async()=>{
-  try{await navigator.share({title:'MIDI HUD',url:link});}
-  catch(error){if(error.name!=='AbortError')status.textContent='Puedes usar Copiar enlace.';}
- }));
- actions.append(button('Cerrar',()=>dialog.close()));
- dialog.append(title,help,field,status,actions);document.body.append(dialog);
- dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
 }
 function awaitNotationChoice(){
  return new Promise(resolve=>{
@@ -387,6 +369,7 @@ function sidebar(){
   row.setAttribute("role","listitem");row.append(make("span",index+1,"song-num"),button(versionLabel(song),()=>useSong(id)));
   row.append(libraryMenu("Opciones de "+song.title,[
    ["Editar",()=>useSong(id)],["Elegir Lead Sheet",()=>{useSong(id);updateTab("sheet");}],
+   ["Notas",()=>{useSong(id);showSongTools("notes");}],
    ["Subir",()=>immediate(db=>moveSong(db,activeRep,id,-1),"Orden actualizado."),"",index===0],
    ["Bajar",()=>immediate(db=>moveSong(db,activeRep,id,1),"Orden actualizado."),"",index===ids.length-1],
    ["Quitar de lista",()=>removeListSong(id),"danger"]
@@ -402,20 +385,32 @@ function sidebar(){
  $("repSelect").disabled=noList;$("repOptions").hidden=noList;$("startAddSongs").disabled=noList;
  $("repRemove").disabled=noList;$("repRename").disabled=noList;$("repDuplicate").disabled=noList;
  if(noList)$("songCounter").textContent="No hay listas";
- $("repHeading").textContent=catalogMode||noList?"Repertorio":currentRep().name;
- if(!currentSong()){$("songHeading").textContent="Lista vacía";$("songSummary").textContent="Añade canciones desde Biblioteca.";return;}
- $("songHeading").textContent=versionLabel(currentSong());
- $("songSummary").textContent=[
-  currentSong().author||"Autor pendiente",
-  currentSheet()?.tono||"Tonalidad pendiente",
-  currentSong().tempoBpm?currentSong().tempoBpm+" BPM":"BPM pendiente",
-  currentSong().stateIds.length+" estados",
-  currentSong().bank||"Banco pendiente"
- ].join(" · ");
+ renderIdentification();
+}
+function renderIdentification(){
+ const song=currentSong(),rep=currentRep();
+ $("repHeading").textContent=catalogMode||!rep?"Repertorio":rep.name;
+ $("songHeading").textContent=song?versionLabel(song):"Lista vacía";
+ $("songSummary").hidden=!song;
+ $("songAuthorSummary").hidden=!song?.author;
+ $("songAuthorSummary").textContent=song?.author||"";
+ $("songToneSummary").textContent=song?(currentSheet()?.tono||"—"):"—";
+ $("songBpmSummary").textContent=song?.tempoBpm?song.tempoBpm+" BPM":"— BPM";
+ const count=song?.stateIds.length??0;
+ $("songStateSummary").textContent=count+(count===1?" estado":" estados");
+}
+function showSongTools(kind){
+ const song=currentSong();if(!song)return;
+ $("songToolsTitle").textContent=kind==="notes"?"Notas":"Historial";
+ $("songToolsName").textContent=versionLabel(song);
+ $("historyFields").hidden=kind!=="history";
+ $("noteFields").hidden=kind!=="notes";
+ $("sharedWarning").hidden=kind!=="history"||versionUsage(working,song.id).length<2;
+ $("sharedControls").showModal();
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261127-drive7&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261128-editor1&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";
@@ -847,6 +842,7 @@ function render(){
  for(const node of document.querySelectorAll("[data-panel]"))
   node.hidden=empty||node.dataset.panel!==activeTab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
+ if(empty)$("liveLink").href="../v03.html?v=20261128-editor1";
  syncStatus();
 }
 function register(){
@@ -858,6 +854,11 @@ function register(){
  $('moduleExpressionCC').addEventListener('change',()=>{setSlotProperty('expressionCC',$('moduleExpressionCC').value===''?null:Number($('moduleExpressionCC').value));});
 
  $("libraryToggle").onclick=()=>toggleLibrary();
+ $("editorHistoryOpen").onclick=()=>{$("editorMenu").open=false;$("editorHistory").showModal();};
+ $("editorHistoryClose").onclick=()=>$("editorHistory").close();
+ $("songToolsClose").onclick=()=>$("sharedControls").close();
+ $("liveLink").addEventListener("click",()=>{$("editorMenu").open=false;});
+ $("settingsLink").addEventListener("click",()=>{$("editorMenu").open=false;});
  $("libraryClose").onclick=()=>toggleLibrary(false);
  $("libraryBackdrop").onclick=()=>toggleLibrary(false);
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("editorSidebar").classList.contains("is-open"))toggleLibrary(false);});
@@ -1166,18 +1167,6 @@ function register(){
   document.body.append(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),5000);
  };
- $("midiLinkBtn").onclick=async()=>{
-  const action=$('midiLinkBtn');action.disabled=true;
-  try{
-   if(hasDraft){
-    if(!window.confirm("Hay un borrador sin confirmar. ¿Guardar toda la configuración antes de generar el enlace?"))return;
-    await save();if(hasDraft)return;
-   }
-   const link=await createLibraryTransferUrl(committed,{repertoireId:catalogMode?REPERTOIRE_CONTEXT_ID:activeRep,songId:activeSong},window.location.href);
-   showMidiLink(link);
-  }catch(error){notice('No se pudo preparar el enlace: '+error.message,true);}
-  finally{action.disabled=false;}
- };
  $("undo").onclick=()=>{
   const backup=localStorage.getItem(BACKUP);if(!backup||!allowLeaving())return;
   if(!window.confirm("¿Recuperar la biblioteca guardada antes del último cambio?"))return;
@@ -1245,7 +1234,7 @@ function renderCatalog(){
  for(const item of items){
   const row=make("div",undefined,"song-row"+(catalogMode&&item.id===activeSong?" current":""));
   row.setAttribute("role","listitem");row.append(button(item.label+(item.archived?" · Archivada":""),()=>openMasterSong(item.id)));
-  row.append(libraryMenu("Opciones de "+item.label,[["Editar",()=>openMasterSong(item.id)],[item.archived?"Restaurar":"Archivar",()=>{if(window.confirm(item.archived?"¿Restaurar esta canción?":"¿Archivar esta canción? Las referencias se conservan."))immediate(db=>archiveCatalogVersion(db,item.id,!item.archived),"Estado de archivo actualizado.");}]]));root.append(row);
+  row.append(libraryMenu("Opciones de "+item.label,[["Editar",()=>openMasterSong(item.id)],["Historial",()=>{openMasterSong(item.id);showSongTools("history");}],[item.archived?"Restaurar":"Archivar",()=>{if(window.confirm(item.archived?"¿Restaurar esta canción?":"¿Archivar esta canción? Las referencias se conservan."))immediate(db=>archiveCatalogVersion(db,item.id,!item.archived),"Estado de archivo actualizado.");}]]));root.append(row);
  }
  const song=currentSong();$("sharedControls").hidden=!song;if(!song)return;
  const usage=versionUsage(working,song.id);
@@ -1307,7 +1296,7 @@ function registerCatalog(){
 }
 
 async function boot(){
- $("repertoireIcon").innerHTML=LIBRARY_ICONS.repertoire;$("listsIcon").innerHTML=LIBRARY_ICONS.lists;
+ $("repertoireIcon").innerHTML=LIBRARY_ICONS.repertoire;$("listsIcon").innerHTML=LIBRARY_ICONS.lists;$("songTabIcon").innerHTML=LIBRARY_ICONS.song;
  register();registerCatalog();
  let library=null;
  const saved=readLibrarySource(localStorage);

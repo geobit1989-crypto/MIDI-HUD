@@ -6,7 +6,7 @@
 <script>
   // Set before any LIVE markup or external resource can paint.
   const hudEntryParams = new URLSearchParams(location.search);
-  if (hudEntryParams.get('home') === '1' || hudEntryParams.has('hud_auth_ticket') || hudEntryParams.has('hud_auth_error')) {
+  if (hudEntryParams.get('home') === '1' || hudEntryParams.get('settings') === '1' || hudEntryParams.has('hud_auth_ticket') || hudEntryParams.has('hud_auth_error')) {
     document.documentElement.setAttribute('data-hud-startup','');
   }
 </script>
@@ -671,7 +671,7 @@ function render(){
   setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
   subscribeEngine();
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
-  if(oauthSettingsReturn)popup(true);
+  if(oauthSettingsReturn||new URLSearchParams(location.search).get('settings')==='1')popup(true);
    else if(new URLSearchParams(location.search).get('home')==='1'){
     const home=document.querySelector('.hud-home');
     home.setAttribute('data-entry-fade','');

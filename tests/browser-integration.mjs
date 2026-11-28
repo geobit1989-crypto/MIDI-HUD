@@ -22,7 +22,7 @@ try{
  assert.equal(await page.evaluate(()=>MIDIHUD_EDITOR.getLibrary().songs.some(s=>s.title==='Borrador recuperable')),false);
  await page.reload();await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  assert.equal(await page.locator('#songTitle').inputValue(),'Borrador recuperable');
- await page.locator('#liveLink').click();
+ await page.locator('#editorMenu > summary').click();await page.locator('#liveLink').click();
  await page.getByRole('button',{name:'Seguir editando',exact:true}).click();
  assert.equal(await page.locator('dialog[open]').count(),0);
  await page.locator('#songTitle').fill('Prueba integrada iPhone');await page.locator('#saveAll').click();
