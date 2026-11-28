@@ -249,7 +249,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 .song-metadata>span{display:inline-flex;gap:5px;align-items:center;color:var(--txt)}
 .song-metadata svg{width:24px;height:24px;color:var(--accent-light);flex:none}
 .song-metadata[hidden],#songAuthorSummary[hidden]{display:none}
-.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0 18px;padding-bottom:10px;overflow:visible}
+.tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0 10px;padding-bottom:10px;overflow:visible}
 .tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;padding:8px 3px;font-size:clamp(11px,2.5vw,14px);white-space:normal;line-height:1.2;min-height:58px;background:#101A27}
 .tabs svg{width:24px;height:24px;color:var(--muted);flex:none;display:block}
 .tabs button[aria-selected=true] svg{color:var(--accent-light)}
@@ -260,6 +260,30 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 .song-section-group{margin-top:16px}
 .song-section-group h3{color:var(--muted)}
 @media(max-width:410px){.top{gap:5px}.top-actions{gap:4px}.top .top-icon,.top-menu>summary{min-width:40px;min-height:44px;padding:6px}.top svg{width:22px;height:22px}#saveAll{padding:8px 10px}.song-metadata{gap:6px 12px}}
+
+/* Compact musical identity; only the active field is an input. */
+.main-head{padding:12px 14px}
+.main-head h2{margin:2px 0;min-width:0}
+.main-head .identity-edit{display:flex;align-items:center;gap:5px;min-width:0;max-width:100%;min-height:28px;padding:0;background:transparent;border:0;border-radius:4px;text-align:left;font-weight:inherit;white-space:normal;overflow-wrap:anywhere}
+.main-head .identity-edit:hover:not(:disabled){color:var(--accent-light);background:transparent}
+.main-head .identity-title{font-size:clamp(21px,4.5vw,30px);font-weight:750;line-height:1.2}
+.identity-author .identity-edit{color:var(--muted);font-size:14px}
+.song-metadata{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:7px;padding-top:7px;border-top:1px solid #263447}
+.identity-metric{min-width:0}
+.identity-metric .identity-edit{font-size:clamp(12px,3vw,16px);width:100%}
+.identity-metric strong{min-width:0;overflow-wrap:anywhere}
+.identity-metric svg{width:23px;height:23px}
+.main-head input:not([type=file]):not([type=checkbox]){min-width:0;min-height:32px;padding:4px 6px;margin:0}
+.main-head [hidden],.editor-alert[hidden]{display:none!important}
+#saveAll,#saveAll:hover,#saveAll:disabled{background:#101A27;border:1px solid var(--line);opacity:1;padding:8px;min-width:44px;min-height:44px}
+#saveAll svg{color:#788696}
+#saveAll[data-state="pending"] svg,#saveAll[data-state="saving"] svg{color:var(--accent-light)}
+#saveAll[data-state="saving"] svg{animation:editor-save-pulse .85s ease-in-out infinite}
+#saveAll[data-state="error"] svg{color:var(--bad)}
+@keyframes editor-save-pulse{0%,100%{opacity:1}50%{opacity:.15}}
+@media(prefers-reduced-motion:reduce){#saveAll[data-state="saving"] svg{animation:none}}
+.editor-alert{position:fixed;z-index:30;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(94vw,580px);margin:0;box-shadow:0 4px 20px #0008;max-height:35dvh;overflow:auto}
+@media(max-width:410px){#saveAll,#saveAll:hover,#saveAll:disabled{min-width:40px;padding:6px}.main-head{padding:9px 11px}.song-metadata{gap:4px}.identity-metric svg{width:20px;height:20px}}
 </style>
 </head>
 <body>
@@ -270,11 +294,11 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
   <div class="top-actions">
     <button type="button" id="libraryToggle" aria-label="Biblioteca" title="Biblioteca" aria-expanded="false" aria-controls="editorSidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM11 4h4v16h-4zM17 5l3-1 3 15-3 1z"/></svg></button>
     <span id="saveStatus" class="sr-only" role="status">Sin cambios</span>
-    <button type="button" id="saveAll" class="primary">Guardar</button>
+    <button type="button" id="saveAll" class="top-icon" data-state="confirmed" aria-label="Guardar" title="Sin cambios pendientes" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z"/><path d="M7 3v6h10V3M7 21v-8h10v8"/></svg></button>
     <details id="editorMenu" class="top-menu"><summary aria-label="Opciones del Editor" title="Opciones del Editor"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></summary>
       <div class="top-menu-items">
-        <a id="liveLink" href="../v03.html?v=20261128-editor1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 13 7-13 7z"/></svg>Abrir LIVE</a>
-        <a id="settingsLink" href="../v03.html?settings=1&amp;v=20261128-editor1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 4 0 .7 2.5 2 .9 2.3-1.2 2 3.4-1.7 1.8v2.4l1.7 1.8-2 3.4-2.3-1.2-2 .9L14 21h-4l-.7-2.3-2-.9L5 19l-2-3.4 1.7-1.8v-2.4L3 9l2-3.4 2.3 1.2 2-.9z"/><circle cx="12" cy="12" r="3"/></svg>Abrir Ajustes</a>
+        <a id="liveLink" href="../v03.html?v=20261128-editor2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 13 7-13 7z"/></svg>Abrir LIVE</a>
+        <a id="settingsLink" href="../v03.html?settings=1&amp;v=20261128-editor2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 4 0 .7 2.5 2 .9 2.3-1.2 2 3.4-1.7 1.8v2.4l1.7 1.8-2 3.4-2.3-1.2-2 .9L14 21h-4l-.7-2.3-2-.9L5 19l-2-3.4 1.7-1.8v-2.4L3 9l2-3.4 2.3 1.2 2-.9z"/><circle cx="12" cy="12" r="3"/></svg>Abrir Ajustes</a>
         <button id="editorHistoryOpen" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 1 3 6.7M3 4v8h8M12 7v5l4 2"/></svg>Historial</button>
       </div>
     </details>
@@ -330,12 +354,12 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 <main class="main">
   <div class="main-head">
     <span class="heading" id="repHeading">Repertorio</span>
-    <h2 id="songHeading">Selecciona una canción</h2>
-    <p id="songAuthorSummary" hidden></p>
+    <h2><button type="button" class="identity-edit identity-title" id="songHeading" aria-label="Editar título">Selecciona una canción</button><input id="songTitle" maxlength="120" hidden aria-label="Título de la canción"></h2>
+    <div class="identity-author"><button type="button" class="identity-edit" id="songAuthorSummary" aria-label="Editar autor">Añadir autor</button><input id="songAuthor" maxlength="160" placeholder="Artista, ministerio o compositor" hidden aria-label="Autor"></div>
     <div id="songSummary" class="song-metadata" hidden>
-      <span title="Tonalidad"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M13 15V49M23 13V47" stroke-width="3.5"/><path d="M7 27L29 21M7 39L29 33" stroke-width="4.5"/><path d="M40 10V48C66 35 51 24 40 34" stroke-width="4"/></svg><strong id="songToneSummary">—</strong></span>
-      <span title="Tempo"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M34 9H24L7 56H55L41 22" stroke-width="6"/><path d="M29 45L48 9" stroke-width="5"/><circle cx="48" cy="9" r="4.5" fill="currentColor" stroke="none"/></svg><strong id="songBpmSummary">— BPM</strong></span>
-      <span title="Estados musicales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span id="songStateSummary">— estados</span></span>
+      <div class="identity-metric"><button type="button" class="identity-edit" id="songToneSummaryEdit" aria-label="Editar tonalidad"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M13 15V49M23 13V47" stroke-width="3.5"/><path d="M7 27L29 21M7 39L29 33" stroke-width="4.5"/><path d="M40 10V48C66 35 51 24 40 34" stroke-width="4"/></svg><strong id="songToneSummary">—</strong></button><input id="songTone" maxlength="20" placeholder="Sol mayor, La menor…" hidden aria-label="Tonalidad"></div>
+      <div class="identity-metric"><button type="button" class="identity-edit" id="songBpmSummaryEdit" aria-label="Editar tempo"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M34 9H24L7 56H55L41 22" stroke-width="6"/><path d="M29 45L48 9" stroke-width="5"/><circle cx="48" cy="9" r="4.5" fill="currentColor" stroke="none"/></svg><strong id="songBpmSummary">— BPM</strong></button><input id="songBpm" type="number" min="30" max="300" step="1" hidden aria-label="Tempo en BPM"></div>
+      <div class="identity-metric"><button type="button" class="identity-edit" id="songBankSummaryEdit" aria-label="Editar banco del controlador"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5"/></svg><strong id="songBankSummary">—</strong></button><input id="songBank" maxlength="24" placeholder="C1" hidden aria-label="Banco del controlador"></div>
     </div>
   </div>
   <div id="emptyPlaylist" class="empty" hidden>Esta lista está vacía. Añade canciones desde Biblioteca.</div>
@@ -354,31 +378,42 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
     <div class="ctrlrow"><button id="songToolsClose" type="button">Cerrar</button></div>
   </dialog>
   <nav class="tabs" aria-label="Secciones del editor">
-    <button type="button" data-tab="song" aria-selected="true" class="active"><span id="songTabIcon"><svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true"><path d="M22 13L53 6V41H48V14L27 19V48H22Z"/><ellipse cx="17.5" cy="48" rx="10" ry="7" transform="rotate(-18 17.5 48)"/><ellipse cx="43.5" cy="41" rx="10" ry="7" transform="rotate(-18 43.5 41)"/></svg></span>Canción</button>
-    <button type="button" data-tab="states" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Estados</button>
-    <button type="button" data-tab="sheet" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H5v20h14V7zM14 2v6h5M8 15l6-2v5"/><circle cx="7" cy="18" r="2" fill="currentColor"/><circle cx="13" cy="19" r="2" fill="currentColor"/></svg>Lead Sheet</button>
-    <button type="button" data-tab="midi" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3v5m4-5v5M4 8h8v3a4 4 0 0 1-8 0zM8 15v3a3 3 0 0 0 6 0v-1a3 3 0 0 1 6 0v4"/></svg>MIDI</button>
+    <button type="button" data-tab="states" aria-selected="true" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Estados</button>
+    <button type="button" data-tab="sheet" aria-selected="false"><!-- Lucide File Music 0.456.0 — https://github.com/lucide-icons/lucide/blob/0.456.0/icons/file-music.svg
+ISC License
+
+Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+--><svg aria-hidden="true"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M10.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v8.4" />
+  <path d="M8 18v-7.7L16 9v7" />
+  <circle cx="14" cy="16" r="2" />
+  <circle cx="6" cy="18" r="2" />
+</svg>Lead Sheet</button>
+    <button type="button" data-tab="midi" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 22v-3h4v3"/><g fill="currentColor" stroke="none"><circle cx="6" cy="12" r="1.45"/><circle cx="7.8" cy="7.8" r="1.45"/><circle cx="12" cy="6" r="1.45"/><circle cx="16.2" cy="7.8" r="1.45"/><circle cx="18" cy="12" r="1.45"/></g></svg>MIDI</button>
   </nav>
-  <section data-panel="song">
-    <div class="panel-title"><h2>Datos de la canción</h2></div>
-    <div class="grid">
-      <label class="field">Título de la canción<input id="songTitle" maxlength="120"></label>
-      <label class="field">Autor<input id="songAuthor" maxlength="160" placeholder="Artista, ministerio o compositor"></label>
-      <label class="field">Tempo · BPM<input id="songBpm" type="number" min="30" max="300" step="1"></label>
-      <label class="field">Estado inicial<select id="songInitial"></select></label>
-    </div>
-    <div class="song-section-group">
-      <h3>Dirección MIDI</h3>
-      <div class="grid">
-        <label class="field">Banco MIDI CC0<input id="songCC0" type="number" min="0" max="127" placeholder="Sin asignar"></label>
-        <label class="field">Programa MIDI PC<input id="songPC" type="number" min="0" max="127" placeholder="Sin asignar"></label>
-        <label class="field">Banco mostrado en LIVE<input id="songBank" maxlength="24" placeholder="C1"></label>
-      </div>
-      <p class="help">El banco mostrado es una etiqueta programada. La tonalidad se edita en Lead Sheet.</p>
-    </div>
-    <div class="section-footer"><span class="section-save-note" id="songDirty">Sin cambios pendientes</span><button id="songSave" class="primary">Guardar</button></div>
-  </section>
-  <section data-panel="states" hidden>
+  <section data-panel="states">
     <div class="panel-title">
       <h2>Estados</h2>
       <p>Escribe cada nombre una vez. Los estados musicales se alternan; los efectos y expresiones se suman al estado activo. Pulsa Guardar cuando termines.</p>
@@ -409,6 +444,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
           </label>
         </div>
         <p class="help">La referencia patch admite letras, números y guion. No aparece en LIVE ni envía MIDI desde el Editor.</p>
+        <label class="field">Estado inicial<select id="songInitial"></select></label>
         <p id="statesInitialStatus" class="help" role="status"></p>
         <button id="stateMakeInitial" class="small primary">Usar como inicial</button>
       </section>
@@ -451,7 +487,6 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
       <p class="help">Los indicadores representan la configuración prevista, no telemetría del hardware.</p>
     </section>
     </details>
-    <div class="section-footer"><span id="statesDirty" class="section-save-note">Sin cambios pendientes</span><button id="statesSave" class="primary">Guardar</button></div>
   </section>
   <section data-panel="sheet" hidden>
     <div class="section-card">
@@ -459,7 +494,6 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
       <p class="help" id="leadSheetScope"></p>
       <div class="grid">
         <label class="field">Nombre del lead sheet<input id="leadSheetName" maxlength="120"></label>
-        <label class="field">Tonalidad de este lead sheet<input id="songTone" maxlength="20" placeholder="Sol mayor, La menor…"></label>
         <label class="field">Notación<select id="leadNotation"><option value="acordes">Acordes</option><option value="grados">Grados</option></select></label>
       </div>
       <label class="field">Nombre de la nueva variante<input id="newVariantName" maxlength="120" placeholder="Grados — Sol mayor"></label>
@@ -495,9 +529,9 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
         <p class="sheet-helper">Cada barra vertical delimita un compás. Con dos acordes, el reparto es visual; no indica pulsos exactos.</p>
       </section>
     </div>
-    <div class="section-footer"><span id="sheetDirty" class="section-save-note">Sin cambios pendientes</span><button id="sheetSave" class="primary">Guardar</button></div>
   </section>
   <section data-panel="midi" hidden>
+    <div class="section-card"><h3>Dirección MIDI de la canción</h3><div class="grid"><label class="field">Banco MIDI CC0<input id="songCC0" type="number" min="0" max="127" placeholder="Sin asignar"></label><label class="field">Programa MIDI PC<input id="songPC" type="number" min="0" max="127" placeholder="Sin asignar"></label></div></div>
     <div class="panel-title"><h2>Rompecabezas MIDI</h2><p>Asocia pares <b>CC + valor</b> con acciones visuales. El motor no limita las funciones a los 32 botones del Chocolate.</p></div>
     <div class="section-card">
       <div class="sidebar-row"><h3>Matriz del Chocolate · 8 × 4</h3><small>Plantilla opcional</small></div>
@@ -543,15 +577,14 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
       <div id="midiWarnings"></div>
     </div>
     <p class="help">El canal MIDI de recepción se define globalmente en Configuración de LIVE o LAB, no aquí.</p>
-    <div class="section-footer"><span id="midiDirty" class="section-save-note">Sin cambios pendientes</span><button id="midiSave" class="primary">Guardar</button></div>
   </section>
-  <div class="notice" role="status" aria-live="polite" id="editorNotice">Cargando biblioteca…</div>
+  <div class="notice editor-alert" role="status" aria-live="polite" id="editorNotice" hidden></div>
 
 </main>
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
 <input id="catalogFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
-<script type="module" src="./v3.mjs?v=20261128-editor1"></script>
+<script type="module" src="./v3.mjs?v=20261128-editor2"></script>
 </div>
-<nav aria-label="Legal" style="font-size:12px"><a href="../privacy.html">Privacidad</a> · <a href="../terms.html">Condiciones</a> · <a href="../privacy-en.html">Privacy</a> · <a href="../terms-en.html">Terms</a></nav></body>
+</body>
 </html>
