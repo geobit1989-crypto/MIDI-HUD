@@ -1,6 +1,24 @@
 <!doctype html>
 <html lang="es">
 <head>
+<script>
+  // Set before any LIVE markup or external resource can paint.
+  const hudEntryParams = new URLSearchParams(location.search);
+  if (hudEntryParams.get('home') === '1' || hudEntryParams.has('hud_auth_ticket') || hudEntryParams.has('hud_auth_error')) {
+    document.documentElement.setAttribute('data-hud-startup','');
+  }
+</script>
+<style>
+  html,body{background:#03080d}
+  #hud-startup{display:none}
+  html[data-hud-startup] .screen{visibility:hidden}
+  html[data-hud-startup] #hud-startup{
+    position:fixed;inset:0;z-index:1000;display:grid;place-content:center;text-align:center;
+    background:#03080d;color:#fff;font-family:var(--ui-font,system-ui,sans-serif);padding:24px;
+  }
+  #hud-startup h1{margin:0;font-size:clamp(18px,5vmin,40px);letter-spacing:.09em}
+  #hud-startup p{margin:10px 0 0;font-size:14px}
+</style>
 <link rel="icon" type="image/svg+xml" href="./core/brand/midi-hud.svg">
 <link rel="apple-touch-icon" href="./core/brand/apple-touch-icon.png">
   <meta charset="utf-8">
@@ -295,6 +313,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <link rel="stylesheet" href="./live/settings-qa.css?v=20261127-drive7">
 </head>
 <body>
+  <div id="hud-startup" role="status" aria-live="polite"><h1>MIDI HUD</h1><p id="hud-startup-message">Cargando…</p></div>
   <!-- MIDI HUD recibe mensajes para visualizar estados; no envía MIDI al hardware. -->
   <main class="screen" aria-label="MIDI HUD LIVE">
     <section class="lead-sheet" aria-label="Hoja de acordes de Quão Grande É o Meu Deus">
@@ -408,7 +427,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <script type="module">
 import {appStorage as localStorage} from "./core/environment.mjs?v=20261127-drive7";
 import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261127-drive7";
-import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34.mjs?v=20261127-drive7";
+import {resolveLiveSelection,prepareLiveLibrary} from "./core/live-selection-v34.mjs?v=20261128-repertoires1";
 import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261127-drive7";
 import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261127-drive7";
 import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-return8";
@@ -464,11 +483,11 @@ const openHome=installHome({
 });
 let loadedRaw;
 function applyLiveLibrary(next){
- try{engine.updateLibrary(withFullRepertoire(next));}
+ try{engine.updateLibrary(prepareLiveLibrary(next));}
  catch(error){
   if(!safeToRefresh())throw error;
   // Rebuild when the new library lacks the selection from HOME or the demo.
-  const updated=withFullRepertoire(next),selection=resolveLiveSelection(updated,localStorage);
+  const updated=prepareLiveLibrary(next),selection=resolveLiveSelection(updated,localStorage);
   const midiChannel=engine.getState().midiChannel||readSettings(localStorage).midiChannel;
   const replacement=createEngine(updated,{midiChannel,...selection});
   unsubscribeEngine?.();engine=replacement;initialSelection=selection;subscribeEngine();
@@ -636,7 +655,7 @@ function render(){
   // A download may finish while the bundled example is being fetched.
   const latestRaw=readLibrarySource(localStorage);
   if(latestRaw&&latestRaw!==loadedRaw){data=normalizeLibrary(JSON.parse(latestRaw));loadedRaw=latestRaw;usingSavedLibrary=true;}
-  data=withFullRepertoire(data);
+  data=prepareLiveLibrary(data);
   initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
   library=engine.getLibrary();prepare();
@@ -648,8 +667,12 @@ function render(){
   if(oauthSettingsReturn)popup(true);
    else if(new URLSearchParams(location.search).get('home')==='1')showHome();
   else if(initialSelection.missingRequestedRepertoire)popup(true);
+  // Reveal LIVE only after the requested HOME/Settings route is already visible.
+  document.documentElement.removeAttribute('data-hud-startup');
  }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);
   const boot=document.querySelector("#hud-boot-status");if(boot)boot.textContent="Error de inicialización: "+err.message;
+  const startup=document.querySelector("#hud-startup-message");
+  if(startup&&document.documentElement.hasAttribute('data-hud-startup'))startup.textContent="No se pudo iniciar MIDI HUD. Recarga la página. "+err.message;
  }
 })();
 </script>

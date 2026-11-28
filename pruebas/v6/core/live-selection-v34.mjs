@@ -1,16 +1,7 @@
 import {normalizeLibrary} from './engine-v1.mjs';
-import {QA_LIBRARY_ID} from './environment.mjs?v=20261127-drive5';
 
-export function withFullRepertoire(source){
- const library=normalizeLibrary(source);
- let id='hud-full-repertoire';
- while(library.repertoires.some(rep=>rep.id===id))id+='-local';
- const songIds=library.songs.filter(song=>!song.catalog?.archived).map(song=>song.id);
- const onlyRepertoire=library.repertoires.length===1?library.repertoires[0]:null;
- if(library.libraryId===QA_LIBRARY_ID&&onlyRepertoire?.songIds.length===songIds.length&&songIds.every(songId=>onlyRepertoire.songIds.includes(songId)))return library;
- library.repertoires.push({id,name:'Repertorio completo',songIds});
- return library;
-}
+/** LIVE usa únicamente los repertorios reales de la biblioteca; no añade listas virtuales. */
+export function prepareLiveLibrary(source){return normalizeLibrary(source);}
 /** Selección local de LIVE; no modifica la biblioteca ni los ajustes MIDI. */
 export const LIVE_SELECTION_KEY='midiHudLiveSelectionV34';
 export function resolveLiveSelection(library,storage,search=''){
