@@ -4,7 +4,7 @@ import {migrateLeadSheets} from '../core/lead-sheet-variants.mjs';
  * MIDI HUD / Editor visual - operaciones puras sobre la biblioteca v2.
  * No altera hardware ni mezcla la configuracion de canal global con canciones.
  */
-import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261016-patch2";
+import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261128-library2";
 import {normalizeSlot} from "../core/module-visuals.mjs?v=20261016-overlays1";
 
 const copy=x=>JSON.parse(JSON.stringify(x));
@@ -117,7 +117,7 @@ export function deleteSong(db,repertoireId,songId){
  if(rep.leadSheetIds)delete rep.leadSheetIds[songId];
 }
 export function deleteRepertoire(db,repertoireId){
- requireThat(db.repertoires.length>1,"debe existir al menos un repertorio");
+ requireThat(db.catalogVersion===1||db.repertoires.length>1,"debe existir al menos un repertorio");
  const rep=locate(db.repertoires,repertoireId,"repertorio");
  db.repertoires=db.repertoires.filter(r=>r.id!==repertoireId);
  if(db.catalogVersion!==1)for(const id of rep.songIds)removeOrphanSong(db,id);

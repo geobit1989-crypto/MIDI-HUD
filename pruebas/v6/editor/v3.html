@@ -191,6 +191,33 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 .drawer-close{background:#26475b;font-weight:700;min-height:35px}
 @media(prefers-reduced-motion:reduce){.workspace>.side{transition:none}}
 @media(max-width:700px){.workspace>.side{width:min(350px,calc(100vw - 20px))}}
+#editorSidebar{background:#03080d;border-color:#253447}
+#editorSidebar [hidden]{display:none!important}
+#editorSidebar h2,#editorSidebar h3{margin:0}
+#editorSidebar h2{flex:1}
+#editorSidebar button,#editorSidebar summary{min-height:44px}
+#editorSidebar button:not(.primary){background:#101a27;border-color:#334155}
+.lib-nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 18px}
+.lib-nav button{display:flex;flex-direction:column;align-items:center;gap:8px}
+.lib-nav svg{width:30px;height:30px;display:block}
+#editorSidebar .lib-nav button[aria-pressed=true]{border-color:#5bd6f0;background:#18283d}
+.lib-search{display:flex;gap:7px;align-items:center;margin-bottom:12px}
+.lib-search input,.lib-search select{flex:1;min-width:0}
+.lib-menu{position:relative;flex:0 0 auto}
+.lib-menu summary{display:grid;place-items:center;list-style:none;cursor:pointer;padding:5px 12px;min-width:44px;border:1px solid #334155;border-radius:9px;background:#101a27;font-size:19px}
+.lib-menu summary::-webkit-details-marker{display:none}
+.lib-options{position:absolute;right:0;top:100%;min-width:185px;max-width:80vw;z-index:3;background:#101a27;border:1px solid #435164;border-radius:9px;padding:5px;box-shadow:0 8px 20px #0009}
+.lib-options button,.lib-options label{display:block;width:100%;text-align:left;margin:2px 0}
+#editorSidebar .song-list{max-height:none;overflow:visible;margin:8px 0 14px}
+#editorSidebar .song-row{background:#101a27;border:1px solid #263447;padding:4px;gap:5px}
+#editorSidebar .song-row.current{background:#182d48;border-color:#507bef}
+#editorSidebar .song-row>button{background:transparent;border:0;flex:1;min-width:0}
+.lib-grip{font-size:20px;color:#a6b3c2;cursor:grab;padding:6px}
+.lib-picker-row{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;gap:8px}
+#editorSidebar .lib-picker-row[aria-pressed=true]{background:#182d48;border-color:#507bef}
+.lib-number{min-width:25px;text-align:center;border:1px solid #64748b;border-radius:50%;padding:2px 4px}
+.lib-picker-row[aria-pressed=true] .lib-number{background:#305ff3;color:white;border-color:#305ff3}
+.lib-confirm{position:sticky;bottom:0;width:100%}
 </style>
 </head>
 <body>
@@ -206,8 +233,6 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
      <span class="status-chip" id="lastConfirmedSave" title="Fecha y hora del último guardado confirmado">Último guardado: —</span>
      <button type="button" id="saveAll" class="primary">Guardar</button>
     <button type="button" id="undo" title="Recuperar el último guardado anterior">Deshacer cambio</button>
-    <button type="button" id="importBtn">Importar</button>
-    <button type="button" id="exportBtn" class="primary">Exportar JSON</button>
     <span id="cloudSync"></span>
     <button type="button" id="midiLinkBtn" class="primary">Enlace para navegador MIDI</button>
     <a href="../index.html">Inicio</a>
@@ -216,21 +241,16 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </header>
 <button type="button" id="libraryBackdrop" hidden aria-label="Cerrar biblioteca"></button>
 <div class="workspace">
-<aside class="side" id="editorSidebar" aria-label="Biblioteca de repertorios y canciones" aria-hidden="true" inert>
-  <div class="sidebar-row"><span class="heading">Biblioteca</span><button type="button" class="drawer-close small" id="libraryClose" aria-label="Cerrar biblioteca">Cerrar ×</button></div>
-  <div class="sidebar-row"><span class="heading">Repertorio</span></div>
-  <label class="field" for="repSelect">Repertorio activo
-    <select id="repSelect"></select>
-  </label>
-  <div class="ctrlrow">
-    <button id="repAdd" class="small" title="Nuevo repertorio">+ Repertorio</button>
-    <button id="repDuplicate" class="small">Duplicar lista</button>
-    <button id="repRename" class="small" title="Renombrar repertorio">Renombrar</button>
-    <button id="repRemove" class="small danger" title="Eliminar repertorio">Eliminar</button>
-  </div>
-  <form id="repForm" class="rep-inline-form" hidden>
-    <div class="heading" id="repFormHeading">Crear repertorio</div>
-    <label class="field" for="repNameInput">Nombre del repertorio
+<aside class="side" id="editorSidebar" aria-label="Biblioteca" aria-hidden="true" inert>
+<div class="sidebar-row"><h2>Biblioteca</h2><details class="lib-menu" id="libraryTools"><summary aria-label="Opciones de biblioteca">⋯</summary><div class="lib-options">
+<button id="importBtn" type="button">Importar JSON</button><button id="exportBtn" type="button">Exportar JSON</button><button id="showCatalogImport" type="button">Importar Sheets/CSV</button><button id="showRecovery" type="button">Recuperar datos</button></div></details><button id="libraryClose" type="button" aria-label="Cerrar biblioteca">×</button></div>
+<nav id="libraryNavigation" class="lib-nav" aria-label="Biblioteca"><button id="libraryRepertoire" type="button"><span id="repertoireIcon"></span>Repertorio</button><button id="libraryLists" type="button"><span id="listsIcon"></span>Listas</button></nav>
+<section id="libraryMaster" hidden><div class="sidebar-row"><h3>Repertorio</h3><details class="lib-menu"><summary aria-label="Crear canción">+</summary><div class="lib-options"><button id="masterNew" type="button">Nueva canción</button><button id="songAddSig" type="button">Plantilla SIG</button></div></details></div>
+<div class="lib-search"><input id="masterSearch" type="search" placeholder="Buscar canción" aria-label="Buscar canción"><details class="lib-menu"><summary aria-label="Filtros">☰</summary><div class="lib-options"><label><input id="masterArchived" type="checkbox"> Mostrar archivadas</label></div></details></div><small id="masterCounter"></small><div id="masterResults" class="song-list" role="list"></div></section>
+<section id="libraryListView"><div class="sidebar-row"><h3>Listas</h3><button id="repAdd" type="button" aria-label="Nueva lista">+</button></div><div class="lib-search"><select id="repSelect" aria-label="Lista activa"></select><details class="lib-menu" id="repOptions"><summary aria-label="Opciones de lista">⋯</summary><div class="lib-options"><button id="repRename">Renombrar</button><button id="repDuplicate">Duplicar</button><button id="repRemove" class="danger">Eliminar</button></div></details></div>
+<form id="repForm" class="rep-inline-form" hidden>
+    <div class="heading" id="repFormHeading">Crear lista</div>
+    <label class="field" for="repNameInput">Nombre del lista
       <input id="repNameInput" type="text" maxlength="80" autocomplete="off" required placeholder="Ej. Worship / Rock">
     </label>
     <div class="ctrlrow">
@@ -238,33 +258,14 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
       <button id="repFormCancel" type="button" class="small ghost">Cancelar</button>
     </div>
   </form>
-  <hr>
-  <div class="sidebar-row"><span class="heading">Canciones</span><small id="songCounter"></small></div>
-  <div id="songList" class="song-list" role="list"></div>
-  <div class="ctrlrow">
-    <button id="songAdd" class="small primary">+ Canción</button>
-    <button id="songAddSig" class="small" title="Crear canción con Clean, Ambient, Drive y Solo">+ Plantilla SIG</button>
-    <button id="songCopy" class="small">Otro lead sheet</button>
-    <button id="songRemove" class="small danger">Quitar de lista</button>
-    <button id="songUp" class="small" title="Subir canción">↑</button>
-    <button id="songDown" class="small" title="Bajar canción">↓</button>
-  </div>
-  <hr>
-  <div class="help">Los cambios quedan en este navegador y en esta dirección web. Exporta JSON para conservar una copia.</div>
-  <section class="recovery-card" aria-label="Recuperación de repertorios anteriores">
-    <h3>Recuperar repertorios</h3>
+<div class="sidebar-row"><small id="songCounter"></small><button id="startAddSongs" class="primary small" type="button">+ Añadir canciones</button></div><div id="songList" class="song-list" role="list"></div></section>
+<section id="librarySelection" hidden><div class="sidebar-row"><button id="cancelAddSongs" aria-label="Cancelar selección" type="button">←</button><h3>Añadir canciones</h3></div><input id="pickerSearch" type="search" placeholder="Buscar canción" aria-label="Buscar canción"><div id="pickerResults" class="song-list"></div><p id="pickerNotice" role="status" hidden></p><button id="confirmAddSongs" class="primary lib-confirm" disabled>Añadir (0)</button></section>
+<section id="libraryMaintenance" hidden><button id="backLibrary" type="button">← Biblioteca</button><div id="recoveryPanel" hidden><section class="recovery-card" aria-label="Recuperación de repertorios anteriores">
+    <h3>Recuperar datos</h3>
     <p class="help">Busca guardados anteriores de este mismo navegador y sitio. No modifica los datos hasta que decidas recuperar uno.</p>
     <button type="button" id="scanOld" class="small">Buscar guardados anteriores</button>
     <div id="recoveryResults" role="status" aria-live="polite" class="help"></div>
-  </section>
-  <details class="catalog-import" open>
-    <summary>Repertorio maestro · canciones</summary>
-    <label class="field">Buscar título o variante<input id="masterSearch" type="search"></label>
-    <label><input id="masterArchived" type="checkbox"> Mostrar archivadas</label>
-    <button id="masterNew" class="small">+ Canción maestra</button>
-    <div id="masterResults" class="song-list" role="list"></div>
-  </details>
-  <details class="catalog-import" id="catalogDetails">
+  </section></div><div id="importPanel" hidden><details class="catalog-import" id="catalogDetails">
     <summary>Importar canciones · Sheets/CSV</summary>
     <p class="help">En Google Sheets copia las columnas <b>Canción</b> y <b>Autor</b>, incluida la fila de encabezados. Pega la tabla aquí, o importa el CSV descargado.</p>
     <label class="field" for="catalogPaste">Canciones y autores
@@ -274,18 +275,16 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
       <button type="button" id="catalogClipboard" class="small">Leer portapapeles</button>
       <button type="button" id="catalogFileBtn" class="small">Abrir CSV</button>
     </div>
-    <button type="button" id="catalogImport" class="small primary">Importar al repertorio activo</button>
+    <button type="button" id="catalogImport" class="small primary">Importar canciones</button>
     <p class="help" id="catalogNotice" role="status" aria-live="polite">Solo se importan los nombres y autores. Las canciones, estados y lead sheets existentes se conservan.</p>
-  </details>
-  <hr>
-  <div class="help">Los cambios quedan en este navegador. Puedes exportar el repertorio para conservar una copia y abrirlo en otro dispositivo.</div>
+  </details></div></section>
 </aside>
 <main class="main">
   <div class="main-head">
     <div><span class="heading" id="repHeading">Repertorio</span><h2 id="songHeading">Selecciona una canción</h2>
       <p id="songSummary"></p></div>
   </div>
-  <div id="emptyPlaylist" class="empty" hidden>Esta lista está vacía. Busca una versión preparada en el catálogo y pulsa Añadir.</div>
+  <div id="emptyPlaylist" class="empty" hidden>Esta lista está vacía. Añade canciones desde Biblioteca.</div>
   <section id="sharedControls" class="section-card" hidden>
     <p id="sharedWarning" class="help"></p><button id="versionSave" class="small primary">Guardar cambios compartidos</button><details><summary>Historial y notas</summary>
     <div class="ctrlrow"><button id="versionArchive" class="small">Archivar</button></div>
@@ -489,7 +488,7 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
 <input id="catalogFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
-<script type="module" src="./v3.mjs?v=20261127-drive7"></script>
+<script type="module" src="./v3.mjs?v=20261128-library2"></script>
 </div>
 <nav aria-label="Legal" style="font-size:12px"><a href="../privacy.html">Privacidad</a> · <a href="../terms.html">Condiciones</a> · <a href="../privacy-en.html">Privacy</a> · <a href="../terms-en.html">Terms</a></nav></body>
 </html>

@@ -433,9 +433,9 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <!-- Integracion funcional v1: el diseno de LIVE v0.3 permanece sin alteraciones estructurales. -->
 <script type="module">
 import {appStorage as localStorage} from "./core/environment.mjs?v=20261127-drive7";
-import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261127-drive7";
-import {resolveLiveSelection,prepareLiveLibrary} from "./core/live-selection-v34.mjs?v=20261128-repertoires1";
-import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261127-drive7";
+import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261128-library2";
+import {resolveLiveSelection,prepareLiveLibrary} from "./core/live-selection-v34.mjs?v=20261128-library2";
+import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261128-library2";
 import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261127-drive7";
 import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-return8";
 import {readOAuthSettingsReturn} from "./core/persistent-drive-auth.mjs?v=20261127-return8";
@@ -446,7 +446,7 @@ import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {installMidiDevices} from "./live/midi-devices.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261127-drive7";
 import {installLiveViewMode} from "./live/view-mode.mjs";
-import {createSettings,installChannelPicker} from "./live/settings-qa.mjs";
+import {createSettings,installChannelPicker} from "./live/settings-qa.mjs?v=20261128-library2";
 const SETTINGS=readSettings(localStorage);
 const $=s=>document.querySelector(s);
 let engine,library,midiPort,libraryPicker,initialSelection,usingSavedLibrary=false;
@@ -633,7 +633,7 @@ function render(){
  const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
  renderLiveModules(document.querySelector(".switch-grid"),vm);
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
- dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261127-drive7&repertoire='+
+ dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261128-library2&repertoire='+
   encodeURIComponent(vm.repertoire.id)+'&song='+encodeURIComponent(vm.song.id);
 }
 (async()=>{

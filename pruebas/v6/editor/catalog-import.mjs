@@ -3,8 +3,8 @@ import {appStorage as localStorage,appSessionStorage as sessionStorage} from "..
  * Importación no destructiva del catálogo de canciones/autor.
  * No usa red, DOM ni localStorage; seguro para pruebas fuera del navegador.
  */
-import {newSong} from "./editor-model.mjs?v=20261018-catalog2";
-import {validateLibrary} from "../core/engine-v1.mjs?v=20261018-catalog2";
+import {newSong} from "./editor-model.mjs?v=20261128-library2";
+import {validateLibrary} from "../core/engine-v1.mjs?v=20261128-library2";
 
 const copy=value=>JSON.parse(JSON.stringify(value));
 const normalized=value=>String(value??"").normalize("NFD")
@@ -73,10 +73,10 @@ export function parseSongCatalog(text){
 export function mergeSongCatalog(library,repertoireId,entries){
  const db=copy(library);
  const rep=db.repertoires.find(x=>x.id===repertoireId);
- if(!rep)throw Error("Repertorio de destino desconocido.");
+ if(!rep&&!(repertoireId==null&&db.catalogVersion===1))throw Error("Repertorio de destino desconocido.");
  if(!Array.isArray(entries)||!entries.length)throw Error("No hay canciones que importar.");
  const stats={read:entries.length,added:0,linked:0,authorsCompleted:0,unchanged:0};
- const originalIds=new Set(rep.songIds);
+ const originalIds=new Set(rep?rep.songIds:db.songs.map(song=>song.id));
  for(const entry of entries){
   const title=String(entry.title||"").trim(),author=String(entry.author||"").trim();
   if(!title)throw Error("Canción sin título.");
@@ -95,7 +95,7 @@ export function mergeSongCatalog(library,repertoireId,entries){
    if(entry.midiAddress)found.midiAddress=copy(entry.midiAddress);
    if(entry.url)found.url=entry.url;
    if(originalIds.has(found.id))stats.unchanged++;
-   else{rep.songIds.push(found.id);originalIds.add(found.id);stats.linked++;}
+   else if(rep){rep.songIds.push(found.id);originalIds.add(found.id);stats.linked++;}
    continue;
   }
   const id=newSong(db,repertoireId,title);
