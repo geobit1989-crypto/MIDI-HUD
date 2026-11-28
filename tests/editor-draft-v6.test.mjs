@@ -16,14 +16,14 @@ function fixture(){
  return {libraryId:'test-v6',revision:1,updatedAt:'2026-10-24T10:00:00.000Z',
   repertoires:[{id:'rep',songIds:['song1','song2']}],
   songs:[
-   {id:'song1',title:'Clean',leadSheets:[{id:'sheet1',name:'Principal',notation:'americano',leadSheet:'| C |'}]},
-   {id:'song2',title:'Ambient',leadSheets:[{id:'sheet2',name:'Principal',notation:'americano',leadSheet:'| D |'}]}
+   {id:'song1',title:'Clean',stateIds:[],leadSheets:[{id:'sheet1',name:'Principal',notation:'americano',leadSheet:'| C |'}]},
+   {id:'song2',title:'Ambient',stateIds:[],leadSheets:[{id:'sheet2',name:'Principal',notation:'americano',leadSheet:'| D |'}]}
   ],states:[],bindings:[]};
 }
 function session(storage,committedLibrary=fixture(),overrides={}){
  const elements=new Map();
  const document={getElementById(id){
-  if(!elements.has(id))elements.set(id,{textContent:'',style:{},disabled:false,classList:{toggle(){}}});
+  if(!elements.has(id))elements.set(id,{textContent:'',style:{},disabled:false,setAttribute(k,v){this[k]=v;},classList:{toggle(){}}});
   return elements.get(id);
  }};
  const window={dispatchEvent(){}};
@@ -33,7 +33,7 @@ function session(storage,committedLibrary=fixture(),overrides={}){
   readLibrarySource:()=>storage.getItem('hudLibraryV34'),
   replaceLibrary:(s,next)=>{s.setItem('hudLibraryV34',JSON.stringify(next));return next;},
   migrateCatalog:x=>x,validateLibrary:()=>{},recordCatalogChanges:()=>{},
-  syncDefaultLeadSheet:()=>{},
+  syncDefaultLeadSheet:()=>{},versionLabel:s=>s.title,
   formatLeadSheetText:x=>x||'',
   prepareLeadSheetSave:async source=>({leadSheet:source,chordNotation:'americano'}),
   prepareLeadSheetText:(_old,source)=>({leadSheet:source,errors:[]}),...overrides

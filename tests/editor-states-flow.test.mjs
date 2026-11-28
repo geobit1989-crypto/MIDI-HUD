@@ -597,18 +597,16 @@ test('crear Delay como efecto configura su encendido sin crear un estado musical
  t.elements.get('moduleGrid').children[0].onclick();
  assert.equal(t.elements.get('moduleActivation').hidden,true);
 });
-test('el enlace MIDI guarda el borrador y traslada prueba 1 sin descargar archivos JSON',async()=>{
+test('el enlace LIVE conserva selección y no confirma automáticamente el borrador; Guardar sigue explícito',async()=>{
  const t=setup({prepare(db,song){db.repertoires.push({id:'prueba-1',name:'prueba 1',songIds:[song.id]});}});
  t.context.api.useRepertoire('prueba-1');t.context.api.updateTab('states');
  t.elements.get('moduleName').value='Intro nueva';t.elements.get('moduleName').oninput();
- await t.elements.get('midiLinkBtn').onclick();
- assert.equal(t.snapshot().hasDraft,false);assert.equal(t.elements.get('midiLinkBtn').disabled,false);
+ assert.equal(t.snapshot().hasDraft,true);
+ assert.equal(t.elements.has('midiLinkBtn'),false);
  assert.equal(t.downloads.length,0);
- const dialog=t.context.document.body.children.at(-1);assert.equal(dialog.open,true);
- await dialog.children.at(-1).children[0].onclick();
- const url=new URL(t.copiedLinks[0]),packet=await transfer.decodeLibraryTransfer(url.hash);
- assert.equal(url.searchParams.get('repertoire'),'prueba-1');assert.equal(packet.repertoireId,'prueba-1');
- assert.deepEqual(packet.library,JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)));
- assert.equal(packet.library.states.find(st=>st.id===t.snapshot().activeState).name,'Intro nueva');
  assert.equal(new URL(t.elements.get('liveLink').href,t.context.window.location.href).searchParams.get('repertoire'),'prueba-1');
+ await t.elements.get('saveAll').onclick();
+ assert.equal(t.snapshot().hasDraft,false);
+ const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY));
+ assert.equal(saved.states.find(st=>st.id===t.snapshot().activeState).name,'Intro nueva');
 });
