@@ -11,8 +11,9 @@
     <application android:label="MIDI HUD" android:icon="@drawable/ic_hud" android:allowBackup="false"
         android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.NoActionBar"
         android:supportsRtl="true">
-        <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
+        <activity android:name=".MainActivity" android:launchMode="singleTask" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+            <intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="io.midihud.app.androidqa" android:host="oauth" android:path="/complete"/></intent-filter>
         </activity>
     </application>
 </manifest>
