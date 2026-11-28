@@ -273,3 +273,44 @@ test("quitar última lista conserva canciones y permite crear otra",async()=>{
  t.elements.get('repAdd').onclick();t.elements.get('repNameInput').value='Domingo';t.elements.get('repForm').listeners.submit({preventDefault(){}});
  assert.equal(t.snapshot().working.repertoires[0].name,'Domingo');
 });
+
+
+test('Eliminar del Repertorio: confirmar conserva borrador, quita referencias de todas las listas y persiste al guardar',async()=>{
+ const t=setup({prepare(db,song,state){
+  db.repertoires.push({id:'extra-list',name:'Otra lista',songIds:[song.id]});
+  db.bindings.push({cc:119,value:127,actions:[{type:'SELECT_SONG',songId:song.id},{type:'ACTIVATE_STATE',stateId:state.id}]});
+ }});
+ const id=t.songId,before=t.snapshot().committed;
+ t.context.api.render();
+ const row=t.elements.get('masterResults').children.find(row=>row.children[0].textContent==='Prueba');
+ assert.ok(row);
+ const menu=row.children[1].children[1];
+ const remove=menu.children.find(btn=>btn.textContent==='Eliminar');assert.ok(remove);
+ remove.click();
+ assert.equal(t.elements.get('deleteSongDialog').open,true);
+ assert.match(t.elements.get('deleteSongUsage').textContent,/Otra lista/);
+ t.elements.get('deleteSongCancel').click();
+ assert.deepEqual(t.snapshot().working,before);
+ remove.click();t.elements.get('deleteSongConfirm').click();
+ const staged=t.snapshot();
+ assert.equal(staged.hasDraft,true);assert.equal(staged.committed.songs.some(s=>s.id===id),true);
+ assert.equal(staged.working.songs.some(s=>s.id===id),false);
+ assert.equal(staged.working.repertoires.some(r=>r.songIds.includes(id)),false);
+ assert.equal(staged.working.states.some(s=>s.songId===id),false);
+ assert.equal(staged.working.bindings.some(b=>b.cc===119),false);
+ assert.equal(staged.working.repertoires.length,before.repertoires.length);
+ assert.equal(staged.working.songs.length,before.songs.length-1);
+ assert.doesNotThrow(()=>engine.validateLibrary(staged.working));
+ await t.elements.get('saveAll').onclick();
+ assert.equal(t.snapshot().hasDraft,false);assert.equal(t.snapshot().committed.songs.some(s=>s.id===id),false);
+ assert.equal(JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)).songs.some(s=>s.id===id),false);
+});
+test('Eliminar del Repertorio preserva integridad y bloquea la última canción',()=>{
+ const t=setup();
+ const db=t.snapshot().working;
+ for(const song of [...db.songs])if(song.id!==t.songId)model.deleteCatalogSong(db,song.id);
+ const before=JSON.stringify(db);
+ assert.throws(()=>model.deleteCatalogSong(db,t.songId),/última canción/);
+ assert.equal(JSON.stringify(db),before);
+ assert.doesNotThrow(()=>engine.validateLibrary(db));
+});

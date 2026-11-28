@@ -84,6 +84,27 @@ try{
  assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getViewModel()),before);
  await page.screenshot({path:'build/browser/live-portrait.png',fullPage:true});
  await page.setViewportSize({width:844,height:390});await page.screenshot({path:'build/browser/live-landscape.png',fullPage:true});
+ // Exercise the real catalogue menu and native confirmation in the browser.
+ await page.goto('http://127.0.0.1:8766/editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
+ await page.setViewportSize({width:390,height:844});
+ await page.locator('#libraryToggle').click();await page.locator('#libraryRepertoire').click();
+ const row=page.locator('#masterResults .song-row').first();
+ const name=await row.locator(':scope > button').innerText();
+ await row.locator('summary').click();await row.getByRole('button',{name:'Editar',exact:true}).click();
+ assert.equal(await page.locator('#songHeading').innerText(),name);
+ await page.locator('#libraryToggle').click();
+ const item=page.locator('#masterResults .song-row').filter({has:page.getByRole('button',{name,exact:true})}).first();
+ await item.locator('summary').click();await item.getByRole('button',{name:'Eliminar',exact:true}).click();
+ assert.equal(await page.locator('#deleteSongDialog').isVisible(),true);
+ await page.locator('#deleteSongCancel').click();
+ assert.equal(await item.count(),1);
+ const beforeDelete=await page.evaluate(()=>MIDIHUD_EDITOR.getLibrary().songs.length);
+ await item.locator('summary').click();await item.getByRole('button',{name:'Eliminar',exact:true}).click();
+ await page.locator('#deleteSongConfirm').click();
+ assert.equal(await page.locator('#deleteSongDialog').isVisible(),false);
+ assert.equal(await page.evaluate(()=>MIDIHUD_EDITOR.getLibrary().songs.length),beforeDelete);
+ await page.locator('#saveAll').click();await page.waitForFunction(()=>!MIDIHUD_EDITOR.hasDraft());
+ assert.equal(await page.evaluate(()=>MIDIHUD_EDITOR.getLibrary().songs.length),beforeDelete-1);
  assert.deepEqual(errors,[]);
  console.log('Browser integration passed: global menu (LIVE, Ajustes, Historial), song identification, three tabs, draft reload, three exit choices, global save/reload, empty playlist, shared song, degree variant/key, LIVE snapshot, portrait/landscape, no JavaScript errors.');
 }finally{await browser?.close();server.kill();}
