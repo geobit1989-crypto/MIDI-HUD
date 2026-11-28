@@ -18,3 +18,6 @@ El usuario rechaza cambiar Chrome por Edge y crear un perfil temporal. El histor
 ## Retorno de Ajustes web
 
 Prueba del usuario: Inicio → Ajustes → Google terminaba en LIVE, porque el callback vuelve a v03.html sin estado de navegación. Se conserva el origen HOME/LIVE dentro del registro local de prueba OAuth existente, limitado a diez minutos, al pathname esperado y a callbacks de autorización/cancelación. Se lee antes de que restore consuma el registro; se abre Ajustes y su cierre recupera el origen. No se cambia el Worker, el destino autorizado, los datos ni el flujo nativo. Prueba unitaria añadida para ambos orígenes, cancelación, almacenamiento alternativo, expiración y ruta incorrecta. Aceptación web real pendiente.
+
+## Android QA (28/11/2026)
+Se añade retorno fijo io.midihud.app.androidqa://oauth/complete limitado al origen Android, actividad singleTask y apertura mediante Custom Tabs cuando el navegador lo admite. El retorno no transporta credenciales; se mantiene el intercambio por prueba y polling existente. Biblioteca y sesiones intactas. Requiere desplegar Worker compatible antes de autorizar con el APK nuevo. Pendientes CI y prueba física de retorno, cancelación y sincronización; el navegador puede conservar su pestaña según implementación.
