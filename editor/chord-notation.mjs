@@ -20,7 +20,7 @@ export function scanNotation(source){
  String(source).split(/\r?\n/).forEach((line,li)=>{
   if(/^\s*[A-Z]\s*[-–—]\s*/i.test(line)||!line.trim().startsWith('|'))return;
   const body=line.replace(/\|:/g,'|').replace(/:\|/g,'|');
-  for(const part of body.split('|'))for(const token of part.trim().split(/\s+/).filter(x=>x&&x!=='/')){
+  for(const part of body.split('|'))for(const token of part.trim().split(/\s+/).filter(x=>x&&!['/','%','.'].includes(x))){
    const p=chordParts(token);if(!p)invalid.push({line:li+1,token});else p.families.forEach(x=>families.add(x));
   }
  });
@@ -30,6 +30,6 @@ export function convertSheet(source,to){
  if(!['latino','americano'].includes(to))throw Error('Sistema de cifrado desconocido.');
  return String(source).split(/(\r?\n)/).map(line=>{
   if(!line.trim().startsWith('|'))return line;
-  return line.replace(/[^\s|:]+/g,t=>t==='/'?t:convertChord(t,to));
+  return line.replace(/[^\s|:]+/g,t=>['/','%','.'].includes(t)?t:convertChord(t,to));
  }).join('');
 }

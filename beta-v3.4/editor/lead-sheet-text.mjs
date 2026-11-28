@@ -48,17 +48,19 @@ export function parseLeadSheetText(input){
     }
     const initial=current.bars.length;
     for(let i=0;i<chunks.length;i++){
-      const text=chunks[i],bar=initial+i+1,repeat=text==="/";
+      const text=chunks[i],bar=initial+i+1,repeat=text==="/"||text==="%";
       if(bar>32)problem(errors,lineNo,"Se admiten hasta 32 compases por sección.",current.letter,bar);
       if(repeat&&bar===1)
         problem(errors,lineNo,"/ no puede ser el primer compás de una sección.",current.letter,bar);
       const chords=repeat?[]:text.split(/\s+/);
-      if(chords.length>2)problem(errors,lineNo,"Máximo dos acordes por compás.",current.letter,bar);
+      const explicit=chords.includes(".")||chords.length===4;
+      if(explicit?chords.length!==4:chords.length>2)problem(errors,lineNo,"Usa cuatro posiciones con puntos o la abreviatura de uno o dos acordes.",current.letter,bar);
       for(const chord of chords){
-        if(!chordParts(chord)&&!chordPattern.test(chord))
+        if(chord!=="."&&!chordParts(chord)&&!chordPattern.test(chord))
           problem(errors,lineNo,"Acorde «"+chord+"» inválido. Usa A–G, #/b opcional y m opcional, o grados I–VII / 1–7 escritos manualmente.",current.letter,bar);
       }
       const beats=repeat?["/","","",""]:
+        explicit?chords.map(chord=>chord==="."?"":chord):
         chords.length===2?[chords[0],"",chords[1],""]:[chords[0]||"","","",""];
       current.bars.push(beats);
     }
@@ -99,7 +101,10 @@ export function prepareLeadSheetText(existing,input){
 function compactBar(bar){
   if(!Array.isArray(bar))return "";
   if(bar[0]==="/"&&bar.slice(1).every(x=>!x))return "/";
-  return bar.filter(Boolean).join(" ");
+  const occupied=bar.map((x,i)=>x?i:-1).filter(i=>i>=0);
+  if(occupied.length===1&&occupied[0]===0)return bar[0];
+  if(occupied.length===2&&occupied[0]===0&&occupied[1]===2)return bar[0]+" "+bar[2];
+  return bar.map(x=>x||".").join(" ");
 }
 /** Reconstruye texto editable sin destruir partituras guardadas. */
 export function formatLeadSheetText(leadSheet){
