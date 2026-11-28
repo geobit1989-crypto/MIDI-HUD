@@ -27,8 +27,8 @@
     .hud-home[open][data-entry-fade] > *{animation:hud-home-enter 400ms ease-out both}
   }
 </style>
-<link rel="icon" type="image/svg+xml" href="./core/brand/midi-hud.svg">
-<link rel="apple-touch-icon" href="./core/brand/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="./core/brand/midi-hud.svg?v=20261128-violet1">
+<link rel="apple-touch-icon" href="./core/brand/apple-touch-icon.png?v=20261128-violet1">
 <meta name="midi-hud-build" content="v8.2-unified-library-qa-drive7">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#03080d">
@@ -441,7 +441,7 @@ import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-return8";
 import {readOAuthSettingsReturn} from "./core/persistent-drive-auth.mjs?v=20261127-return8";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261127-drive7";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261127-drive7";
-import {installHome} from "./live/home-qa.mjs?v=20261127-drive7";
+import {installHome} from "./live/home-qa.mjs?v=20261128-violet1";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {installMidiDevices} from "./live/midi-devices.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261127-drive7";
@@ -633,7 +633,7 @@ function render(){
  const boot=document.querySelector("#hud-boot-status");if(boot)boot.hidden=true;
  renderLiveModules(document.querySelector(".switch-grid"),vm);
  document.querySelector(".screen")?.setAttribute("data-preview",String(vm.isPreview));
- dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261128-library2&repertoire='+
+ dialog.querySelector('#hud-editor-link').href='./editor/v3.html?v=20261128-violet1&repertoire='+
   encodeURIComponent(vm.repertoire.id)+'&song='+encodeURIComponent(vm.song.id);
 }
 (async()=>{
