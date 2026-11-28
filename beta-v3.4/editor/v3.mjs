@@ -1,4 +1,4 @@
-import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor5";
+import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor6";
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive7";
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
@@ -6,7 +6,7 @@ import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} fro
 import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-library2";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261128-library2";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive7";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor5";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor6";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261127-drive7";
 import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
@@ -20,7 +20,7 @@ import {
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
  addConfiguredModule,renameModule,setModulePurpose,modulePurpose,deleteSelectedModule,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261128-editor5";
+} from "./editor-model.mjs?v=20261128-editor6";
 
 /**
  * Editor MIDI HUD v3
@@ -466,7 +466,7 @@ function showSongTools(kind){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261128-editor5&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261128-editor6&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";
@@ -566,7 +566,7 @@ function layoutModuleGrid(reveal=false){
  const slots=song.displaySlots||[],tiles=Array.from(area.children);
  if(modulePageSong!==song.id){modulePage=0;modulePageSong=song.id;}
  const width=area.clientWidth||0,height=area.clientHeight||0;
- if(!width||!height){$("modulePaging").hidden=true;return;}
+ if(!width||!height){$("modulePaging").hidden=true;$("modulePageBar").hidden=true;return;}
  const cols=Math.max(1,Math.min(6,Math.floor(width/132))),rowCapacity=Math.max(1,Math.floor((height+7)/91));
  const pages=[],rows=[];
  if(song.moduleLayout==="manual"){
@@ -596,6 +596,7 @@ function layoutModuleGrid(reveal=false){
   tile.hidden=false;tile.style.gridRow=String(r+1);tile.style.gridColumn=(Math.round(c*span)+1)+" / "+(Math.round((c+1)*span)+1);
  }
  $("modulePaging").hidden=pages.length<=1;
+ $("modulePageBar").hidden=pages.length<=1;
  $("modulePageLabel").textContent=(modulePage+1)+" / "+Math.max(1,pages.length);
  $("modulePagePrev").disabled=modulePage===0;$("modulePageNext").disabled=modulePage>=pages.length-1;
 }
@@ -963,7 +964,7 @@ function render(){
   node.hidden=empty||node.dataset.panel!==activeTab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
  if(!empty&&activeTab==="states")layoutModuleGrid(true);
- if(empty)$("liveLink").href="../v03.html?v=20261128-editor5";
+ if(empty)$("liveLink").href="../v03.html?v=20261128-editor6";
  syncStatus();
 }
 function registerIdentity(){
@@ -1081,6 +1082,7 @@ function register(){
  $("moduleAddClose").onclick=()=>$("moduleAddDialog").close();
  $("moduleLayoutOpen").onclick=()=>$("moduleLayoutDialog").showModal();
  $("moduleLayoutClose").onclick=()=>$("moduleLayoutDialog").close();
+ $("moduleEditOpen").innerHTML=CATALOG_MENU_ICONS.pencil;
  $("moduleEditOpen").onclick=openModuleSettings;
  $("moduleSettingsClose").onclick=()=>$("moduleSettingsDialog").close();
  $("moduleDeleteSelected").onclick=requestModuleDeletion;

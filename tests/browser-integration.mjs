@@ -115,8 +115,24 @@ try{
  // Visual States: exclusive selection and contextual actions.
  await page.locator('[data-tab="states"]').click();
  const stateGrid=page.locator('#moduleGrid');
+ assert.equal(await page.title(),'MIDI HUD · Editor');
+ const assertStatesWidth=async()=>{
+  const sizes=await page.evaluate(()=>({workspace:document.querySelector('.workspace').getBoundingClientRect().width,main:document.querySelector('.workspace>.main').getBoundingClientRect().width}));
+  assert.ok(Math.abs(sizes.workspace-sizes.main)<=1,JSON.stringify(sizes));
+ };
+ await page.setViewportSize({width:737,height:893});
+ await assertStatesWidth();
+ await page.screenshot({path:'build/browser/states-editor-width737.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ await assertStatesWidth();
  await stateGrid.locator('.module-select-tile:visible').first().click();
  assert.equal(await stateGrid.locator('[data-activity="active"]').count(),1);
+ assert.equal(await page.locator('#moduleEditOpen').isVisible(),true);
+ assert.equal(await page.locator('#moduleEditOpen + #moduleAddOpen').count(),1);
+ assert.equal(await page.locator('#moduleEditOpen svg').count(),1);
+ await page.locator('#moduleEditOpen').click();
+ assert.equal(await page.locator('#moduleSettingsDialog').isVisible(),true);
+ await page.locator('#moduleSettingsClose').click();
  const second=stateGrid.locator('.module-select-tile:visible').nth(1);
  if(await second.count()){
   await second.click();
@@ -131,11 +147,13 @@ try{
  await page.locator('#moduleDeleteSelected').click();await page.locator('#moduleDeleteConfirm').click();
  assert.equal(await stateGrid.locator('[data-activity="active"]').count(),0);
  assert.equal(await page.locator('#moduleDeleteSelected').isVisible(),false);
+ assert.equal(await page.locator('#moduleEditOpen').isVisible(),false);
  await page.locator('#moduleLayoutOpen').click();assert.equal(await page.locator('#moduleLayoutDialog').isVisible(),true);await page.locator('#moduleLayoutClose').click();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),true);
  await page.screenshot({path:'build/browser/states-editor-portrait.png',fullPage:true});
  await page.setViewportSize({width:844,height:390});
  await page.waitForFunction(()=>document.documentElement.scrollHeight<=innerHeight+1);
+ await assertStatesWidth();
  await page.screenshot({path:'build/browser/states-editor-landscape.png',fullPage:true});
  assert.deepEqual(errors,[]);
  console.log('Browser integration passed: global menu (LIVE, Ajustes, Historial), song identification, three tabs, draft reload, three exit choices, global save/reload, empty playlist, shared song, degree variant/key, LIVE snapshot, portrait/landscape, no JavaScript errors.');
