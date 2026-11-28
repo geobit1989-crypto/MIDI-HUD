@@ -171,8 +171,10 @@ try{
  assert.equal(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getViewModel().active.repertoireId),'test-empty');
  await page.locator('.topbar .settings').click();
  await settings.locator('summary').filter({hasText:'REPERTORIOS'}).click();
- await settings.getByText('Repertorio completo',{exact:false}).click();
- assert.equal(await settings.getByRole('radio',{name:/Repertorio completo/}).isChecked(),true);
+ assert.equal(await settings.getByRole('radio',{name:/Repertorio completo/}).count(),0);
+ assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getLibrary().repertoires),library.repertoires);
+ await settings.getByText('Worship',{exact:false}).click();
+ assert.equal(await settings.getByRole('radio',{name:/Worship/}).isChecked(),true);
  const account=settings.locator('summary').filter({hasText:'CUENTA'});
  await account.click();
  assert.equal(await settings.getByRole('checkbox',{name:'Sincronización automática'}).isDisabled(),true);
@@ -183,7 +185,7 @@ try{
  await account.click();
  assert.equal(await settings.getByRole('checkbox',{name:'Sincronización automática'}).isChecked(),true);
  assert.equal(await page.evaluate(()=>localStorage.getItem('midiHudTest:midiHudAutoSync')),'on');
- assert.equal(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getViewModel().active.repertoireId),'hud-full-repertoire');
+ assert.equal(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getViewModel().active.repertoireId),'worship-main');
  await page.locator('summary').filter({hasText:'DISPOSITIVOS'}).click();await page.getByText('2',{exact:true}).and(page.locator('.hud-channel-grid span')).click();
  await page.locator('#hud-midi-btn').click();
  await page.locator('#hud-midi-input').selectOption('Chocolate');

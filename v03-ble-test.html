@@ -408,7 +408,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <script type="module">
 import {appStorage as localStorage} from "./core/environment.mjs?v=20261127-drive7";
 import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261127-drive7";
-import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34.mjs?v=20261127-drive7";
+import {resolveLiveSelection,prepareLiveLibrary} from "./core/live-selection-v34.mjs?v=20261128-repertoires1";
 import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261127-drive7";
 import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261127-drive7";
 import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-return8";
@@ -464,11 +464,11 @@ const openHome=installHome({
 });
 let loadedRaw;
 function applyLiveLibrary(next){
- try{engine.updateLibrary(withFullRepertoire(next));}
+ try{engine.updateLibrary(prepareLiveLibrary(next));}
  catch(error){
   if(!safeToRefresh())throw error;
   // Rebuild when the new library lacks the selection from HOME or the demo.
-  const updated=withFullRepertoire(next),selection=resolveLiveSelection(updated,localStorage);
+  const updated=prepareLiveLibrary(next),selection=resolveLiveSelection(updated,localStorage);
   const midiChannel=engine.getState().midiChannel||readSettings(localStorage).midiChannel;
   const replacement=createEngine(updated,{midiChannel,...selection});
   unsubscribeEngine?.();engine=replacement;initialSelection=selection;subscribeEngine();
@@ -636,7 +636,7 @@ function render(){
   // A download may finish while the bundled example is being fetched.
   const latestRaw=readLibrarySource(localStorage);
   if(latestRaw&&latestRaw!==loadedRaw){data=normalizeLibrary(JSON.parse(latestRaw));loadedRaw=latestRaw;usingSavedLibrary=true;}
-  data=withFullRepertoire(data);
+  data=prepareLiveLibrary(data);
   initialSelection=resolveLiveSelection(data,localStorage,window.location.search);
   engine=createEngine(data,{midiChannel:SETTINGS.midiChannel,...initialSelection});
   library=engine.getLibrary();prepare();

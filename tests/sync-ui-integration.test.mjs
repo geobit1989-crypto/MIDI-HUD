@@ -27,7 +27,7 @@ test("LIVE receives shared repertoires without interrupting the current song",()
  assert.match(livePage,/function showHome\(\)\{openHome\(\);refreshLocal\(\)/);
  assert.doesNotMatch(livePage,/await Promise\.race\(\[cloud\.ready/);
  assert.match(syncUI,/if\(mode!=='live'\)onApplied/);
- assert.match(livePage,/engine\.updateLibrary\(withFullRepertoire\(next\)\)/);
+ assert.match(livePage,/engine\.updateLibrary\(prepareLiveLibrary\(next\)\)/);
 });
 test("Cloud sync uses existing browser V3 key, not another beta browser database",()=>{
  assert.match(storage,/LIBRARY_KEY='hudLibraryV34'/);
