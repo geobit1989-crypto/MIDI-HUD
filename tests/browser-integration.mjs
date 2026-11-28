@@ -14,15 +14,34 @@ try{
  const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://**',route=>route.abort());
+ // All navigation actions now live inside the global Editor menu.
+ async function editorMenuAction(selector){
+  const menu=page.locator('#editorMenu');
+  if(!await menu.evaluate(el=>el.open))await menu.locator('summary').click();
+  assert.equal(await menu.evaluate(el=>el.open),true);
+  const action=menu.locator(selector);
+  await action.waitFor({state:'visible'});
+  await action.click();
+ }
  await page.goto('http://127.0.0.1:8766/editor/v3.html');
  await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
+ assert.equal(await page.locator('#cloudSync').isVisible(),false);
+ assert.equal(await page.locator('#midiLinkBtn').count(),0);
+ await editorMenuAction('#editorHistoryOpen');
+ assert.equal(await page.locator('#editorHistory').isVisible(),true);
+ await page.locator('#editorHistoryClose').click();
+ await editorMenuAction('#settingsLink');
+ await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
+ await page.getByRole('dialog',{name:'AJUSTES'}).waitFor({state:'visible'});
+ await page.goto('http://127.0.0.1:8766/editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  await page.locator('#songTitle').fill('Borrador recuperable');
+ assert.equal(await page.locator('#songHeading').innerText(),'Borrador recuperable');
  for(const tab of ['states','sheet','midi','song'])await page.locator('[data-tab="'+tab+'"]').click();
  assert.equal(await page.locator('#songTitle').inputValue(),'Borrador recuperable');
  assert.equal(await page.evaluate(()=>MIDIHUD_EDITOR.getLibrary().songs.some(s=>s.title==='Borrador recuperable')),false);
  await page.reload();await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  assert.equal(await page.locator('#songTitle').inputValue(),'Borrador recuperable');
- await page.locator('#editorMenu > summary').click();await page.locator('#liveLink').click();
+ await editorMenuAction('#liveLink');
  await page.getByRole('button',{name:'Seguir editando',exact:true}).click();
  assert.equal(await page.locator('dialog[open]').count(),0);
  await page.locator('#songTitle').fill('Prueba integrada iPhone');await page.locator('#saveAll').click();
@@ -30,13 +49,13 @@ try{
  await page.reload();await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  assert.equal(await page.locator('#songTitle').inputValue(),'Prueba integrada iPhone');
  await page.locator('#songTitle').fill('Salida sin publicar');
- await page.locator('#liveLink').click();
+ await editorMenuAction('#liveLink');
  await page.getByRole('button',{name:'Salir sin confirmar',exact:true}).click();
  await page.waitForURL(/\/v03\.html(?:\?|$)/);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('hudLibraryV34')).songs.some(s=>s.title==='Salida sin publicar')),false);
  await page.goto('http://127.0.0.1:8766/editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  assert.equal(await page.locator('#songTitle').inputValue(),'Salida sin publicar');
- await page.locator('#liveLink').click();
+ await editorMenuAction('#liveLink');
  await page.getByRole('button',{name:'Guardar y salir',exact:true}).click();
  await page.waitForURL(/\/v03\.html(?:\?|$)/);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('hudLibraryV34')).songs.some(s=>s.title==='Salida sin publicar')),true);
@@ -55,7 +74,7 @@ try{
  await page.locator('#leadText').fill('A - Intro\n| I | V | vi | IV |');await page.locator('#versionNew').click();await page.locator('#saveAll').click();
  await page.waitForFunction(()=>window.MIDIHUD_EDITOR.getLibrary().songs.some(s=>s.leadSheets?.some(v=>v.name==='Grados')));
  await mkdir('build/browser',{recursive:true});await page.screenshot({path:'build/browser/editor-portrait.png',fullPage:true});
- await page.locator('#liveLink').click();await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
+ await editorMenuAction('#liveLink');await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  assert.equal(await page.locator('.topbar .key').innerText(),'G');
  const before=await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getViewModel());
  await page.evaluate(()=>{const library=JSON.parse(localStorage.getItem('hudLibraryV34'));library.songs[0].title='Cambio remoto';localStorage.setItem('hudLibraryV34',JSON.stringify(library));window.dispatchEvent(new Event('storage'));});
@@ -63,5 +82,5 @@ try{
  await page.screenshot({path:'build/browser/live-portrait.png',fullPage:true});
  await page.setViewportSize({width:844,height:390});await page.screenshot({path:'build/browser/live-landscape.png',fullPage:true});
  assert.deepEqual(errors,[]);
- console.log('Browser integration passed: four tabs, draft reload, three exit choices, global save/reload, empty playlist, shared song, degree variant/key, LIVE snapshot, portrait/landscape, no JavaScript errors.');
+ console.log('Browser integration passed: global menu (LIVE, Ajustes, Historial), song identification, four tabs, draft reload, three exit choices, global save/reload, empty playlist, shared song, degree variant/key, LIVE snapshot, portrait/landscape, no JavaScript errors.');
 }finally{await browser?.close();server.kill();}
