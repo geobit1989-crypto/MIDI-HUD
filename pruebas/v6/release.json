@@ -8,12 +8,18 @@
   "storage_prefix": "midiHudTest:",
   "drive_history_kind": "midi-hud-test-sync-20261127-v1",
   "production_unchanged": true,
-  "previous_web_commit": "e5a2d8eabbbfd71176326fe842b79333c595c346",
+  "previous_web_commit": "6a2ee572dbb4b383a8c16d58c034d74d72c1a934",
   "windows_entry": "v03.html",
   "android_entry": "v03-ble-test.html",
   "home_entry": "index.html",
   "physical_acceptance": "pending",
   "build_token": "20261127-drive7",
   "web_qa_run": 46077784513,
-  "worker_deployment": "unchanged"
+  "worker_deployment": "unchanged",
+  "editor_revision": 7,
+  "editor_source_branch": "feature/editor-optimization-20261128",
+  "editor_source_commit": "263f28e939b5bf4191b242888b295baa66b8b933",
+  "editor_validation_run": 46132578736,
+  "editor_release_date": "2026-11-28",
+  "editor_physical_acceptance": "pending"
 }
