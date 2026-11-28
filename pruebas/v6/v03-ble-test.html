@@ -411,7 +411,8 @@ import {createEngine,normalizeLibrary} from "./core/engine-v1.mjs?v=20261127-dri
 import {resolveLiveSelection,withFullRepertoire} from "./core/live-selection-v34.mjs?v=20261127-drive7";
 import {installLibraryPicker} from "./live/library-picker-v34.mjs?v=20261127-drive7";
 import {receiveLibraryTransfer} from "./core/library-transfer-v34.mjs?v=20261127-drive7";
-import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-drive7";
+import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-return8";
+import {readOAuthSettingsReturn} from "./core/persistent-drive-auth.mjs?v=20261127-return8";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261127-drive7";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261127-drive7";
 import {installHome} from "./live/home-qa.mjs?v=20261127-drive7";
@@ -430,7 +431,8 @@ gear.tabIndex=0;gear.setAttribute("role","button");
 gear.setAttribute("title","Configuración MIDI HUD");
 gear.setAttribute("aria-label","Abrir configuración MIDI HUD");
 const dialog=createSettings();
-let returnToHome=false;
+const oauthSettingsReturn=globalThis.MidiHudNative?null:readOAuthSettingsReturn();
+ let returnToHome=oauthSettingsReturn==='home';
 let unsubscribeEngine;
 // A demo is a placeholder. Only an already adopted library needs LIVE protection.
 const safeToRefresh=()=>!usingSavedLibrary||!!document.querySelector('.hud-home[open]')||dialog.open&&returnToHome;
@@ -619,6 +621,7 @@ function render(){
   }
   cloud=installCloudSync({host:dialog.querySelector('#hud-sync-root'),mode:'live',inline:true,
    canApply:safeToRefresh,
+    getOAuthReturnView:()=>dialog.open?(returnToHome?'home':'live'):null,
    hasPendingLiveLibrary:()=>readLibrarySource(localStorage)!==loadedRaw,
    onApplied:next=>{if(engine)refreshLocal();else data=next;}});
   // La conexión lenta nunca impide abrir el repertorio local para tocar.
@@ -642,7 +645,8 @@ function render(){
   setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
   subscribeEngine();
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
-  if(new URLSearchParams(location.search).get('home')==='1')showHome();
+  if(oauthSettingsReturn)popup(true);
+   else if(new URLSearchParams(location.search).get('home')==='1')showHome();
   else if(initialSelection.missingRequestedRepertoire)popup(true);
  }catch(err){console.error("MIDI HUD: motor v1 no iniciado",err);
   const boot=document.querySelector("#hud-boot-status");if(boot)boot.textContent="Error de inicialización: "+err.message;
