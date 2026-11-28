@@ -1,3 +1,6 @@
+import * as meter from "../core/meter.mjs";
+import * as midiModules from "../core/module-midi.mjs";
+import * as layouts from "../core/layout-v3.4.mjs";
 import * as recovery from '../editor/recovery-v1.mjs';
 import * as transfer from '../core/library-transfer-v34.mjs';
 import * as selection from '../core/live-selection-v34.mjs';
@@ -62,7 +65,7 @@ function setup({prepare=()=>{},tab='states'}={}){
  prepare(fixture,song,initial);
  data.set(storageAPI.LIBRARY_KEY,JSON.stringify(fixture));
  const downloads=[],copiedLinks=[];
- const context=vm.createContext({...notation,...sheetSave,...catalog,...sheets,...imports,...selection,...transfer,...recovery,...model,...engine,...visuals,...parser,...storageAPI,...catalog,...sheets,...imports,installCloudSync:()=>{},Event:class{},
+ const context=vm.createContext({...meter,...midiModules,...layouts,...notation,...sheetSave,...catalog,...sheets,...imports,...selection,...transfer,...recovery,...model,...engine,...visuals,...parser,...storageAPI,...catalog,...sheets,...imports,installCloudSync:()=>{},Event:class{},
   document:{body:new Element('body'),getElementById:id=>elements.get(id),createElement:tag=>new Element(tag),querySelectorAll:()=>[],addEventListener(){},dispatchEvent(){}},
   Option:class extends Element{constructor(label,value){super('option');this.textContent=label;this.value=String(value);}},
   localStorage:storage,navigator:{clipboard:{writeText:async value=>copiedLinks.push(value)}},window:{location:{href:'https://geobit1989-crypto.github.io/MIDI-HUD/beta-v3.4/editor/v3.html',search:''},confirm:()=>context.confirmResult,prompt:()=>context.promptResult,addEventListener(){},dispatchEvent(){}},confirmResult:true,promptResult:null,

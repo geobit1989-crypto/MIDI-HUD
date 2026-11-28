@@ -1,18 +1,19 @@
+import {moduleRows} from "../core/layout-v3.4.mjs";
 import {normalizeMeter,meterLabel,meterGroups,beatCount,groupBoundaries,resizeScore} from "../core/meter.mjs";
 import {midiModuleText,midiCCFor,expressionRange,validateModuleMidi} from "../core/module-midi.mjs";
 import {createBrowserMidiSession} from "../core/midi-session-browser.mjs";
 import {connectBleMidi} from "../core/midi-ble-android.mjs";
 import {readSettings} from "../core/settings-v1.mjs";
-import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor8b";
+import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor8c";
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive7";
 import {scanNotation} from "./chord-notation.mjs";
-import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs?v=20261128-editor8b";
+import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs?v=20261128-editor8c";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261127-drive7";
-import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-editor8b";
+import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-editor8c";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261128-library2";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive7";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor8b";
-import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs?v=20261128-editor8b";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor8c";
+import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs?v=20261128-editor8c";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261127-drive7";
 import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
 import {migrateCatalog,recordCatalogChanges,versionLabel,searchCatalog,versionUsage,duplicateCatalogRepertoire,archiveCatalogVersion,restoreCatalogHistory,setRepertoireNote} from "../core/catalog-v1.mjs";
@@ -25,7 +26,7 @@ import {
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
  addConfiguredModule,renameModule,setModulePurpose,modulePurpose,deleteSelectedModule,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261128-editor8b";
+} from "./editor-model.mjs?v=20261128-editor8c";
 
 /**
  * Editor MIDI HUD v3
@@ -478,7 +479,7 @@ function showSongTools(kind){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261128-editor8b&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261128-editor8c&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";updatePresetLabels();
@@ -582,23 +583,12 @@ function layoutModuleGrid(reveal=false){
  if(!width||!height){paging("modulePaging").hidden=true;paging("modulePageBar").hidden=true;return;}
  const cols=Math.max(1,Math.min(6,Math.floor(width/132))),rowCapacity=Math.max(1,Math.floor((height+7)/91));
  const pages=[],rows=[];
- if(song.moduleLayout==="manual"){
-  let row=[];
-  for(let i=0;i<slots.length;i++){
-   if(row.length&&(slots[i].rowBreakBefore||row.length>=cols)){rows.push(row);row=[];}
-   row.push(i);
-  }
-  if(row.length)rows.push(row);
-  for(let i=0;i<rows.length;i+=rowCapacity)pages.push(rows.slice(i,i+rowCapacity));
- }else{
-  const capacity=cols*rowCapacity;
-  for(let offset=0;offset<slots.length;offset+=capacity){
-   const count=Math.min(capacity,slots.length-offset),columnCount=Math.min(cols,Math.max(1,Math.ceil(Math.sqrt(count*width/Math.max(height,1)))));
-   const rowCount=Math.min(rowCapacity,Math.ceil(count/columnCount));
-   const base=Math.floor(count/rowCount),extra=count%rowCount;
-   let p=offset;pages.push(Array.from({length:rowCount},(_,r)=>Array.from({length:base+(r<extra?1:0)},()=>p++)));
-  }
+ for(const logical of moduleRows(slots.map(slot=>({...slot,hidden:false})),{manual:song.moduleLayout==="manual"})){
+  const indices=logical.map(x=>x.index);
+  for(let offset=0;offset<indices.length;offset+=cols)rows.push(indices.slice(offset,offset+cols));
  }
+ for(let i=0;i<rows.length;i+=rowCapacity)pages.push(rows.slice(i,i+rowCapacity));
+
  if(reveal&&Number.isInteger(activeModule)){const n=pages.findIndex(rows=>rows.some(row=>row.includes(activeModule)));if(n>=0)modulePage=n;}
  modulePage=Math.max(0,Math.min(modulePage,pages.length-1));
  const page=pages[modulePage]||[];
@@ -612,6 +602,20 @@ function layoutModuleGrid(reveal=false){
  paging("modulePageBar").hidden=pages.length<=1;
  paging("modulePageLabel").textContent=(modulePage+1)+" / "+Math.max(1,pages.length);
  paging("modulePagePrev").disabled=modulePage===0;paging("modulePageNext").disabled=modulePage>=pages.length-1;
+ if(midi)fitMidiTiles(area);
+}
+function fitMidiTiles(area){
+ if(typeof getComputedStyle!=="function")return;
+ for(const tile of area.children){
+  if(tile.hidden)continue;
+  const content=tile.querySelector(".tile-content"),name=tile.querySelector(".tile-name"),sub=tile.querySelector(".tile-sub");if(!content||!name||!sub)continue;
+  name.style.fontSize="";sub.style.fontSize="";
+  const startName=parseFloat(getComputedStyle(name).fontSize)||14,startSub=parseFloat(getComputedStyle(sub).fontSize)||12;
+  for(let scale=1;scale>=0.28;scale-=.055){
+   name.style.fontSize=Math.max(5,startName*scale)+"px";sub.style.fontSize=Math.max(5,startSub*scale)+"px";
+   if(content.scrollHeight<=content.clientHeight+1&&name.scrollWidth<=name.clientWidth+1&&sub.scrollWidth<=sub.clientWidth+1)break;
+  }
+ }
 }
 function changeModulePage(delta){activeModule=null;activeState=null;modulePage+=delta;renderStates();layoutModuleGrid();}
 let colorDraft=null;
@@ -858,9 +862,9 @@ function setSlotProperty(key,value){
 }
 function refreshModuleTile(index){
  paintDialogPreview('settings');
- const slot=normalSlot(index),tile=$("moduleGrid").children[index];
+ const slot=normalSlot(index),tile=$(activeTab==="midi"?"midiModuleSelection":"moduleGrid").children[index];
  if(tile){paintEditorTile(tile,index);tile.querySelector(".tile-name").textContent=slot.name;
-  tile.querySelector(".tile-sub").textContent=slot.sub;tile.querySelector(".tile-device").textContent=slot.deviceTag;
+  tile.querySelector(".tile-sub").textContent=activeTab==="midi"?midiModuleText(slot):slot.sub;tile.querySelector(".tile-device").textContent=slot.deviceTag;
   tile.querySelector(".tile-device").hidden=!slot.deviceTag;}
 }
 function linkState(id,index){
@@ -1132,7 +1136,7 @@ function render(){
   node.hidden=empty||node.dataset.panel!==activeTab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
  if(!empty&&["states","midi"].includes(activeTab))layoutModuleGrid(true);
- if(empty)$("liveLink").href="../v03.html?v=20261128-editor8b";
+ if(empty)$("liveLink").href="../v03.html?v=20261128-editor8c";
  syncStatus();
 }
 function registerIdentity(){
@@ -1289,6 +1293,7 @@ function register(){
  $("midiToggleMode").onclick=()=>{midiDraft.mode="toggle";refreshMidiDraft();};
  $("midiOnOffMode").onclick=()=>{midiDraft.mode="onoff";refreshMidiDraft();};
  $("midiModuleEdit").onclick=openMidiModule;
+ $("midiAdvancedOpen").onclick=()=>$("midiAdvancedDialog").showModal();$("midiAdvancedClose").onclick=()=>$("midiAdvancedDialog").close();
  $("midiModuleX").onclick=$("midiModuleCancel").onclick=()=>$("midiModuleDialog").close();
  $("midiModuleDialog").addEventListener("close",()=>{stopMidiLearn();midiDraft=null;});
  $("midiModuleApply").onclick=applyMidiModule;$("midiLearn").onclick=startMidiLearn;
