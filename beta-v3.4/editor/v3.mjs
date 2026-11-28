@@ -677,6 +677,84 @@ function duplicateSelectedModule(){
   dirty();renderStates();renderSong();
  }catch(error){notice(error.message,true);}
 }
+let layoutDraft=null,layoutSelection=null,layoutOriginal=null;
+function layoutSong(){return layoutDraft?.songs.find(s=>s.id===activeSong);}
+function openModuleLayout(){
+ layoutOriginal=JSON.stringify(working);layoutDraft=copy(working);
+ const n=layoutSong().displaySlots.length;layoutSelection=Number.isInteger(activeModule)&&activeModule<n?activeModule:(n?0:null);
+ $('moduleLayoutDialog').showModal();renderLayoutDraft();
+}
+function layoutRows(song){
+ const slots=song.displaySlots||[],n=slots.length;if(!n)return [];
+ const area=$('moduleGrid'),width=area.clientWidth||390,height=area.clientHeight||400;
+ const cols=Math.max(1,Math.min(6,Math.floor(width/132))),rows=[];
+ if(song.moduleLayout==='manual'){
+  let row=[];for(let i=0;i<n;i++){if(row.length&&(slots[i].rowBreakBefore||row.length>=cols)){rows.push(row);row=[];}row.push(i);}if(row.length)rows.push(row);
+ }else{
+  const maxRows=Math.max(1,Math.floor((height+7)/91)),capacity=cols*maxRows;
+  for(let offset=0;offset<n;offset+=capacity){
+   const count=Math.min(capacity,n-offset),columnCount=Math.min(cols,Math.max(1,Math.ceil(Math.sqrt(count*width/Math.max(height,1)))));
+   const rowCount=Math.min(maxRows,Math.ceil(count/columnCount)),base=Math.floor(count/rowCount),extra=count%rowCount;let p=offset;
+   for(let row=0;row<rowCount;row++)rows.push(Array.from({length:base+(row<extra?1:0)},()=>p++));
+  }
+ }
+ return rows;
+}
+function renderLayoutDraft(){
+ const song=layoutSong();if(!song)return;
+ const slots=song.displaySlots,mode=song.moduleLayout||'auto',idx=layoutSelection,selected=Number.isInteger(idx)&&!!slots[idx];
+ $('moduleLayout').value=mode;$('layoutAuto').setAttribute('aria-pressed',String(mode==='auto'));$('layoutManual').setAttribute('aria-pressed',String(mode==='manual'));
+ $('moduleUp').disabled=!selected||idx===0;$('moduleDown').disabled=!selected||idx===slots.length-1;$('layoutBreak').disabled=!selected||idx===0;
+ $('moduleRowBreak').checked=!!slots[idx]?.rowBreakBefore;$('layoutBreak').setAttribute('aria-pressed',String(!!slots[idx]?.rowBreakBefore));
+ const area=$('layoutPreview');area.replaceChildren();
+ for(const indices of layoutRows(song)){
+  const row=make('div',undefined,'layout-preview-row');
+  for(const i of indices){
+   const slot=normalizeSlot(slots[i],i),visual=resolveModuleVisual(slot,i),activity=i===idx?visual.active:visual.inactive;
+   const tile=button('',()=>{layoutSelection=i;renderLayoutDraft();},'layout-tile');
+   tile.dataset.layoutIndex=String(i);tile.dataset.hidden=String(slot.hidden);
+   tile.style.background=activity.background;tile.style.color=activity.foreground;
+   tile.setAttribute('aria-pressed',String(i===idx));tile.setAttribute('aria-label',slot.name+(slot.hidden?' · Oculto en LIVE':''));
+   const grip=make('span','⠿','layout-grip');grip.setAttribute('aria-hidden','true');
+   grip.onpointerdown=e=>{e.stopPropagation();e.preventDefault();grip.setPointerCapture(e.pointerId);};
+   grip.onpointerup=e=>{e.stopPropagation();e.preventDefault();const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-layout-index]');if(target)moveLayoutTo(i,Number(target.dataset.layoutIndex));};
+   const label=make('span');label.append(make('strong',slot.name),make('small',slot.sub));
+   const device=make('span',slot.deviceTag,'layout-device');device.hidden=!slot.deviceTag;
+   tile.append(grip,label,device);row.append(tile);
+  }
+  area.append(row);
+ }
+}
+function moveLayoutTo(from,to){
+ const song=layoutSong();if(!song||!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<0||from>=song.displaySlots.length||to>=song.displaySlots.length)return;
+ while(from!==to)from=moveModule(layoutDraft,activeSong,from,from<to?1:-1);
+ layoutSelection=from;renderLayoutDraft();
+}
+function changeLayoutMode(mode){
+ const song=layoutSong();if(!song)return;
+ song.moduleLayout=mode;
+ if(mode==='auto')for(const slot of song.displaySlots)slot.rowBreakBefore=false;
+ renderLayoutDraft();
+}
+function toggleLayoutBreak(){
+ const song=layoutSong(),i=layoutSelection;if(!song||!Number.isInteger(i)||i<1)return;
+ // When leaving automatic mode, preserve the rows currently shown.
+ if(song.moduleLayout!=='manual'){
+  const starts=new Set(layoutRows(song).slice(1).map(row=>row[0]));
+  song.displaySlots.forEach((slot,index)=>slot.rowBreakBefore=starts.has(index));
+ }
+ song.moduleLayout='manual';song.displaySlots[i].rowBreakBefore=!song.displaySlots[i].rowBreakBefore;renderLayoutDraft();
+}
+function applyModuleLayout(){
+ if(!layoutDraft)return;
+ try{
+  if(JSON.stringify(working)!==layoutOriginal)throw Error('La canción cambió mientras se editaba la distribución.');
+  validateLibrary(layoutDraft);
+  const changed=JSON.stringify(layoutDraft)!==layoutOriginal;
+  if(changed){working=layoutDraft;activeModule=layoutSelection;activeState=linkedState()?.id??null;dirty();}
+  $('moduleLayoutDialog').close();layoutDraft=null;renderStates();
+ }catch(error){notice(error.message,true);}
+}
 function openModuleSettings(){
  if(!Number.isInteger(activeModule)&&!currentState())return;
  if(!$("moduleSettingsDialog").open)$("moduleSettingsDialog").showModal();
@@ -1136,8 +1214,8 @@ function register(){
   if(saved===true)closeRepForm();
  });
  $("repRemove").onclick=()=>{
-  if(window.confirm("¿Eliminar esta lista? Las canciones se conservan en el Repertorio."))
-   immediate(db=>{deleteRepertoire(db,activeRep);if(!db.repertoires.length){activeRep=null;catalogMode=true;masterSheetId=null;}},"Lista eliminada.");
+  const rep=activeRep;
+  appConfirm("¿Quieres eliminar esta lista?","Las canciones se conservarán en el repertorio.",()=>immediate(db=>{deleteRepertoire(db,rep);if(!db.repertoires.length){activeRep=null;catalogMode=true;masterSheetId=null;}},"Lista eliminada."));
  };
  $("songAddSig").onclick=()=>createMasterSong("sig");
  for(const [id,key] of [
@@ -1160,8 +1238,12 @@ function register(){
  $("appConfirmCancel").onclick=()=>$("appConfirmDialog").close();
  $("appConfirmContinue").onclick=()=>{const action=confirmAction;confirmAction=null;$("appConfirmDialog").close();action?.();};
  $("appConfirmDialog").addEventListener("close",()=>{confirmAction=null;});
- $("moduleLayoutOpen").onclick=()=>$("moduleLayoutDialog").showModal();
- $("moduleLayoutClose").onclick=()=>$("moduleLayoutDialog").close();
+ $("moduleLayoutOpen").onclick=openModuleLayout;
+ $("moduleLayoutClose").onclick=$("moduleLayoutX").onclick=()=>$("moduleLayoutDialog").close();
+ $("moduleLayoutDialog").addEventListener("close",()=>{layoutDraft=null;layoutSelection=null;layoutOriginal=null;});
+ $("moduleLayoutApply").onclick=applyModuleLayout;
+ $("layoutAuto").onclick=()=>changeLayoutMode('auto');$("layoutManual").onclick=()=>changeLayoutMode('manual');
+ $("layoutBreak").onclick=toggleLayoutBreak;
  $("moduleEditOpen").innerHTML=CATALOG_MENU_ICONS.pencil;
  $("moduleEditOpen").onclick=openModuleSettings;
  $("moduleSettingsClose").onclick=$("moduleSettingsX").onclick=()=>$("moduleSettingsDialog").close();
@@ -1185,9 +1267,7 @@ function register(){
  $("moduleEffectAdd").onclick=()=>addEditorModule('effect');
  $("moduleExpressionAdd").onclick=()=>addEditorModule('expression');
  $("moduleUtilityAdd").onclick=()=>addEditorModule('utility');
- for(const [id,delta] of [["moduleUp",-1],["moduleDown",1]])$(id).onclick=()=>{
-  activeModule=moveModule(working,activeSong,activeModule,delta);dirty();renderStates();
- };
+ for(const [id,delta] of [["moduleUp",-1],["moduleDown",1]])$(id).onclick=()=>{if(Number.isInteger(layoutSelection))moveLayoutTo(layoutSelection,layoutSelection+delta);};
  $("moduleRemove").onclick=()=>{
   if(!currentSong().displaySlots.length)return;
   const used=working.states.some(st=>st.songId===activeSong&&(st.displayIndex===activeModule||st.indicators?.some(ind=>ind.displayIndex===activeModule)));
@@ -1227,15 +1307,8 @@ function register(){
   activeState=setModulePurpose(working,activeSong,activeModule,$("moduleKind").value);
   dirty();renderStates();renderSong();
  };
- $("moduleLayout").onchange=()=>{
-  currentSong().moduleLayout=$("moduleLayout").value;
-  if(currentSong().moduleLayout==='auto')for(const slot of currentSong().displaySlots)slot.rowBreakBefore=false;
-  dirty();renderModules();
- };
- $("moduleRowBreak").onchange=()=>{
-  currentSong().moduleLayout='manual';
-  setSlotProperty("rowBreakBefore",$("moduleRowBreak").checked);renderModules();
- };
+ $("moduleLayout").onchange=()=>changeLayoutMode($("moduleLayout").value);
+ $("moduleRowBreak").onchange=toggleLayoutBreak;
  $("moduleHidden").onchange=()=>{setSlotProperty("hidden",$("moduleHidden").checked);renderModules();};
  $("moduleColorPreset").onchange=()=>{
   const chosen=$("moduleColorPreset").value;

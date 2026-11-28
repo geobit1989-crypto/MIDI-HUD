@@ -382,9 +382,9 @@ test('crear, duplicar y quitar canciones y repertorios conserva una selección v
  assert.equal(t.snapshot().working.songs.find(s=>s.id===sig).stateIds.length,4);
  t.context.api.updateTab('sheet');assert.equal(t.snapshot().activeSong,sig);
  t.elements.get('startAddSongs').onclick();t.elements.get('pickerSearch').value='Nueva canción SIG';t.elements.get('pickerSearch').oninput();t.elements.get('pickerResults').children[0].onclick();t.elements.get('confirmAddSongs').onclick();
- t.elements.get('songList').children[0].children[2].children[1].children.at(-1).onclick();
+ t.elements.get('songList').children[0].children[2].children[1].children.at(-1).onclick();t.elements.get('appConfirmContinue').onclick();
  assert.equal(t.snapshot().working.songs.some(s=>s.id===sig),true);
- t.elements.get('repRemove').onclick();
+ t.elements.get('repRemove').onclick();t.elements.get('appConfirmContinue').onclick();
  assert.equal(t.snapshot().working.repertoires.some(r=>r.id===rep),false);
  assert.equal(t.snapshot().activeRep,'worship');assert.equal(engine.validateLibrary(t.snapshot().working),true);
 });
@@ -487,7 +487,7 @@ test('los controles auxiliares no crean estados y conservan ese comportamiento t
  const t=setup(),initial=t.currentSong().initialStateId;
  t.elements.get('moduleUtilityAdd').onclick();
  t.elements.get('moduleName').value='Tap tempo';t.elements.get('moduleName').oninput();
- t.elements.get('moduleUp').onclick();
+ t.elements.get('moduleLayoutOpen').onclick();t.elements.get('moduleUp').onclick();t.elements.get('moduleLayoutApply').onclick();
  t.elements.get('moduleName').value='Tap';t.elements.get('moduleName').oninput();
  await t.elements.get('saveAll').onclick();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),song=saved.songs.find(s=>s.id===t.songId);
@@ -639,4 +639,27 @@ test('eliminar módulo musical elimina estado y referencias, conserva los demás
  assert.equal(db.songs.find(s=>s.id===id).initialStateId,initial);
  assert.throws(()=>model.deleteSelectedModule(db,id,0),/al menos un estado musical/);
  assert.doesNotThrow(()=>engine.validateLibrary(db));
+});
+
+test('diálogo de distribución: cancelar no modifica borrador; aplicar remapea las referencias',()=>{
+ const t=setup(),first=t.currentSong().initialStateId;
+ t.elements.get('moduleGrid').children[0].onclick();const before=t.snapshot();
+ t.elements.get('moduleLayoutOpen').onclick();t.elements.get('moduleDown').onclick();
+ assert.deepEqual(t.snapshot(),before);
+ t.elements.get('moduleLayoutClose').onclick();assert.deepEqual(t.snapshot(),before);
+ t.elements.get('moduleLayoutOpen').onclick();t.elements.get('moduleDown').onclick();t.elements.get('moduleLayoutApply').onclick();
+ assert.equal(t.snapshot().working.states.find(st=>st.id===first).displayIndex,1);
+ assert.equal(t.currentSong().initialStateId,first);assert.equal(t.snapshot().hasDraft,true);
+});
+test('paleta personalizada: cancelar mantiene el color; aplicar modifica solamente el borrador',()=>{
+ const t=setup(),before=t.snapshot();
+ assert.equal(t.elements.get('modulePalette').children.length,10);
+ t.elements.get('modulePalette').children.at(-1).onclick();
+ t.elements.get('customHex').value='#1a2b3c';t.elements.get('customHex').oninput();
+ assert.deepEqual(t.snapshot(),before);
+ t.elements.get('customColorCancel').onclick();assert.deepEqual(t.snapshot(),before);
+ t.elements.get('modulePalette').children.at(-1).onclick();
+ t.elements.get('customHex').value='#1a2b3c';t.elements.get('customHex').oninput();t.elements.get('customColorApply').onclick();
+ assert.equal(t.currentSong().displaySlots[0].color,'#1a2b3c');assert.equal(t.snapshot().hasDraft,true);
+ assert.deepEqual(t.snapshot().committed,before.committed);
 });

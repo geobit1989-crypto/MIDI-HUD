@@ -132,6 +132,12 @@ try{
  assert.equal(await page.locator('#moduleEditOpen svg').count(),1);
  await page.locator('#moduleEditOpen').click();
  assert.equal(await page.locator('#moduleSettingsDialog').isVisible(),true);
+ assert.equal(await page.locator('#modulePalette button').count(),10);
+ assert.equal(await page.locator('#stateAdvanced').isVisible(),false);
+ await page.locator('#modulePalette button').last().click();
+ assert.equal(await page.locator('#customColorDialog').isVisible(),true);
+ await page.locator('#customHex').fill('#1a2b3c');await page.locator('#customColorCancel').click();
+ assert.equal(await page.locator('#customColorDialog').isVisible(),false);
  await page.locator('#moduleSettingsClose').click();
  const second=stateGrid.locator('.module-select-tile:visible').nth(1);
  if(await second.count()){
@@ -140,7 +146,10 @@ try{
   assert.equal(await second.getAttribute('aria-pressed'),'true');
   assert.equal(await second.locator('.tile-symbol').count(),0);
  }
- await page.locator('#moduleAddOpen').click();await page.locator('#moduleEffectAdd').click();
+ await page.locator('#moduleAddOpen').click();
+ assert.equal(await page.locator('#moduleAddDialog .type-icon svg').count(),3);
+ await page.screenshot({path:'build/browser/states-add-dialog.png',fullPage:true});
+ await page.locator('#moduleEffectAdd').click();
  assert.equal(await page.locator('#moduleSettingsDialog').isVisible(),true);
  await page.locator('#moduleName').fill('Delay de prueba');await page.locator('#moduleSettingsClose').click();
  assert.equal(await stateGrid.locator('[data-activity="active"]').count(),1);
@@ -148,7 +157,10 @@ try{
  assert.equal(await stateGrid.locator('[data-activity="active"]').count(),0);
  assert.equal(await page.locator('#moduleDeleteSelected').isVisible(),false);
  assert.equal(await page.locator('#moduleEditOpen').isVisible(),false);
- await page.locator('#moduleLayoutOpen').click();assert.equal(await page.locator('#moduleLayoutDialog').isVisible(),true);await page.locator('#moduleLayoutClose').click();
+ await page.locator('#moduleLayoutOpen').click();assert.equal(await page.locator('#moduleLayoutDialog').isVisible(),true);
+ assert.ok(await page.locator('#layoutPreview .layout-tile').count()>0);
+ await page.screenshot({path:'build/browser/states-layout-dialog.png',fullPage:true});
+ await page.locator('#moduleLayoutClose').click();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),true);
  await page.screenshot({path:'build/browser/states-editor-portrait.png',fullPage:true});
  await page.setViewportSize({width:844,height:390});
