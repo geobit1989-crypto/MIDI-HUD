@@ -1,4 +1,4 @@
-import {beatCount} from "../core/meter.mjs";
+import {beatCount,meterLabel} from "../core/meter.mjs";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -28,7 +28,7 @@ function session(storage,committedLibrary=fixture(),overrides={}){
   return elements.get(id);
  }};
  const window={dispatchEvent(){}};
- const sandbox={beatCount,
+ const sandbox={beatCount,meterLabel,
   document,window,localStorage:storage,Event:class Event{constructor(type){this.type=type;}},
   LIBRARY_KEY:'hudLibraryV34',BACKUP_KEY:'hudLibraryV34Backup',
   readLibrarySource:()=>storage.getItem('hudLibraryV34'),
