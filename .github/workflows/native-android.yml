@@ -6,7 +6,7 @@ on:
     branches: ['integration/shared-core-20261126', 'fix/**']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   android:
     runs-on: ubuntu-24.04
@@ -97,3 +97,10 @@ jobs:
             native/android/app/build/outputs/apk/debug/app-debug.apk
             native/android/app/build/test-results/testDebugUnitTest/
           if-no-files-found: error
+      - name: Publish one-time Android QA prerelease
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/unified-runtime-20261127' && github.run_number == 46
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp native/android/app/build/outputs/apk/debug/app-debug.apk MIDI-HUD-Android-QA.apk
+          gh release create android-qa-20261128 MIDI-HUD-Android-QA.apk --target "$GITHUB_SHA" --prerelease --title "MIDI HUD Android QA 2026-11-28" --notes "QA OAuth return build; Worker deployment required. Debug signing."
