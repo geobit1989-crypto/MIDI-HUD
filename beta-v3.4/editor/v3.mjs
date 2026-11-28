@@ -3,9 +3,9 @@ import {appStorage as localStorage,appSessionStorage as sessionStorage} from "..
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261127-drive7";
-import {normalizeLibrary,validateLibrary} from "../core/engine-v1.mjs?v=20261127-drive7";
-import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261127-drive7";
-import {createLibraryTransferUrl} from "../core/library-transfer-v34.mjs?v=20261127-drive7";
+import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-library2";
+import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261128-library2";
+import {createLibraryTransferUrl} from "../core/library-transfer-v34.mjs?v=20261128-library2";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive7";
 import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261127-drive7";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
@@ -13,7 +13,7 @@ import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=2026
 import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
 import {migrateCatalog,recordCatalogChanges,versionLabel,searchCatalog,versionUsage,duplicateCatalogRepertoire,archiveCatalogVersion,restoreCatalogHistory,setRepertoireNote} from "../core/catalog-v1.mjs";
 import {prepareLeadSheetText} from "./lead-sheet-text.mjs";
-import {parseSongCatalog,mergeSongCatalog} from "./catalog-import.mjs";
+import {parseSongCatalog,mergeSongCatalog} from "./catalog-import.mjs?v=20261128-library2";
 import {
  newSong,newRepertoire,renameRepertoire,deleteSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
@@ -21,7 +21,7 @@ import {
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
  addConfiguredModule,renameModule,setModulePurpose,modulePurpose,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261127-drive7";
+} from "./editor-model.mjs?v=20261128-library2";
 
 /**
  * Editor MIDI HUD v3
@@ -177,9 +177,12 @@ function dirty(){
  if(!draftStoreError)$("editorNotice").textContent="Borrador protegido. Cambia de pestaña libremente; pulsa «Guardar» al finalizar.";
 }
 function selected(){
- if(!working.repertoires.some(x=>x.id===activeRep))activeRep=working.repertoires[0].id;
- if(catalogMode&&!working.songs.some(s=>s.id===activeSong))catalogMode=false;
- if(!catalogMode&&!currentRep().songIds.includes(activeSong))activeSong=currentRep().songIds[0]??null;
+ if(!working.repertoires.some(x=>x.id===activeRep))activeRep=working.repertoires[0]?.id??null;
+ if(activeRep===null){catalogMode=true;if(!working.songs.some(s=>s.id===activeSong))activeSong=repertoireContext(working).songIds[0]??null;}
+ else{
+  if(catalogMode&&!working.songs.some(s=>s.id===activeSong))catalogMode=false;
+  if(!catalogMode&&!currentRep().songIds.includes(activeSong))activeSong=currentRep().songIds[0]??null;
+ }
  if(activeState!==null&&!currentSong()?.stateIds.includes(activeState))activeState=currentSong()?.stateIds[0]??null;
  if(currentState())activeModule=currentState().displayIndex??null;
  else if(activeModule!==null&&(!Number.isInteger(activeModule)||activeModule<0||activeModule>=(currentSong()?.displaySlots?.length||0)))activeModule=null;
@@ -207,7 +210,7 @@ function toggleLibrary(force){
  else if(sidebar.contains(document.activeElement))toggle.focus();
 }
 function useSong(id){
- if(!currentRep().songIds.includes(id))return;
+ if(!currentRep()?.songIds.includes(id))return;
  catalogMode=false;activeSong=id;activeState=currentSong()?.stateIds[0]??null;
  activeModule=currentState()?.displayIndex??0;
  refreshLeadSource();toggleLibrary(false);render();
@@ -338,6 +341,7 @@ function openMasterSong(id){
  refreshLeadSource();toggleLibrary(false);render();
 }
 function beginAddSongs(){
+ if(!currentRep())return;
  pickerIds=[];pickerTarget=activeRep;$("pickerSearch").value="";$("pickerNotice").hidden=true;showLibraryView("picker");renderPicker();$("pickerSearch").focus();
 }
 function renderPicker(){
@@ -377,7 +381,7 @@ function dropListSong(id,target){
 function sidebar(){
  entries("repSelect",working.repertoires.map(x=>[x.id,x.name]),activeRep);
  const root=$("songList");root.replaceChildren();
- const ids=currentRep().songIds;
+ const ids=currentRep()?.songIds||[];
  ids.forEach((id,index)=>{
   const song=working.songs.find(x=>x.id===id),row=make("div",undefined,"song-row"+(!catalogMode&&id===activeSong?" current":""));
   row.setAttribute("role","listitem");row.append(make("span",index+1,"song-num"),button(versionLabel(song),()=>useSong(id)));
@@ -394,8 +398,11 @@ function sidebar(){
   row.append(grip);root.append(row);
  });
  $("songCounter").textContent=ids.length+(ids.length===1?" canción":" canciones");
- $("repRemove").disabled=working.repertoires.length<=1;
- $("repHeading").textContent=catalogMode?"Repertorio":currentRep().name;
+ const noList=!currentRep();
+ $("repSelect").disabled=noList;$("repOptions").hidden=noList;$("startAddSongs").disabled=noList;
+ $("repRemove").disabled=noList;$("repRename").disabled=noList;$("repDuplicate").disabled=noList;
+ if(noList)$("songCounter").textContent="No hay listas";
+ $("repHeading").textContent=catalogMode||noList?"Repertorio":currentRep().name;
  if(!currentSong()){$("songHeading").textContent="Lista vacía";$("songSummary").textContent="Añade canciones desde Biblioteca.";return;}
  $("songHeading").textContent=versionLabel(currentSong());
  $("songSummary").textContent=[
@@ -408,7 +415,7 @@ function sidebar(){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261127-drive7&repertoire='+encodeURIComponent(activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261127-drive7&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";
@@ -917,7 +924,7 @@ function register(){
  });
  $("repRemove").onclick=()=>{
   if(window.confirm("¿Eliminar esta lista? Las canciones se conservan en el Repertorio."))
-   immediate(db=>deleteRepertoire(db,activeRep),"Lista eliminada.");
+   immediate(db=>{deleteRepertoire(db,activeRep);if(!db.repertoires.length){activeRep=null;catalogMode=true;masterSheetId=null;}},"Lista eliminada.");
  };
  $("songAddSig").onclick=()=>createMasterSong("sig");
  for(const [id,key] of [
@@ -1093,7 +1100,7 @@ function register(){
     $("catalogNotice").textContent=stats.read+" canciones revisadas: todas estaban registradas.";
     return;
    }
-   const target=currentRep().name;
+   const target=currentRep()?.name||"Repertorio";
    const confirmation="Importar "+stats.read+" canciones a «"+target+"»?"+
     "\nNuevas: "+stats.added+" · Vinculadas: "+stats.linked+
     " · Autores completados: "+stats.authorsCompleted+
@@ -1146,7 +1153,7 @@ function register(){
    validateLibrary(incoming);
    if(!window.confirm("¿Importar y reemplazar la biblioteca actual? Se guarda una copia previa."))return;
    const written=migrateCatalog(incoming);replaceLibrary(localStorage,written,committed);
-   committed=written;working=copy(written);clearDrafts();activeRep=working.repertoires[0].id;activeSong=currentRep().songIds[0]??null;
+   committed=written;working=copy(written);clearDrafts();activeRep=working.repertoires[0]?.id??null;catalogMode=activeRep===null;masterSheetId=null;activeSong=(currentRep()?.songIds||repertoireContext(working).songIds)[0]??null;
    activeState=currentSong()?.initialStateId??null;activeModule=currentState()?.displayIndex??null;
    hasDraft=false;refreshLeadSource();render();notice('Biblioteca importada.');window.dispatchEvent?.(new Event('hud-library-saved'));
 
@@ -1166,7 +1173,7 @@ function register(){
     if(!window.confirm("Hay un borrador sin confirmar. ¿Guardar toda la configuración antes de generar el enlace?"))return;
     await save();if(hasDraft)return;
    }
-   const link=await createLibraryTransferUrl(committed,{repertoireId:activeRep,songId:activeSong},window.location.href);
+   const link=await createLibraryTransferUrl(committed,{repertoireId:catalogMode?REPERTOIRE_CONTEXT_ID:activeRep,songId:activeSong},window.location.href);
    showMidiLink(link);
   }catch(error){notice('No se pudo preparar el enlace: '+error.message,true);}
   finally{action.disabled=false;}
@@ -1248,7 +1255,7 @@ function renderCatalog(){
  entries("versionHistory",song.catalog.history.map(h=>[h.id,h.createdAt+" · "+h.reason]),$("versionHistory").value);
  $("versionRestore").disabled=!song.catalog.history.length;
  $("occasionNoteWrap").hidden=catalogMode;$("occasionSave").hidden=catalogMode;
- $("occasionNote").value=currentRep().entryNotes?.[song.id]||"";
+ $("occasionNote").value=currentRep()?.entryNotes?.[song.id]||"";
 }
 function renderLeadSheetFields(){
  const sheet=currentSheet();if(!sheet)return;
@@ -1314,7 +1321,7 @@ async function boot(){
   library=normalizeLibrary(await response.json());validateLibrary(library);
  }
  committed=migrateCatalog(library);working=copy(committed);
- activeRep=working.repertoires[0].id;activeSong=currentRep().songIds[0];
+ activeRep=working.repertoires[0]?.id??null;catalogMode=activeRep===null;activeSong=(currentRep()?.songIds||repertoireContext(working).songIds)[0]??null;
  activeState=currentSong()?.stateIds[0]??null;activeModule=currentState()?.displayIndex??0;
  const recovered=restoreDraft();selected();refreshLeadSource();
  render();notice(recovered?"Borrador recuperado. LIVE mantiene la última versión confirmada.":saved?"Biblioteca confirmada. Cambios libres entre pestañas; Guardar al finalizar.":"Editor listo con datos de ejemplo.");

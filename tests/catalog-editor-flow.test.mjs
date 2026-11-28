@@ -260,3 +260,16 @@ test('selección múltiple conserva filtro, orden, cancelación y evita duplicad
  t.elements.get('startAddSongs').onclick();assert.equal(t.elements.get('pickerResults').children.filter(row=>row.disabled).length,2);
  assert.equal(t.elements.get('confirmAddSongs').disabled,true);
 });
+
+test("quitar última lista conserva canciones y permite crear otra",async()=>{
+ const t=setup({tab:'song'});
+ const before=t.snapshot().working.songs.map(s=>s.id);
+ while(t.snapshot().working.repertoires.length)t.elements.get('repRemove').onclick();
+ assert.deepEqual(t.snapshot().working.repertoires,[]);
+ assert.deepEqual(t.snapshot().working.songs.map(s=>s.id),before);
+ assert.equal(t.elements.get('startAddSongs').disabled,true);
+ await t.elements.get('saveAll').onclick();
+ assert.deepEqual(t.snapshot().committed.repertoires,[]);
+ t.elements.get('repAdd').onclick();t.elements.get('repNameInput').value='Domingo';t.elements.get('repForm').listeners.submit({preventDefault(){}});
+ assert.equal(t.snapshot().working.repertoires[0].name,'Domingo');
+});

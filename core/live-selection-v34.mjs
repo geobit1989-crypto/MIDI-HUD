@@ -1,6 +1,6 @@
-import {normalizeLibrary} from './engine-v1.mjs';
+import {normalizeLibrary,playbackContexts,defaultPlaybackContext,REPERTOIRE_CONTEXT_ID,repertoireContext} from './engine-v1.mjs?v=20261128-library2';
 
-/** LIVE usa únicamente los repertorios reales de la biblioteca; no añade listas virtuales. */
+/** Solo listas reales persistidas; Repertorio es un contexto derivado. */
 export function prepareLiveLibrary(source){return normalizeLibrary(source);}
 /** Selección local de LIVE; no modifica la biblioteca ni los ajustes MIDI. */
 export const LIVE_SELECTION_KEY='midiHudLiveSelectionV34';
@@ -9,10 +9,12 @@ export function resolveLiveSelection(library,storage,search=''){
  try{saved=JSON.parse(storage?.getItem(LIVE_SELECTION_KEY))||{};}catch{}
  const params=new URLSearchParams(search),requested=params.get('repertoire');
  const selected=requested||saved.repertoireId;
- const repertoire=library.repertoires.find(rep=>rep.id===selected)||library.repertoires[0];
- const song=params.get('song')||(saved.repertoireId===repertoire.id?saved.songId:null);
- return {repertoireId:repertoire.id,songId:repertoire.songIds.includes(song)?song:repertoire.songIds[0],
-  missingRequestedRepertoire:!!requested&&!library.repertoires.some(rep=>rep.id===requested)};
+ const contexts=playbackContexts(library);
+ const repertoire=contexts.find(rep=>rep.id===selected)||
+  (!requested&&selected&&selected!=="hud-full-repertoire"&&library.catalogVersion===1?repertoireContext(library):defaultPlaybackContext(library));
+ const song=params.get('song')||(saved.repertoireId===repertoire.id||repertoire.id===REPERTOIRE_CONTEXT_ID?saved.songId:null);
+ return {repertoireId:repertoire.id,songId:repertoire.songIds.includes(song)?song:repertoire.songIds[0]??null,
+  missingRequestedRepertoire:!!requested&&!contexts.some(rep=>rep.id===requested)};
 }
 export function saveLiveSelection(storage,{repertoireId,songId}){
  if(typeof repertoireId!=='string'||!repertoireId.trim()||(songId!==null&&(typeof songId!=='string'||!songId.trim())))

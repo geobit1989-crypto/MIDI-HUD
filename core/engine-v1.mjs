@@ -8,6 +8,13 @@ import {validModuleColor,validModuleIcon} from "./module-visuals.mjs";
 import {resolveLeadSheet} from './lead-sheet-variants.mjs';
 export const ENGINE_VERSION = "1.0.0-beta.1";
 export const SCHEMA_VERSION = "2.0.0";
+// Contexto de interpretación derivado, nunca una lista guardada.
+export const REPERTOIRE_CONTEXT_ID = "@repertorio";
+export function repertoireContext(db){
+ return {id:REPERTOIRE_CONTEXT_ID,name:"Repertorio",songIds:db.songs.filter(s=>!s.catalog?.archived).map(s=>s.id)};
+}
+export function playbackContexts(db){return [repertoireContext(db),...db.repertoires];}
+export function defaultPlaybackContext(db){return db.repertoires[0]||repertoireContext(db);}
 
 const isObject = x => x !== null && typeof x === "object" && !Array.isArray(x);
 const integer = (x,a,b) => Number.isInteger(x) && x >= a && x <= b;
@@ -94,7 +101,8 @@ export function validateLibrary(raw) {
   const reps = unique(db.repertoires, "repertorios");
   const songs = unique(db.songs, "canciones");
   const states = unique(db.states, "estados");
-  insist(reps.size > 0 && songs.size > 0 && states.size > 0, "biblioteca vacia");
+  insist(!reps.has(REPERTOIRE_CONTEXT_ID),"identificador reservado para el Repertorio");
+  insist((reps.size > 0 || db.catalogVersion===1) && songs.size > 0 && states.size > 0, "biblioteca vacia");
   for (const r of reps.values()) {
     insist(Array.isArray(r.songIds) && (r.songIds.length > 0 || db.catalogVersion===1), "repertorio sin canciones");
     insist(r.entryNotes==null || (isObject(r.entryNotes)&&Object.entries(r.entryNotes).every(([id,note])=>r.songIds.includes(id)&&typeof note==="string"&&note.length<=4000)), "notas de repertorio inválidas");
@@ -233,11 +241,11 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
   let db = normalizeLibrary(source);
   validateLibrary(db);
   insist(integer(midiChannel,1,16), "canal global fuera de 1..16");
-  const reps = new Map(db.repertoires.map(x=>[x.id,x]));
+  const reps = new Map(playbackContexts(db).map(x=>[x.id,x]));
   const songs = new Map(db.songs.map(x=>[x.id,x]));
   const states = new Map(db.states.map(x=>[x.id,x]));
   const bindings = new Map(db.bindings.map(x=>[x.cc+":"+x.value,x.actions]));
-  let initialRep = reps.get(repertoireId)||db.repertoires[0];
+  let initialRep = reps.get(repertoireId)||defaultPlaybackContext(db);
   const versionBindings=new Map(db.songs.filter(s=>Array.isArray(s.midiBindings)).map(s=>[s.id,new Map(s.midiBindings.map(b=>[b.cc+":"+b.value,b.actions]))]));
   const initialSong = songs.get(initialRep.songIds.includes(songId)?songId:initialRep.songIds[0]);
   const listeners = new Set();
@@ -256,7 +264,13 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
   };
   function validateRestored(state,library) {
     insist(isObject(state),'estado a restaurar inválido');
-    const rep=library.repertoires.find(r=>r.id===state.activeRepertoireId);
+    let rep=playbackContexts(library).find(r=>r.id===state.activeRepertoireId);
+    if(!rep){
+      const general=repertoireContext(library);
+      if((state.activeSongId===null&&!general.songIds.length)||general.songIds.includes(state.activeSongId)){
+        state.activeRepertoireId=general.id;rep=general;
+      }
+    }
     const song=library.songs.find(s=>s.id===state.activeSongId);
     const current=library.states.find(s=>s.id===state.activeStateId);
     if(state.activeSongId===null){insist(rep&&!rep.songIds.length,'la actualización cambia el repertorio activo');return;}
@@ -281,16 +295,16 @@ export function createEngine(source, {midiChannel=1,repertoireId=null,songId=nul
       insist(oldSlots.filter(s=>s.expressionCC).every(s=>newSlots.some(n=>n.expressionCC===s.expressionCC)),'la actualización elimina una expresión activa; se conserva la biblioteca anterior');
     }
     db=next;session=restored;
-    for(const [map,items] of [[reps,db.repertoires],[songs,db.songs],[states,db.states]]){map.clear();for(const item of items)map.set(item.id,item);}
+    for(const [map,items] of [[reps,playbackContexts(db)],[songs,db.songs],[states,db.states]]){map.clear();for(const item of items)map.set(item.id,item);}
     bindings.clear();for(const b of db.bindings)bindings.set(b.cc+':'+b.value,b.actions);
     versionBindings.clear();for(const s of db.songs)if(Array.isArray(s.midiBindings))versionBindings.set(s.id,new Map(s.midiBindings.map(b=>[b.cc+':'+b.value,b.actions])));
-    initialRep=reps.get(initialRep.id)||db.repertoires[0];
+    initialRep=reps.get(initialRep.id)||defaultPlaybackContext(db);
     for(const fn of listeners)fn(getState(),getViewModel(),{type:'LIBRARY_UPDATED'});
     return getLibrary();
   }
   function repertoireFor(songId,preferred=session.activeRepertoireId) {
     const selected=reps.get(preferred);
-    return selected?.songIds.includes(songId)?selected:db.repertoires.find(x=>x.songIds.includes(songId)) || initialRep;
+    return selected?.songIds.includes(songId)?selected:db.repertoires.find(x=>x.songIds.includes(songId)) || (reps.get(REPERTOIRE_CONTEXT_ID).songIds.includes(songId)?reps.get(REPERTOIRE_CONTEXT_ID):initialRep);
   }
   function enterSong(next,songId) {
     const song=songs.get(songId);

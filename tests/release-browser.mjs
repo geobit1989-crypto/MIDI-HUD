@@ -91,7 +91,7 @@ try{
  await home.getByRole('button',{name:'AJUSTES',exact:true}).click();
  const settings=page.getByRole('dialog',{name:'AJUSTES'});
  await settings.waitFor();
- assert.deepEqual(await settings.locator('main > details > summary').allTextContents(),['CUENTA','DISPOSITIVOS','REPERTORIOS']);
+ assert.deepEqual(await settings.locator('main > details > summary').allTextContents(),['CUENTA','DISPOSITIVOS','LISTAS']);
  assert.equal(await settings.locator('header button').count(),1);
  assert.equal(await settings.evaluate(node=>node.querySelector('header').getBoundingClientRect().width),390);
  await settings.locator('main > details > summary').last().click();
@@ -172,7 +172,7 @@ try{
   await syncPage.goto(base+'v03.html');
   await syncPage.waitForFunction(()=>!!window.MIDIHUD_LIVE);
   await syncPage.locator('.topbar .settings').click();
-  await syncPage.locator('summary').filter({hasText:'REPERTORIOS'}).click();
+  await syncPage.locator('summary').filter({hasText:'LISTAS'}).click();
   assert.match(await syncPage.locator('#hud-library-status').textContent(),/datos de ejemplo/i);
   releaseDownload();
   await syncPage.getByRole('radio',{name:/Biblioteca central/}).waitFor({state:'attached'});
@@ -205,15 +205,16 @@ try{
  await page.evaluate(library=>localStorage.setItem('midiHudTest:midiHudQa20261127:hudLibraryV34',JSON.stringify(library)),library);
  await page.goto(base+'v03.html');await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  await page.locator('.topbar .settings').click();
- await settings.locator('summary').filter({hasText:'REPERTORIOS'}).click();
+ await settings.locator('summary').filter({hasText:'LISTAS'}).click();
  await settings.getByText('Ensayo vacío',{exact:false}).click();
  assert.equal(await settings.getByRole('radio',{name:/Ensayo vacío/}).isChecked(),true);
  await page.reload();
  await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  assert.equal(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getViewModel().active.repertoireId),'test-empty');
  await page.locator('.topbar .settings').click();
- await settings.locator('summary').filter({hasText:'REPERTORIOS'}).click();
+ await settings.locator('summary').filter({hasText:'LISTAS'}).click();
  assert.equal(await settings.getByRole('radio',{name:/Repertorio completo/}).count(),0);
+ assert.equal(await settings.getByRole('radio',{name:/^Repertorio\b/}).count(),1);
  assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getLibrary().repertoires),library.repertoires);
  await settings.getByText('Worship',{exact:false}).click();
  assert.equal(await settings.getByRole('radio',{name:/Worship/}).isChecked(),true);

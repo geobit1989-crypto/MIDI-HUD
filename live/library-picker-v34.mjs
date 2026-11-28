@@ -1,4 +1,5 @@
-import {saveLiveSelection} from '../core/live-selection-v34.mjs?v=20261016-repertoires1';
+import {playbackContexts,REPERTOIRE_CONTEXT_ID} from '../core/engine-v1.mjs?v=20261128-library2';
+import {saveLiveSelection} from '../core/live-selection-v34.mjs?v=20261128-library2';
 
 import {LIBRARY_ICONS} from '../core/library-icons.mjs';
 const listMusic = LIBRARY_ICONS.lists;
@@ -10,7 +11,7 @@ function repertoireInput(doc, rep, onChange) {
  input.type='radio';input.name='hud-active-repertoire';input.value=rep.id;
  input.onchange=()=>onChange(rep.id);
  const content=doc.createElement('span');
- content.innerHTML=listMusic+'<span></span><span class="hud-choice" aria-hidden="true"></span>';
+ content.innerHTML=(rep.id===REPERTOIRE_CONTEXT_ID?LIBRARY_ICONS.repertoire:listMusic)+'<span></span><span class="hud-choice" aria-hidden="true"></span>';
  const name=content.children[1];
  const count=doc.createElement('small');
  count.textContent=rep.songIds.length+(rep.songIds.length===1?' canción':' canciones');
@@ -24,17 +25,18 @@ export function installLibraryPicker({root,engine,library,storage,usingSavedLibr
  const select=root.querySelector('#hud-repertoire'),songs=root.querySelector('#hud-preview');
  const list=root.querySelector('#hud-repertoire-list');
  const status=root.querySelector('#hud-library-status'),doc=(list||select).ownerDocument;
- const rows=list?library.repertoires.map(rep=>repertoireInput(doc,rep,use)):[];
+ const contexts=playbackContexts(library);
+ const rows=list?contexts.map(rep=>repertoireInput(doc,rep,use)):[];
  if(list){for(const row of rows)list.append(row.label);}
  const option=(label,value)=>{const item=doc.createElement('option');item.textContent=label;item.value=value;return item;};
- select?.replaceChildren(...library.repertoires.map(rep=>option(rep.name,rep.id)));
+ select?.replaceChildren(...contexts.map(rep=>option(rep.name,rep.id)));
  const message=missingRequestedRepertoire?'La lista solicitada no está guardada en este navegador. Abre el Editor donde lo creaste y usa «Enlace para navegador MIDI».':
   usingSavedLibrary?library.repertoires.length+' listas disponibles.':
   'Mostrando datos de ejemplo. Para traer tus listas, abre el Editor en el navegador anterior y usa «Enlace para navegador MIDI».';
  status.textContent=message;
  let previousRep=null,previousSelection=null;
  function sync(){
-  const vm=engine.getViewModel(),rep=library.repertoires.find(item=>item.id===vm.active.repertoireId);
+  const vm=engine.getViewModel(),rep=contexts.find(item=>item.id===vm.active.repertoireId);
   if(select)select.value=rep.id;
   for(const {input} of rows)input.checked=input.value===rep.id;
   if(songs&&previousRep!==rep.id){

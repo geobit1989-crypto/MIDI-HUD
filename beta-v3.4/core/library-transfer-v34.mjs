@@ -1,4 +1,4 @@
-import {normalizeLibrary,validateLibrary} from './engine-v1.mjs?v=20261016-repertoires1';
+import {normalizeLibrary,validateLibrary,playbackContexts} from './engine-v1.mjs?v=20261128-library2';
 import {readLibrarySource,replaceLibrary} from './library-storage.mjs?v=20261016-editor-audit1';
 
 const PREFIX='#midi-hud=',MAX_BYTES=500000;
@@ -29,7 +29,7 @@ function unbase64(text){
 function validatePacket(packet){
  ensure(packet?.format==='midi-hud-transfer'&&packet.version===1,'formato desconocido.');
  const library=normalizeLibrary(packet.library);validateLibrary(library);
- const repertoire=library.repertoires.find(rep=>rep.id===packet.repertoireId);
+ const repertoire=playbackContexts(library).find(rep=>rep.id===packet.repertoireId);
  ensure(repertoire?.songIds.includes(packet.songId),'el repertorio o la canción no están en la biblioteca.');
  return {...packet,library};
 }
