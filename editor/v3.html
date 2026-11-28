@@ -331,6 +331,13 @@ body.state-edit-mode{height:100dvh;min-height:0;overflow:hidden}
 .dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.dialog-heading h2{margin:0}.dialog-x{font-size:24px;min-height:32px;padding:0 8px;background:transparent;border:0;color:#aab9c8}.dialog-wide{width:100%}
 .module-add-options button.add-option{display:flex;align-items:center;gap:12px;padding:12px;background:#192638;border:1px solid #334155;border-radius:12px;color:var(--txt);width:100%;text-align:left}.add-option:hover{border-color:#7654c4!important}.type-icon{flex:0 0 54px;height:54px;border-radius:9px;display:grid;place-items:center;background:#302347;color:#b49af5}.option-copy{display:grid;gap:4px;flex:1;min-width:0}.option-copy small{font-size:12px;font-weight:400;color:#aab9c8;line-height:1.3}.option-arrow{font-size:24px;color:#8c9bad}
 .dialog-actions,.confirm-dialog .ctrlrow{display:flex;gap:8px;margin-top:14px}.dialog-actions button,.confirm-dialog .ctrlrow button{flex:1;min-width:0}.dialog-primary{background:#7654c4!important;border-color:#7654c4!important;color:#fff!important}.dialog-destructive{background:#a63840!important;border-color:#a63840!important;color:#fff!important}.confirm-dialog{text-align:center}.confirm-dialog h2{font-size:18px;line-height:1.3}.alert-icon{margin:0 auto 12px;width:46px;height:46px;display:grid;place-items:center;border-radius:50%;background:#40232a;color:#ff858a}.alert-icon svg{width:25px;height:25px}
+
+.module-preview{position:relative;min-height:108px;display:grid;place-items:center;border-radius:10px;padding:24px 12px;text-align:center;margin:10px 0 14px;overflow:hidden}.module-preview strong,.module-preview small{display:block;overflow-wrap:anywhere}.module-preview strong{font-size:21px}.module-preview small{font-size:14px;font-weight:550}.preview-device,.preview-star{position:absolute;top:7px;font-size:12px}.preview-device{right:7px;border-radius:4px;background:#0002;padding:3px 5px}.preview-star{left:8px;font-size:17px}
+.edit-field{display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155;padding:6px 0}.edit-field>span:first-child{width:28px;flex:none;text-align:center;color:#b49af5;font-weight:700}.edit-field>span:last-child{flex:1;min-width:0;font-size:12px;color:#aab9c8}.edit-field input{display:block;width:100%;margin-top:3px;font-size:16px;background:#03080d;border:1px solid #334155;border-radius:8px;padding:7px;color:var(--txt)}
+.segment{display:flex;gap:3px;padding:4px;background:#03080d;border-radius:9px;margin:12px 0}.segment button{flex:1;background:transparent;border:0;min-width:0;padding:8px 4px;font-size:13px}.segment button[aria-pressed=true]{background:#7654c4;color:#fff}.edit-label{color:#aab9c8;font-size:13px;margin:12px 0 7px}.module-palette{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}.module-palette button{aspect-ratio:1;min-height:0;padding:0;border:1px solid #ffffff24;border-radius:50%;font-size:18px;line-height:1;font-weight:800;display:grid;place-items:center}.module-palette button[aria-pressed=true]{outline:2px solid #b49af5;outline-offset:2px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #334155}.toggle-switch,.toggle-input{appearance:none;position:relative;display:inline-block;width:44px;height:25px;min-height:0;border-radius:20px;padding:0;background:#475569;border:0;flex:none;margin:0}.toggle-switch::after,.toggle-input::after{content:"";position:absolute;left:3px;top:3px;width:19px;height:19px;border-radius:50%;background:white}.toggle-switch[aria-checked=true],.toggle-input:checked{background:#7654c4}.toggle-switch[aria-checked=true]::after,.toggle-input:checked::after{left:22px}
+.color-sv{position:relative;height:140px;touch-action:none;border-radius:8px;overflow:hidden;background:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent),red;cursor:crosshair}.color-sv span{position:absolute;width:15px;height:15px;border:2px solid #fff;box-shadow:0 0 0 1px #000;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}.color-hue{width:100%;appearance:none;border:0;height:14px;border-radius:8px;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}.color-ranges{display:grid;grid-template-columns:1fr 1fr;gap:12px}.color-ranges input{width:100%;accent-color:#7654c4}
+@media(max-width:400px){.module-palette{grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.module-palette button{max-width:35px;width:100%;justify-self:center}.editor-dialog{padding:14px}}
 </style>
 </head>
 <body>
@@ -493,69 +500,20 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
       <div class="ctrlrow"><button id="moduleUp" type="button">← Mover antes</button><button id="moduleDown" type="button">Mover después →</button></div>
       <button id="moduleLayoutClose" type="button">Cerrar</button>
     </dialog>
-    <dialog id="moduleSettingsDialog" class="editor-dialog" aria-labelledby="moduleSettingsTitle">
-      <h2 id="moduleSettingsTitle">Editar módulo <span id="selectedModuleLabel"></span></h2>
-      <p id="stateSelectionNote" class="help" role="status"></p>
-              <div class="grid">
-          <label class="field">Nombre<input id="moduleName" maxlength="80" placeholder="Intro, Verso, Coro…"></label>
-          <label class="field">Descripción<input id="moduleSub" maxlength="75"></label>
-          <label class="field">Dispositivo (etiqueta)<input id="moduleDeviceTag" maxlength="16" placeholder="GT, MIDI, EXP…"></label>
-          <label class="field">Tipo de módulo<select id="moduleKind"><option value="control">Estado musical</option><option value="effect">Efecto</option><option value="expression">Expresión</option><option value="utility">Control auxiliar</option></select></label>
-          <label class="field"><input id="moduleHidden" type="checkbox"> Ocultar módulo</label>
-          
-          <label class="field">Color del módulo<select id="moduleColorPreset"></select></label>
-          <label class="field">Color personalizado<input id="moduleColor" type="color" value="#075eff"></label>
-          <label class="field" hidden>Icono anterior<select id="moduleIcon"></select></label>
-          <label class="field">Referencia patch GT (solo informativa)
-            <input id="statePatch" type="text" inputmode="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" pattern="[A-Za-z0-9\-]*" placeholder="Ej.: U01-1 o P50-5">
-          </label>
-        </div>
-        <p class="help">La referencia patch admite letras, números y guion. No aparece en LIVE ni envía MIDI desde el Editor.</p>
-        <label class="field">Estado inicial<select id="songInitial"></select></label>
-        <p id="statesInitialStatus" class="help" role="status"></p>
-        <button id="stateMakeInitial" class="small primary">Usar como inicial</button>
-
-          <section id="moduleActivation" class="section-card" hidden>
-      <h3>Al entrar en cada estado</h3>
+    <dialog id="moduleSettingsDialog" class="editor-dialog" aria-labelledby="moduleSettingsTitle"><div class="dialog-heading"><h2 id="moduleSettingsTitle">Editar módulo</h2><button id="moduleSettingsX" class="dialog-x" type="button" aria-label="Cerrar">×</button></div><span id="selectedModuleLabel" hidden></span><p id="stateSelectionNote" hidden></p><div id="settingsPreview" class="module-preview"><span id="settingsStar" class="preview-star">☆</span><span id="settingsDevice" class="preview-device"></span><div><strong id="settingsName"></strong><small id="settingsSub"></small></div></div>
+<label class="edit-field"><span aria-hidden="true">Aa</span><span>Nombre<input id="moduleName" maxlength="80" placeholder="Intro, Verso, Coro…"></span></label><label class="edit-field"><span aria-hidden="true">≡</span><span>Descripción<input id="moduleSub" maxlength="75"></span></label><label class="edit-field"><span aria-hidden="true">▣</span><span>Dispositivo<input id="moduleDeviceTag" maxlength="16" placeholder="GT, MIDI, EXP…"></span></label>
+<div class="segment" aria-label="Tipo de módulo"><button id="kindControl" type="button">Estado</button><button id="kindEffect" type="button">Efecto</button><button id="kindExpression" type="button">Expresión</button><button id="kindUtility" type="button" hidden>Auxiliar</button></div><select id="moduleKind" hidden><option value="control">Estado musical</option><option value="effect">Efecto</option><option value="expression">Expresión</option><option value="utility">Control auxiliar</option></select>
+<p class="edit-label">Color</p><div id="modulePalette" class="module-palette"></div><select id="moduleColorPreset" hidden></select><input id="moduleColor" type="text" value="#075eff" hidden><select id="moduleIcon" hidden></select>
+<div id="initialToggleRow" class="toggle-row"><span>Estado inicial</span><button id="stateMakeInitial" type="button" class="toggle-switch" role="switch" aria-label="Estado inicial"></button></div><select id="songInitial" hidden></select><p id="statesInitialStatus" hidden></p><label class="toggle-row">Visible en LIVE<input id="moduleVisible" type="checkbox" class="toggle-input"></label><input id="moduleHidden" type="checkbox" hidden>
+<label class="field" id="patchField">Referencia patch GT (informativa)<input id="statePatch" type="text" inputmode="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" pattern="[A-Za-z0-9\-]*" placeholder="Ej.: U01-1 o P50-5"></label>
+<section id="moduleActivation" class="section-card" hidden>
+      <h3>Comportamiento</h3>
       <p class="help">Elige si este efecto o expresión comienza encendido o apagado. Después puedes cambiarlo por MIDI mientras continúa el estado musical.</p>
       <div id="moduleActivationRows"></div>
       <p class="help">Al cambiar de estado se usa su configuración de entrada. Configura los mensajes de encendido y apagado en la pestaña MIDI.</p>
       <p id="expressionActivationNote" class="help" hidden>Esta configuración representa encendido y apagado; no determina la posición del pedal ni muestra su porcentaje.</p>
-    </section>
-
-          <details id="stateAdvanced" class="section-card">
-      <summary>Asociaciones avanzadas</summary>
-      <p class="help">Puedes gestionar estados existentes, cambiar sus asociaciones o añadir controles auxiliares.</p>
-      <label class="field">Valor MIDI (CC80 estado / CC81 efecto)<input id="moduleMidiValue" type="number" min="0" max="127" placeholder="Sin asignar"></label><label class="field">Expresión MIDI<select id="moduleExpressionCC"><option value="">Sin asignar</option><option value="7">CC7 Volumen</option><option value="91">CC91 Morph</option><option value="11">CC11 Wah / Whammy</option></select></label><div id="stateList" class="state-picker"></div>
-      <div class="ctrlrow">
-        <button id="stateAdd" class="small">+ Estado</button><button id="moduleRemove" class="small danger">Quitar módulo visual (conservar estado)</button>
-        <button id="moduleUtilityAdd" class="small">+ Control auxiliar</button>
-        <button id="stateCopy" class="small">Duplicar estado</button>
-        <button id="stateRemove" class="small danger">Eliminar estado</button>
-        <button id="stateUp" class="small">↑ Orden</button>
-        <button id="stateDown" class="small">↓ Orden</button>
-      </div>
-      <div class="grid">
-        <label class="field">Módulo vinculado al estado<select id="stateSlot"></select></label>
-        <label class="field">Estado asociado al módulo<select id="moduleLinkedState"></select></label>
-      </div>
-    <section class="section-card">
-      <h3>Indicadores del estado seleccionado</h3>
-      <div id="indicatorList"></div>
-      <div class="formrow">
-        <label class="field">Identificador<input id="indicatorId" maxlength="50" placeholder="boost"></label>
-        <label class="field">Descripción<input id="indicatorLabel" maxlength="70" placeholder="Boost +3 dB"></label>
-        <label class="field">Módulo<select id="indicatorSlot"></select></label>
-        <label class="field nonflex" style="display:flex;align-items:center;gap:7px;padding:8px">
-          <input id="indicatorActive" type="checkbox"> Activo al entrar
-        </label>
-        <button id="indicatorAdd" class="nonflex" type="button">+ Indicador</button>
-      </div>
-      <p class="help">Los indicadores representan la configuración prevista, no telemetría del hardware.</p>
-    </section>
-    </details>
-      <button id="moduleSettingsClose" type="button">Cerrar</button>
-    </dialog>
+    </section><div class="dialog-actions"><button id="stateCopy" type="button">Duplicar módulo</button><button id="moduleSettingsClose" type="button" class="dialog-primary">Cerrar</button></div></dialog>
+<dialog id="customColorDialog" class="editor-dialog" aria-labelledby="customColorTitle"><div class="dialog-heading"><h2 id="customColorTitle">Color personalizado</h2><button id="customColorX" class="dialog-x" type="button" aria-label="Cerrar">×</button></div><div id="customPreview" class="module-preview"><span id="customStar" class="preview-star">☆</span><span id="customDevice" class="preview-device"></span><div><strong id="customName"></strong><small id="customSub"></small></div></div><div id="colorSV" class="color-sv"><span id="colorPoint"></span></div><label class="field">Tono<input id="colorHue" type="range" class="color-hue" min="0" max="359" step="1"></label><div class="color-ranges"><label class="field">Saturación<input id="colorSat" type="range" min="0" max="100" step="1"></label><label class="field">Brillo<input id="colorVal" type="range" min="0" max="100" step="1"></label></div><label class="field">HEX<input id="customHex" maxlength="7" autocomplete="off" spellcheck="false"></label><div class="dialog-actions"><button id="customColorCancel" type="button">Cancelar</button><button id="customColorApply" type="button" class="dialog-primary">Aplicar</button></div></dialog>
     <dialog id="moduleDeleteDialog" class="editor-dialog confirm-dialog" aria-labelledby="moduleDeleteTitle">
       <div class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V3h8v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/></svg></div><h2 id="moduleDeleteTitle">Eliminar módulo</h2><p id="moduleDeleteMessage"></p>
       <p class="help">Los cambios se confirman con el disquete global.</p>
@@ -604,7 +562,37 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
       </section>
     </div>
   </section>
-  <section data-panel="midi" hidden>
+  <section data-panel="midi" hidden><div class="section-card"><h3>MIDI del módulo seleccionado</h3><div id="midiModuleSelection" class="state-picker"></div><label class="field">Valor MIDI (CC80 estado / CC81 efecto)<input id="moduleMidiValue" type="number" min="0" max="127" placeholder="Sin asignar"></label><label class="field">Expresión MIDI<select id="moduleExpressionCC"><option value="">Sin asignar</option><option value="7">CC7 Volumen</option><option value="91">CC91 Morph</option><option value="11">CC11 Wah / Whammy</option></select></label></div><details id="stateAdvanced" class="section-card">
+      <summary>Vinculaciones MIDI existentes</summary>
+      <p class="help">Compatibilidad con estados y controles anteriores.</p>
+      <div id="stateList" class="state-picker"></div>
+      <div class="ctrlrow">
+        <button id="stateAdd" class="small">+ Estado</button><button id="moduleRemove" class="small danger">Quitar módulo visual (conservar estado)</button>
+        <button id="moduleUtilityAdd" class="small">+ Control auxiliar</button>
+        
+        <button id="stateRemove" class="small danger">Eliminar estado</button>
+        <button id="stateUp" class="small">↑ Orden</button>
+        <button id="stateDown" class="small">↓ Orden</button>
+      </div>
+      <div class="grid">
+        <label class="field">Módulo vinculado al estado<select id="stateSlot"></select></label>
+        <label class="field">Estado asociado al módulo<select id="moduleLinkedState"></select></label>
+      </div>
+    <section class="section-card">
+      <h3>Indicadores del estado seleccionado</h3>
+      <div id="indicatorList"></div>
+      <div class="formrow">
+        <label class="field">Identificador<input id="indicatorId" maxlength="50" placeholder="boost"></label>
+        <label class="field">Descripción<input id="indicatorLabel" maxlength="70" placeholder="Boost +3 dB"></label>
+        <label class="field">Módulo<select id="indicatorSlot"></select></label>
+        <label class="field nonflex" style="display:flex;align-items:center;gap:7px;padding:8px">
+          <input id="indicatorActive" type="checkbox"> Activo al entrar
+        </label>
+        <button id="indicatorAdd" class="nonflex" type="button">+ Indicador</button>
+      </div>
+      <p class="help">Los indicadores representan la configuración prevista, no telemetría del hardware.</p>
+    </section>
+    </details>
     <div class="section-card"><h3>Dirección MIDI de la canción</h3><div class="grid"><label class="field">Banco MIDI CC0<input id="songCC0" type="number" min="0" max="127" placeholder="Sin asignar"></label><label class="field">Programa MIDI PC<input id="songPC" type="number" min="0" max="127" placeholder="Sin asignar"></label></div></div>
     <div class="panel-title"><h2>Rompecabezas MIDI</h2><p>Asocia pares <b>CC + valor</b> con acciones visuales. El motor no limita las funciones a los 32 botones del Chocolate.</p></div>
     <div class="section-card">

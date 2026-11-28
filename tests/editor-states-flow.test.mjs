@@ -509,13 +509,13 @@ test('cambiar el tipo conserva estados con patch, indicadores o referencias MIDI
  assert.deepEqual(t.snapshot().working.bindings,before.bindings);
  assert.deepEqual(t.snapshot().working.states.find(st=>st.id===stateId),before.states.find(st=>st.id===stateId));
 });
-test('el formulario tiene un solo nombre y las asociaciones manuales están cerradas por defecto',()=>{
+test('el formulario tiene un solo nombre y las vinculaciones manuales se conservan en MIDI',()=>{
  const html=readFileSync(new URL('../editor/v3.html',import.meta.url),'utf8');
  assert.equal((html.match(/id="moduleName"/g)||[]).length,1);
  assert.doesNotMatch(html,/id="stateName"|Título visible|Nombre del estado/);
  const details=html.match(/<details\b[^>]*id="stateAdvanced"[^>]*>[\s\S]*?<\/details>/)?.[0];
  assert.ok(details);assert.doesNotMatch(details.split('>')[0],/\bopen\b/);
- assert.match(details,/id="stateSlot"/);assert.match(details,/id="moduleLinkedState"/);
+ assert.match(details,/id="stateSlot"/);assert.match(details,/id="moduleLinkedState"/);assert.ok(html.indexOf('id="stateAdvanced"')>html.indexOf('data-panel="midi"'));
 });
 test('escribir el nombre conserva las casillas y los campos de indicadores pendientes',()=>{
  const t=setup(),tiles=[...t.elements.get('moduleGrid').children];

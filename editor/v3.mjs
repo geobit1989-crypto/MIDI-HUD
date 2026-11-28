@@ -115,8 +115,8 @@ function currentSheet(){
 function currentState(){return working.states.find(x=>x.id===activeState);}
 function stateSelectionText(st=currentState()){
  if(Number.isInteger(activeModule)&&['effect','expression'].includes(modulePurpose(working,activeSong,activeModule)))
-  return st?'Este módulo conserva una asociación musical anterior. Puedes revisarla en Asociaciones avanzadas.':'Este módulo se suma al estado musical activo. Configura abajo su encendido al entrar en cada estado.';
- if(st)return st.displayIndex==null?'Estado sin módulo visible. Puedes asignarle uno en las opciones avanzadas.':'El nombre se actualiza en el módulo y en su estado musical.';
+  return st?'Este módulo conserva una asociación musical anterior. Puedes revisarla en MIDI.':'Este módulo se suma al estado musical activo. Configura abajo su encendido al entrar en cada estado.';
+ if(st)return st.displayIndex==null?'Estado sin módulo visible. Las vinculaciones anteriores se conservan en MIDI.':'El nombre se actualiza en el módulo y en su estado musical.';
  if(Number.isInteger(activeModule)&&currentSong().displaySlots?.[activeModule])
   return modulePurpose(working,activeSong,activeModule)==='control'?'Escribe el nombre; el estado se crea y se vincula automáticamente.':'Este módulo funciona sin crear un estado musical.';
  return 'Selecciona un estado musical o un módulo para editarlo.';
@@ -127,7 +127,9 @@ function renderInitialState(){
  const action=$("stateMakeInitial"),slot=song.displaySlots?.[activeModule];
  const musical=!Number.isInteger(activeModule)||!slot||modulePurpose(working,activeSong,activeModule)==='control';
  action.disabled=!musical||(st?st.id===song.initialStateId:!slot);
- action.textContent=st?.id===song.initialStateId?'Ya es el estado inicial':'Usar como inicial';
+ action.setAttribute('aria-checked',String(st?.id===song.initialStateId));
+ $('initialToggleRow').hidden=!musical||!slot;
+ $('settingsStar').hidden=st?.id!==song.initialStateId;
 }
 function makeSelectionInitial(){
  if($('stateMakeInitial').disabled)return;
@@ -552,7 +554,7 @@ function renderModules(){
   stateChoices.push([id,state.name+(state.displayIndex==null?' · Sin módulo':' · Módulo '+(state.displayIndex+1))]);
  }
  entries(stateSelect,stateChoices,linkedState()?.id||'');
- renderModuleActivation();
+ renderModuleActivation();renderModuleDialog();
 }
 function paintEditorTile(tile,index){
  const slot=normalSlot(index),visual=resolveModuleVisual(slot,index),on=index===activeModule;
@@ -606,6 +608,75 @@ function layoutModuleGrid(reveal=false){
  $("modulePagePrev").disabled=modulePage===0;$("modulePageNext").disabled=modulePage>=pages.length-1;
 }
 function changeModulePage(delta){activeModule=null;activeState=null;modulePage+=delta;renderStates();layoutModuleGrid();}
+let colorDraft=null;
+const kinds=[['kindControl','control'],['kindEffect','effect'],['kindExpression','expression'],['kindUtility','utility']];
+function paintDialogPreview(prefix,color){
+ const slot=normalSlot(activeModule),visual=resolveModuleVisual({...slot,color:color||slot.color},activeModule).active;
+ const preview=$(prefix+'Preview');preview.style.background=visual.background;preview.style.color=visual.foreground;
+ $(prefix+'Name').textContent=slot.name;$(prefix+'Sub').textContent=slot.sub;
+ $(prefix+'Device').textContent=slot.deviceTag;$(prefix+'Device').hidden=!slot.deviceTag;
+ $(prefix+'Star').hidden=!currentState()||currentState().id!==currentSong().initialStateId;
+}
+function renderModuleDialog(){
+ const slot=currentSlot(),has=Number.isInteger(activeModule)&&!!currentSong().displaySlots?.[activeModule];
+ const type=$('moduleKind').value;
+ for(const [id,value] of kinds){$(id).setAttribute('aria-pressed',String(type===value));$(id).disabled=!has;}
+ $('kindUtility').hidden=type!=='utility';
+ $('moduleVisible').checked=!slot.hidden;$('moduleVisible').disabled=!has;
+ $('patchField').hidden=!currentState();$('stateCopy').disabled=!has&&!currentState();
+ paintDialogPreview('settings');
+ const area=$('modulePalette');area.replaceChildren();
+ const color=normalSlot(activeModule).color.toLowerCase();
+ for(const item of MODULE_COLORS){
+  const selected=item.hex.toLowerCase()===color;
+  const swatch=button(selected?'✓':'',()=>{setSlotProperty('color',item.hex);renderModules();});
+  swatch.style.background=item.hex;swatch.style.color=resolveModuleVisual({color:item.hex},activeModule).active.foreground;
+  swatch.setAttribute('aria-label',item.label);swatch.setAttribute('aria-pressed',String(selected));swatch.disabled=!has;area.append(swatch);
+ }
+ const custom=button('＋',openCustomColor);custom.style.background='conic-gradient(#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000)';custom.style.color='#fff';
+ custom.setAttribute('aria-label','Color personalizado');custom.setAttribute('aria-pressed',String(!MODULE_COLORS.some(x=>x.hex.toLowerCase()===color)));custom.disabled=!has;area.append(custom);
+ const modules=$('midiModuleSelection');modules.replaceChildren();
+ if(activeTab==='midi')for(const [i,item] of currentSong().displaySlots.entries()){
+  const choice=button(normalizeSlot(item,i).name,()=>{activeModule=i;activeState=linkedState(i)?.id??null;renderStates();renderMidi();},i===activeModule?'active':'');
+  choice.setAttribute('aria-pressed',String(i===activeModule));modules.append(choice);
+ }
+}
+function hexToHSV(hex){
+ const [r,g,b]=hex.slice(1).match(/../g).map(x=>parseInt(x,16)/255),max=Math.max(r,g,b),min=Math.min(r,g,b),delta=max-min;
+ let h=delta===0?0:max===r?60*((g-b)/delta%6):max===g?60*((b-r)/delta+2):60*((r-g)/delta+4);
+ return {h:(h+360)%360,s:max===0?0:delta/max,v:max};
+}
+function hsvToHex({h,s,v}){
+ const c=v*s,x=c*(1-Math.abs((h/60)%2-1)),m=v-c;
+ const rgb=h<60?[c,x,0]:h<120?[x,c,0]:h<180?[0,c,x]:h<240?[0,x,c]:h<300?[x,0,c]:[c,0,x];
+ return '#'+rgb.map(n=>Math.round((n+m)*255).toString(16).padStart(2,'0')).join('');
+}
+function renderColorDraft(hex){
+ if(!colorDraft)return;
+ const {h,s,v}=colorDraft;hex=hex||hsvToHex(colorDraft);
+ $('colorHue').value=String(h);$('colorSat').value=String(s*100);$('colorVal').value=String(v*100);$('customHex').value=hex;
+ $('colorSV').style.background='linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent),hsl('+h+' 100% 50%)';
+ $('colorPoint').style.left=(s*100)+'%';$('colorPoint').style.top=((1-v)*100)+'%';
+ $('customColorApply').disabled=false;paintDialogPreview('custom',hex);
+}
+function openCustomColor(){
+ if(!Number.isInteger(activeModule))return;
+ const hex=normalSlot(activeModule).color;colorDraft=hexToHSV(hex);renderColorDraft(hex);$('customColorDialog').showModal();
+}
+function duplicateSelectedModule(){
+ try{
+  if(currentState()&&(!Number.isInteger(activeModule)||modulePurpose(working,activeSong,activeModule)==='control')){
+   activeState=duplicateStateWithModule(working,activeState);activeModule=currentState().displayIndex;
+  }else if(Number.isInteger(activeModule)){
+   const previous=normalSlot(activeModule),purpose=modulePurpose(working,activeSong,activeModule),config=moduleActivation(working,activeSong,activeModule);
+   const result=addConfiguredModule(working,activeSong,purpose);activeModule=result.index;activeState=result.stateId;
+   Object.assign(currentSong().displaySlots[activeModule],{name:(previous.name+' (copia)').slice(0,80),sub:previous.sub,deviceTag:previous.deviceTag,color:previous.color,hidden:previous.hidden,icon:previous.icon});
+   renameModule(working,activeSong,activeModule,currentSong().displaySlots[activeModule].name);
+   for(const row of config?.rows||[])setModuleActiveOnEntry(working,activeSong,activeModule,row.stateId,row.active);
+  }else return;
+  dirty();renderStates();renderSong();
+ }catch(error){notice(error.message,true);}
+}
 function openModuleSettings(){
  if(!Number.isInteger(activeModule)&&!currentState())return;
  if(!$("moduleSettingsDialog").open)$("moduleSettingsDialog").showModal();
@@ -706,6 +777,7 @@ function setSlotProperty(key,value){
  refreshModuleTile(activeModule);
 }
 function refreshModuleTile(index){
+ paintDialogPreview('settings');
  const slot=normalSlot(index),tile=$("moduleGrid").children[index];
  if(tile){paintEditorTile(tile,index);tile.querySelector(".tile-name").textContent=slot.name;
   tile.querySelector(".tile-sub").textContent=slot.sub;tile.querySelector(".tile-device").textContent=slot.deviceTag;
@@ -1092,7 +1164,16 @@ function register(){
  $("moduleLayoutClose").onclick=()=>$("moduleLayoutDialog").close();
  $("moduleEditOpen").innerHTML=CATALOG_MENU_ICONS.pencil;
  $("moduleEditOpen").onclick=openModuleSettings;
- $("moduleSettingsClose").onclick=()=>$("moduleSettingsDialog").close();
+ $("moduleSettingsClose").onclick=$("moduleSettingsX").onclick=()=>$("moduleSettingsDialog").close();
+ for(const [id,purpose] of kinds)$(id).onclick=()=>{$('moduleKind').value=purpose;$('moduleKind').onchange();};
+ $('moduleVisible').onchange=()=>{$('moduleHidden').checked=!$('moduleVisible').checked;$('moduleHidden').onchange();};
+ $('customColorX').onclick=$('customColorCancel').onclick=()=>$('customColorDialog').close();
+ $('customColorDialog').addEventListener('close',()=>{colorDraft=null;});
+ $('customColorApply').onclick=()=>{const hex=$('customHex').value;if(!/^#[0-9a-fA-F]{6}$/.test(hex))return;setSlotProperty('color',hex.toLowerCase());$('customColorDialog').close();renderModules();};
+ $('customHex').oninput=()=>{const hex=$('customHex').value;if(/^#[0-9a-fA-F]{6}$/.test(hex)){colorDraft=hexToHSV(hex);renderColorDraft(hex);}else $('customColorApply').disabled=true;};
+ for(const [id,key,scale] of [['colorHue','h',1],['colorSat','s',100],['colorVal','v',100]])$(id).oninput=()=>{if(colorDraft){colorDraft[key]=Number($(id).value)/scale;renderColorDraft();}};
+ const sv=$('colorSV'),pickSV=e=>{if(!colorDraft)return;const rect=sv.getBoundingClientRect();colorDraft.s=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));colorDraft.v=1-Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));renderColorDraft();};
+ sv.onpointerdown=e=>{sv.setPointerCapture(e.pointerId);pickSV(e);};sv.onpointermove=e=>{if(sv.hasPointerCapture(e.pointerId))pickSV(e);};
  $("moduleDeleteSelected").onclick=requestModuleDeletion;
  $("moduleDeleteCancel").onclick=()=>$("moduleDeleteDialog").close();
  $("moduleDeleteConfirm").onclick=confirmModuleDeletion;
@@ -1117,11 +1198,7 @@ function register(){
   try{activeState=newStateWithModule(working,activeSong,activeModule);activeModule=currentState().displayIndex;dirty();renderStates();renderSong();}
   catch(error){notice(error.message,true);}
  };
- $("stateCopy").onclick=()=>{
-  if(!currentState())return;
-  try{activeState=duplicateStateWithModule(working,activeState);activeModule=currentState().displayIndex;dirty();renderStates();renderSong();}
-  catch(error){notice(error.message,true);}
- };
+ $("stateCopy").onclick=duplicateSelectedModule;
  $("stateRemove").onclick=()=>{
   if(!currentState())return;
   if(!window.confirm("¿Eliminar este estado y las asociaciones MIDI que lo usen?"))return;
