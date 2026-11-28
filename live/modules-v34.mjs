@@ -2,7 +2,36 @@ import {expressionPercent} from "../core/module-midi.mjs";
 import {normalizeSlot,resolveModuleVisual} from '../core/module-visuals.mjs?v=20261016-overlays1';
 import {moduleRows} from '../core/layout-v3.4.mjs';
 
-const rendered=new WeakMap();
+const rendered=new WeakMap(),fitters=new WeakMap();
+function fitModule(tile){
+ const body=tile.querySelector('.details');if(!body||!tile.clientWidth||!tile.clientHeight)return;
+ let lo=.08,hi=1;
+ function fits(scale){
+  tile.style.setProperty('--fit-scale',String(scale));
+  const box=body.getBoundingClientRect(),bounds=tile.getBoundingClientRect();
+  if(body.scrollHeight>body.clientHeight+1||body.scrollWidth>body.clientWidth+1)return false;
+  for(const child of tile.querySelectorAll('.name,.exname,.sub,.exsub,.icon-wrap,.exicon,.number,.module-device,.value')){
+   if(child.hidden||!child.getClientRects().length)continue;
+   const range=tile.ownerDocument.createRange();range.selectNodeContents(child);
+   for(const ink of range.getClientRects()){
+    const limit=body.contains(child)?box:bounds;
+    if(ink.left<limit.left-.5||ink.right>limit.right+.5||ink.top<limit.top-.5||ink.bottom>limit.bottom+.5)return false;
+   }
+  }
+  return true;
+ }
+ for(let i=0;i<10;i++){const mid=(lo+hi)/2;if(fits(mid))lo=mid;else hi=mid;}
+ tile.style.setProperty('--fit-scale',String(lo));
+}
+function observeModules(grid){
+ fitters.get(grid)?.disconnect();
+ let queued=false;
+ const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;for(const tile of grid.querySelectorAll('[data-hud-index]'))fitModule(tile);});};
+ const observer=typeof ResizeObserver==='function'?new ResizeObserver(schedule):null;
+ observer?.observe(grid);for(const tile of grid.querySelectorAll('[data-hud-index]'))observer?.observe(tile);
+ fitters.set(grid,{schedule,disconnect:()=>observer?.disconnect()});schedule();
+ grid.ownerDocument.fonts?.ready?.then(schedule).catch(()=>{});
+}
 const neutral='#b8bdc3';
 
 function paint(color, muted){
@@ -37,32 +66,41 @@ function tileFor(doc,source,index){
  if(momentary)tile.dataset.momentary='true';
  const title=node(doc,expression?'strong':'div',expression?'exname':'name',cfg.name);
  const sub=node(doc,'div',expression?'exsub':'sub',source.sub==='GT'&&cfg.deviceTag==='GT'?'':cfg.sub);
- const tag=cfg.deviceTag?node(doc,'span','gt module-device',cfg.deviceTag):null;
+ // Abbreviate only the known controller's display name, never its stored configuration.
+ const device=cfg.deviceTag.trim();
+ const badge=/^(?:chocolate(?:\s+plus)?|m[- ]?vave\s+chocolate(?:\s+plus)?)$/i.test(device)?'CP':device;
+ const tag=badge?node(doc,'span','gt module-device',badge):null;
+ if(tag)tag.title=device;
  const icon=node(doc,'span',expression?'exicon':'icon-wrap',visual.glyph);
  icon.setAttribute('aria-hidden','true');
  icon.hidden=!visual.glyph;
  tile.dataset.hasGlyph=String(!!visual.glyph);
  tile.style.setProperty("--glyph-length",String(Math.max(1,[...visual.glyph].length)));
- sub.hidden=!sub.textContent;
- if(expression){
-  const head=node(doc,'div','exhead');
-  const label=node(doc,'div','exlabel');
-  if(visual.glyph)label.append(icon);
-  label.append(title);
-  const value=node(doc,'strong','value','');value.hidden=true;
-  head.append(label,value);
-  tile.append(head,sub);
-  if(tag)tile.append(tag);
-  const meter=node(doc,'div','exmeter');meter.hidden=true;tile.append(meter);
- }else{
-  const details=node(doc,'div','details');details.append(title,sub);
-  if(tag)details.append(tag);
-  tile.append(node(doc,'span','number',index+1),icon,details,node(doc,'span','arrow','›'),node(doc,'div','meter'));
+ const gt=device.toUpperCase()==='GT';
+ const cp=badge.toUpperCase()==='CP';
+ const details=node(doc,'div',expression?'details expression-details':'details');
+ const secondary=node(doc,'div','module-secondary');
+ // GT uses its configured control glyph as the subtext. CP keeps its sound description.
+ // Other devices preserve their description and icon without introducing side lanes.
+ if(gt&&visual.glyph&&!expression){secondary.append(icon);sub.hidden=true;}
+ else{
+  if(!cp&&visual.glyph)secondary.append(icon);
+  sub.hidden=!sub.textContent;
+  if(!sub.hidden)secondary.append(sub);
  }
+ secondary.hidden=!secondary.children.length;
+ details.append(title,secondary);
+ if(expression){
+  const value=node(doc,'strong','value','');value.hidden=true;details.append(value);
+  const meter=node(doc,'div','exmeter');meter.hidden=true;details.append(meter);
+ }
+ tile.append(node(doc,'span','number',index+1),details);
+ if(tag)tile.append(tag);
+ tile.dataset.hasDevice=String(!!tag);
  tile.dataset.hudIndex=String(index);tile.tabIndex=0;
  tile.setAttribute('role','button');
  tile.title='Consultar módulo '+(index+1)+' (sin enviar MIDI)';
- tile.setAttribute('aria-label',cfg.name);
+ tile.setAttribute('aria-label',cfg.name+(device?' · '+device:''));
  return tile;
 }
 /** Actualiza la apariencia sin reemplazar las filas, los módulos ni el foco. */
@@ -86,13 +124,13 @@ export function renderLiveModules(grid,vm){
    return row;
   });
   if(!rows.length)content.push(node(doc,'div','modules-empty','Sin módulos visibles · configura Estados en el Editor'));
-  grid.replaceChildren(...content);rendered.set(grid,signature);
+  grid.replaceChildren(...content);rendered.set(grid,signature);observeModules(grid);
  }
  for(const tile of grid.querySelectorAll('[data-hud-index]')){
   const i=Number(tile.dataset.hudIndex);
   const slot=slots[i],cc=slot?.expressionCC,value=vm.expressions?.[cc];
   const readout=tile.querySelector('.value'),meter=tile.querySelector('.exmeter');
-  if(readout&&meter){const known=Number.isInteger(value);readout.hidden=!known;meter.hidden=!known;if(known){const percent=expressionPercent(slot,value);readout.textContent=percent+'%';tile.style.setProperty('--fill',percent+'%');}}
+  if(readout&&meter){const known=Number.isInteger(value),next=known?expressionPercent(slot,value)+'%':'';const changed=readout.hidden===known||readout.textContent!==next;readout.hidden=!known;meter.hidden=!known;if(known){readout.textContent=next;tile.style.setProperty('--fill',next);}else readout.textContent='';if(changed)fitters.get(grid)?.schedule();}
   if(tile.dataset.momentary)continue;
   const indicators=vm.state.indicators.filter(ind=>ind.displayIndex===i);
   const lit=indicators.some(ind=>ind.active);

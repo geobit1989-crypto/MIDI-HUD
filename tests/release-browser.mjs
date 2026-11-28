@@ -318,6 +318,14 @@ try{
    const tile=icon.closest('[data-hud-index]'),box=tile.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(icon);
    return [...range.getClientRects()].every(r=>r.left>=box.left-1&&r.right<=box.right+1&&r.top>=box.top-1&&r.bottom<=box.bottom+1)&&icon.scrollWidth<=icon.clientWidth+1;
   })),true);
+  await page.waitForFunction(()=>[...document.querySelectorAll('.switch-grid [data-hud-index]')].every(tile=>{
+   const details=tile.querySelector('.details');if(!details)return false;
+   const box=tile.getBoundingClientRect(),body=details.getBoundingClientRect();
+   const badge=tile.querySelector('.module-device');
+   if(badge){const b=badge.getBoundingClientRect();if(b.right>box.right+1||b.top<box.top-1||b.bottom>body.top+1)return false;}
+   return Math.abs((body.left+body.right)-(box.left+box.right))<2&&[...details.querySelectorAll('.name,.exname,.sub,.exsub,.icon-wrap,.exicon,.value')].filter(el=>!el.hidden&&el.getClientRects().length).every(el=>{const range=document.createRange();range.selectNodeContents(el);return [...range.getClientRects()].every(r=>r.left>=body.left-1&&r.right<=body.right+1&&r.top>=body.top-1&&r.bottom<=body.bottom+1);});
+  }));
+  assert.equal(await page.locator('#hud-prev').evaluate(el=>getComputedStyle(el).borderTopColor),'rgb(48, 95, 243)');
   await page.screenshot({path:`build/browser/${browserName}-${width}-full.png`});
   await mode.click();
   assert.equal(await screen.getAttribute('data-view-mode'),'states');
@@ -349,7 +357,7 @@ try{
  assert.equal(await screen.getAttribute('data-view-mode'),'states');
  await page.locator('.topbar .settings').click();
  const devices=page.locator('[data-settings-section="devices"]');
- if(!await devices.evaluate(node=>node.parentElement.open))await devices.click();
+ await devices.click();
  assert.ok(await page.locator('#hud-midi-btn').isVisible());
  assert.deepEqual(await page.evaluate(()=>['hudLibraryV34','midiHudSettingsV1','midiHudTrustedDeviceSessionV1'].map(k=>localStorage.getItem(k))),['stable-library','stable-settings','stable-auth']);
  assert.deepEqual(errors,[]);console.log(browserName+': Editor/LAB, isolated storage, MIDI channel 2 and reconnection, three LIVE modes at five viewport sizes, MIDI with modules hidden, persistent mode, Android BLE entry point.');
