@@ -7,7 +7,7 @@
 <meta name="midi-hud-build" content="v8.2-unified-library-qa-drive7">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08111b">
-<title>MIDI HUD · Editor v3.4</title>
+<title>MIDI HUD · Editor</title>
 <style>
 :root{color-scheme:dark;--bg:#08111b;--card:#111f2d;--card-alt:#17293a;--line:#31485e;--muted:#b4c6d7;--txt:#f2f7fc;--accent:#7654C4;--accent-hover:#8A6BE0;--accent-dark:#5B3FA3;--accent-light:#B49AF5;--accent-bg:rgba(118,84,196,.16);--bad:#ffaaa5;--good:#9fe6cc;--radius:13px}
 *{box-sizing:border-box}
@@ -291,8 +291,8 @@ input[type=color]{padding:4px 6px;cursor:pointer;min-height:43px}
 
 body.state-edit-mode{height:100dvh;min-height:0;overflow:hidden}
 .state-edit-mode>.container{height:100%;display:flex;flex-direction:column;min-height:0}
-.state-edit-mode .workspace{flex:1;min-height:0;display:flex;flex-direction:column}
-.state-edit-mode .workspace>.main{flex:1;min-height:0;display:flex;flex-direction:column;padding:clamp(7px,1.4vw,14px)}
+.state-edit-mode .workspace{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;align-items:stretch}
+.state-edit-mode .workspace>.main{flex:1;min-height:0;min-width:0;width:100%;display:flex;flex-direction:column;padding:clamp(7px,1.4vw,14px)}
 .state-edit-mode .top,.state-edit-mode .main-head,.state-edit-mode .tabs{flex:none}
 .state-edit-mode .visual-states{flex:1;min-height:0;display:flex;flex-direction:column;gap:7px}
 .module-toolbar,.module-bottom{display:flex;align-items:center;gap:6px;flex:none;min-height:34px}
@@ -301,6 +301,7 @@ body.state-edit-mode{height:100dvh;min-height:0;overflow:hidden}
 .module-tool svg{width:22px;height:22px}
 .module-tool.danger{color:#ff7474;background:#351C24;border-color:#855358}
 .module-tool.primary{color:var(--accent-light);background:var(--accent-bg)}
+#moduleEditOpen{color:var(--accent-light)}
 .visual-states [hidden]{display:none!important}
 .visual-states .module-selector{flex:1;min-height:0;min-width:0;margin:0;display:grid;gap:7px;overflow:hidden;grid-template-columns:repeat(60,minmax(0,1fr));column-gap:0}
 .visual-states button.module-select-tile{position:relative;container-type:size;min-width:0;min-height:0;height:100%;width:calc(100% - 6px);margin-inline:3px;padding:0;border:1px solid transparent;border-radius:10px;display:grid;place-items:center;overflow:hidden;box-shadow:none;text-shadow:none;filter:none;color:var(--tile-fg);background:var(--tile-bg)}
@@ -338,8 +339,8 @@ body.state-edit-mode{height:100dvh;min-height:0;overflow:hidden}
     <button type="button" id="saveAll" class="top-icon" data-state="confirmed" aria-label="Guardar" title="Sin cambios pendientes" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z"/><path d="M7 3v6h10V3M7 21v-8h10v8"/></svg></button>
     <details id="editorMenu" class="top-menu"><summary aria-label="Opciones del Editor" title="Opciones del Editor"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></summary>
       <div class="top-menu-items">
-        <a id="liveLink" href="../v03.html?v=20261128-editor5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 13 7-13 7z"/></svg>Abrir LIVE</a>
-        <a id="settingsLink" href="../v03.html?settings=1&amp;v=20261128-editor5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 4 0 .7 2.5 2 .9 2.3-1.2 2 3.4-1.7 1.8v2.4l1.7 1.8-2 3.4-2.3-1.2-2 .9L14 21h-4l-.7-2.3-2-.9L5 19l-2-3.4 1.7-1.8v-2.4L3 9l2-3.4 2.3 1.2 2-.9z"/><circle cx="12" cy="12" r="3"/></svg>Abrir Ajustes</a>
+        <a id="liveLink" href="../v03.html?v=20261128-editor6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 13 7-13 7z"/></svg>Abrir LIVE</a>
+        <a id="settingsLink" href="../v03.html?settings=1&amp;v=20261128-editor6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 4 0 .7 2.5 2 .9 2.3-1.2 2 3.4-1.7 1.8v2.4l1.7 1.8-2 3.4-2.3-1.2-2 .9L14 21h-4l-.7-2.3-2-.9L5 19l-2-3.4 1.7-1.8v-2.4L3 9l2-3.4 2.3 1.2 2-.9z"/><circle cx="12" cy="12" r="3"/></svg>Abrir Ajustes</a>
         <button id="editorHistoryOpen" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 1 3 6.7M3 4v8h8M12 7v5l4 2"/></svg>Historial</button>
       </div>
     </details>
@@ -468,11 +469,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
       <span class="module-toolbar-label">Módulos</span>
       <button id="moduleDeleteSelected" type="button" class="module-tool danger" aria-label="Eliminar módulo seleccionado" title="Eliminar módulo seleccionado" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6m4-6v6"/></svg></button>
       <button id="moduleLayoutOpen" type="button" class="module-tool" aria-label="Distribución de módulos" title="Distribución de módulos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M12 9v12"/></svg></button>
+      <button id="moduleEditOpen" type="button" class="module-tool" aria-label="Editar módulo seleccionado" title="Editar módulo seleccionado" hidden></button>
       <button id="moduleAddOpen" type="button" class="module-tool primary" aria-label="Añadir módulo" title="Añadir módulo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
     </div>
     <div id="moduleGrid" class="module-grid module-selector" aria-label="Módulos de la canción"></div>
-    <div class="module-bottom">
-      <button id="moduleEditOpen" type="button" hidden>Editar módulo</button>
+    <div class="module-bottom" id="modulePageBar" hidden>
       <span id="modulePaging" class="module-paging" hidden><button id="modulePagePrev" type="button" aria-label="Página anterior">‹</button><span id="modulePageLabel"></span><button id="modulePageNext" type="button" aria-label="Página siguiente">›</button></span>
     </div>
     <dialog id="moduleAddDialog" class="editor-dialog" aria-labelledby="moduleAddTitle">
@@ -652,7 +653,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
 <input id="catalogFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
-<script type="module" src="./v3.mjs?v=20261128-editor5"></script>
+<script type="module" src="./v3.mjs?v=20261128-editor6"></script>
 </div>
 </body>
 </html>
