@@ -128,7 +128,7 @@ export class PersistentDriveAuth {
  }
  async connectNative(){
   const platform=this.native.platform;
-  const returnTo=platform==="ios"?"midihud-oauth://complete":platform==="windows"?await this.native.call("broker.prepare"):undefined;
+  const returnTo=platform==="android"?"io.midihud.app.androidqa://oauth/complete":platform==="ios"?"midihud-oauth://complete":platform==="windows"?await this.native.call("broker.prepare"):undefined;
   const next=await this.call("/auth/native/start",{method:"POST",body:returnTo?{returnTo}:{},token:null});
   if(returnTo&&next.returnTo!==returnTo)throw Error("El servidor todavía no admite el retorno automático.");
   if(!/^[A-Za-z0-9_-]{43}$/.test(next.proof||"")||!next.authorizeUrl?.startsWith("https://accounts.google.com/o/oauth2/v2/auth?"))throw Error("Autorización nativa inválida.");
