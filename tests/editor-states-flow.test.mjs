@@ -326,21 +326,21 @@ test('navegación entre pestañas mantiene el borrador y no altera LIVE',async()
 test('un Lead Sheet inválido no reemplaza al anterior; convertir y guardar conserva el cifrado elegido',async()=>{
  const t=setup({tab:'sheet'}),stored=t.storage.getItem(storageAPI.LIBRARY_KEY);
  t.elements.get('leadText').value='A - Intro\n| Q | G |';t.elements.get('leadText').oninput();
- await t.elements.get('sheetSave').onclick();
+ await t.elements.get('saveAll').onclick();
  assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),stored);
  assert.equal(t.snapshot().hasDraft,true);assert.equal(t.elements.get('saveStatus').textContent,'Revisar borrador');
  t.elements.get('leadText').value='A - Intro\n| Do | Sol/Si | Lam7 |';t.elements.get('leadText').oninput();
  t.elements.get('sheetNotation').value='americano';t.elements.get('sheetConvert').onclick();
  assert.equal(t.elements.get('leadText').value,'A - Intro\n| C | G/B | Am7 |');
  assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
- await t.elements.get('sheetSave').onclick();
+ await t.elements.get('saveAll').onclick();
  const song=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)).songs.find(s=>s.id===t.songId);
  assert.equal(song.leadSheet.sourceText,'A - Intro\n| C | G/B | Am7 |');assert.equal(song.chordNotation,'americano');
 });
 test('CC0 está reservado y los campos vacíos de la matriz muestran error',async()=>{
  const t=setup({tab:'midi'});
  t.elements.get('midiCC').value='0';t.elements.get('midiValue').value='0';t.elements.get('actionAdd').onclick();
- await t.elements.get('midiSave').onclick();
+ await t.elements.get('saveAll').onclick();
  assert.ok(!t.snapshot().working.songs.find(s=>s.id===t.songId).midiBindings.some(b=>b.cc===0&&b.value===0));
  t.elements.get('matrixStart').value='';t.elements.get('matrixStart').onchange();
  assert.equal(t.elements.get('midiMatrix').children.length,1);
@@ -440,7 +440,7 @@ test('añadir módulo, escribir un nombre y guardar crea el estado y su asociaci
   assert.equal(t.snapshot().activeState,id);
  }
  assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);
- await t.elements.get('statesSave').onclick();
+ await t.elements.get('saveAll').onclick();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),state=saved.states.find(st=>st.id===id),song=saved.songs.find(s=>s.id===t.songId);
  assert.equal(state.name,'Coro');assert.equal(state.displayIndex,index);assert.equal(song.displaySlots[index].name,'Coro');
  assert.equal(song.stateIds.length,2);assert.deepEqual(saved.bindings,before.bindings);
@@ -452,7 +452,7 @@ test('los cuatro módulos vacíos de una canción se nombran sin crear ni asocia
   t.elements.get('moduleGrid').children[i].onclick();
   t.elements.get('moduleName').value=name;t.elements.get('moduleName').oninput();
  }
- await t.elements.get('statesSave').onclick();
+ await t.elements.get('saveAll').onclick();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),song=saved.songs.find(s=>s.id===t.songId);
  assert.equal(song.stateIds.length,4);assert.equal(song.initialStateId,initial);
  assert.deepEqual(song.stateIds.map(id=>saved.states.find(st=>st.id===id).name),names);
@@ -464,7 +464,7 @@ test('renombrar una sola vez conserva el ID y la asignación MIDI del estado',as
  const t=setup({prepare(db,song,initial){id=initial.id;model.setBindingActions(db,100,127,[{type:'ACTIVATE_STATE',stateId:id}]);}});
  const bindings=t.snapshot().working.bindings;
  t.elements.get('moduleName').value='Coro';t.elements.get('moduleName').oninput();
- await t.elements.get('statesSave').onclick();
+ await t.elements.get('saveAll').onclick();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY));
  assert.deepEqual(saved.bindings,bindings);assert.equal(t.snapshot().activeState,id);
  const result=engine.createEngine(saved,{songId:t.songId,repertoireId:'worship'}).dispatch({type:'MIDI_CC',cc:100,value:127,channel:1});
@@ -476,7 +476,7 @@ test('añadir y nombrar Morph como expresión no crea un estado ni cambia el ini
  t.elements.get('moduleExpressionAdd').onclick();const index=t.snapshot().activeModule;
  t.elements.get('moduleName').value='Morph';t.elements.get('moduleName').oninput();
  t.elements.get('moduleSub').value='+delay+reverb';t.elements.get('moduleSub').oninput();
- await t.elements.get('statesSave').onclick();
+ await t.elements.get('saveAll').onclick();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),song=saved.songs.find(s=>s.id===t.songId);
  assert.equal(song.displaySlots[index].kind,'expression');assert.equal(song.displaySlots[index].name,'Morph');
  assert.deepEqual(song.stateIds,before.songs.find(s=>s.id===t.songId).stateIds);
@@ -489,7 +489,7 @@ test('los controles auxiliares no crean estados y conservan ese comportamiento t
  t.elements.get('moduleName').value='Tap tempo';t.elements.get('moduleName').oninput();
  t.elements.get('moduleUp').onclick();
  t.elements.get('moduleName').value='Tap';t.elements.get('moduleName').oninput();
- await t.elements.get('statesSave').onclick();
+ await t.elements.get('saveAll').onclick();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),song=saved.songs.find(s=>s.id===t.songId);
  assert.deepEqual(song.stateIds,[initial]);assert.equal(t.snapshot().activeState,null);
  assert.equal(song.displaySlots[t.snapshot().activeModule].stateMode,'manual');
@@ -548,7 +548,7 @@ test('Morph, Wah y Whammy se configuran una vez y responden encima de Intro sin 
   expressions.push({name,index,id:t.currentSong().displaySlots[index].indicatorId});
  }
  assert.deepEqual(t.currentSong().stateIds,[intro,coro]);assert.equal(t.currentSong().initialStateId,intro);
- assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);await t.elements.get('statesSave').onclick();
+ assert.equal(t.writes.filter(k=>k===storageAPI.LIBRARY_KEY).length,0);await t.elements.get('saveAll').onclick();
  t.context.api.updateTab('midi');
  const assign=(cc,value,type,target)=>{
   t.elements.get('midiCC').value=String(cc);t.elements.get('midiCC').onchange();
@@ -562,7 +562,7 @@ test('Morph, Wah y Whammy se configuran una vez y responden encima de Intro sin 
   assign(110+i,127,'MODULE_ON',target);assign(110+i,0,'MODULE_OFF',target);
   assert.ok(t.elements.get('actionTarget').options.some(option=>option.textContent==='Prueba · '+item.name));
  }
- await t.elements.get('midiSave').onclick();
+ await t.elements.get('saveAll').onclick();
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY)),hud=engine.createEngine(saved,{repertoireId:"worship",songId:t.songId});
  const send=(cc,value=127)=>hud.dispatch({type:'MIDI_CC',channel:1,cc,value});
  send(100);
@@ -590,7 +590,7 @@ test('crear Delay como efecto configura su encendido sin crear un estado musical
  select.value='true';select.onchange();
  assert.equal(t.elements.get('expressionActivationNote').hidden,true);
  assert.equal(t.elements.get('stateMakeInitial').disabled,true);
- await t.elements.get('statesSave').onclick();
+ await t.elements.get('saveAll').onclick();
  const song=t.currentSong(),state=t.snapshot().working.states.find(st=>st.id===initial);
  assert.deepEqual(song.stateIds,[initial]);assert.equal(song.initialStateId,initial);
  assert.equal(state.indicators.find(ind=>ind.displayIndex===t.snapshot().activeModule).active,true);

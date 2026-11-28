@@ -12,8 +12,8 @@ test("todos los controles del editor tienen un identificador real en la interfaz
  const missing=[...new Set(accessed)].filter(id=>!ids.has(id));
  assert.deepEqual(missing,[]);
 });
-test("las cuatro áreas del editor están presentes y funcionan como pestañas",()=>{
- for(const id of ["song","states","sheet","midi"]){
+test("las tres áreas del editor están presentes y funcionan como pestañas",()=>{
+ for(const id of ["states","sheet","midi"]){
   assert.match(page,new RegExp('data-tab="'+id+'"'));
   assert.match(page,new RegExp('data-panel="'+id+'"'));
  }

@@ -27,9 +27,10 @@ test('public legal pages are bilingual, have working cross-links and identify co
  assert.match(read('terms.html'),/fase beta/);
  assert.match(read('terms-en.html'),/beta/);
 });
-test('home, V3 Editor and LIVE link to all four legal pages',()=>{
- for(const file of ['index.html','editor/v3.html','v03.html']){
+test('About links to all four legal pages without duplicate footers',()=>{
+ for(const file of ['index.html','live/home-qa.mjs']){
   const html=read(file);
   for(const page of pages)assert(html.includes(page),file+' missing '+page);
  }
+ for(const file of ['editor/v3.html','v03.html','v03-ble-test.html'])assert.doesNotMatch(read(file),/<nav aria-label="Legal"/);
 });

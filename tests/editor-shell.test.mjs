@@ -23,3 +23,10 @@ test('three tabs and inline identity, DIN five pins, legal links centralized, ic
  assert.doesNotMatch(h,/<nav aria-label="Legal"/);assert.doesNotMatch(read('v03.html'),/<nav aria-label="Legal"/);
  assert.match(read('live/home-qa.mjs'),/Privacidad.*Condiciones.*Privacy.*Terms/);
 });
+
+test('Lead Sheet uses original Lucide File Music geometry and includes its license',()=>{
+ const h=read('editor/v3.html');
+ assert.match(h,/Lucide File Music 0\.456\.0/);assert.match(h,/ISC License/);
+ for(const d of ['M10.5 22H18a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v8.4','M8 18v-7.7L16 9v7'])assert.ok(h.includes(d));
+ assert.match(h,/<circle cx="14" cy="16" r="2" \/>/);assert.match(h,/<circle cx="6" cy="18" r="2" \/>/);
+});

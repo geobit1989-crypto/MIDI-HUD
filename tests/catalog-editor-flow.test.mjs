@@ -183,16 +183,16 @@ test('puente añade la canción y el lead sheet elegido a una playlist ya creada
  assert.equal(after.committed.songs.length,t.snapshot().working.songs.length);
 });
 
-test('tonalidad aparece en lead sheets y conserva su ubicación en LIVE',()=>{
+test('tonalidad de la variante activa aparece en la ficha y conserva su ubicación en LIVE',()=>{
  const page=readFileSync(new URL('../editor/v3.html',import.meta.url),'utf8');
- const tone=page.indexOf('id="songTone"');assert(tone>page.indexOf('data-panel="sheet"'));assert(tone<page.indexOf('data-panel="midi"'));
+ const tone=page.indexOf('id="songTone"');assert(tone>page.indexOf('id="songSummary"'));assert(tone<page.indexOf('data-tab="states"'));
  const live=readFileSync(new URL('../v03.html',import.meta.url),'utf8');assert.match(live,/key\.textContent=vm\.song\.tono/);
 });
 
 test('guardar solo tonalidad conserva una partitura previa con compases vacíos y su configuración',()=>{
  const t=setup({tab:'sheet',prepare(db,song){song.leadSheet={custom:{cue:'Puente'},sections:[{letter:'A',label:'Intro',bars:[['F','','',''],['','','','']]}]};}});
  const before=t.snapshot(),songId=before.activeSong,score=copyScore(before.committed.songs.find(s=>s.id===songId).leadSheets[0].leadSheet);
- t.elements.get('songTone').value='Sol mayor';t.elements.get('songTone').listeners.input();t.elements.get('sheetSave').onclick();
+ t.elements.get('songTone').value='Sol mayor';t.elements.get('songTone').listeners.input();t.elements.get('saveAll').onclick();
  const after=t.snapshot(),song=after.committed.songs.find(s=>s.id===songId);
  assert.deepEqual(song.leadSheets[0].leadSheet,score);assert.equal(song.leadSheets[0].tono,'Sol mayor');
  assert.deepEqual(after.committed.states,before.committed.states);assert.equal(after.hasDraft,false);
