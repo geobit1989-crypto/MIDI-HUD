@@ -380,7 +380,9 @@ test('crear, duplicar y quitar canciones y repertorios conserva una selección v
  assert.equal(t.snapshot().working.repertoires.find(r=>r.id===rep).name,'Ensayo');
  t.elements.get('songAddSig').onclick();const sig=t.snapshot().activeSong;
  assert.equal(t.snapshot().working.songs.find(s=>s.id===sig).stateIds.length,4);
- t.elements.get('songCopy').onclick();assert.equal(t.snapshot().activeSong,sig);t.elements.get('songRemove').onclick();
+ t.context.api.updateTab('sheet');assert.equal(t.snapshot().activeSong,sig);
+ t.elements.get('startAddSongs').onclick();t.elements.get('pickerSearch').value='Nueva canción SIG';t.elements.get('pickerSearch').oninput();t.elements.get('pickerResults').children[0].onclick();t.elements.get('confirmAddSongs').onclick();
+ t.elements.get('songList').children[0].children[2].children[1].children.at(-1).onclick();
  assert.equal(t.snapshot().working.songs.some(s=>s.id===sig),true);
  t.elements.get('repRemove').onclick();
  assert.equal(t.snapshot().working.repertoires.some(r=>r.id===rep),false);

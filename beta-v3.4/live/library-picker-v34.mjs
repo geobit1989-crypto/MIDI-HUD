@@ -1,6 +1,7 @@
 import {saveLiveSelection} from '../core/live-selection-v34.mjs?v=20261016-repertoires1';
 
-const listMusic = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V6M3 10h11M3 14h11M3 18h7"/><circle cx="18" cy="15" r="3"/></svg>';
+import {LIBRARY_ICONS} from '../core/library-icons.mjs';
+const listMusic = LIBRARY_ICONS.lists;
 
 function repertoireInput(doc, rep, onChange) {
  const label=doc.createElement('label');
@@ -27,9 +28,9 @@ export function installLibraryPicker({root,engine,library,storage,usingSavedLibr
  if(list){for(const row of rows)list.append(row.label);}
  const option=(label,value)=>{const item=doc.createElement('option');item.textContent=label;item.value=value;return item;};
  select?.replaceChildren(...library.repertoires.map(rep=>option(rep.name,rep.id)));
- const message=missingRequestedRepertoire?'El repertorio solicitado no está guardado en este navegador. Abre el Editor donde lo creaste y usa «Enlace para navegador MIDI».':
-  usingSavedLibrary?library.repertoires.length+' repertorios guardados en este navegador.':
-  'Mostrando datos de ejemplo. Para traer tus repertorios, abre el Editor en el navegador anterior y usa «Enlace para navegador MIDI».';
+ const message=missingRequestedRepertoire?'La lista solicitada no está guardada en este navegador. Abre el Editor donde lo creaste y usa «Enlace para navegador MIDI».':
+  usingSavedLibrary?library.repertoires.length+' listas disponibles.':
+  'Mostrando datos de ejemplo. Para traer tus listas, abre el Editor en el navegador anterior y usa «Enlace para navegador MIDI».';
  status.textContent=message;
  let previousRep=null,previousSelection=null;
  function sync(){

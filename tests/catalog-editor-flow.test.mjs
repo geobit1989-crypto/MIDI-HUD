@@ -86,10 +86,10 @@ test('crear, reabrir y llenar una lista vacía ejecuta handlers reales sin borra
  const id=saved.activeRep;assert.deepEqual(saved.working.repertoires.find(r=>r.id===id).songIds,[]);
  assert.equal(t.elements.get('emptyPlaylist').hidden,false);
  t.context.api.useRepertoire('worship');t.context.api.useRepertoire(id);
- const row=t.elements.get('masterResults').children[0];row.children.at(-1).onclick();
+ t.elements.get('startAddSongs').onclick();t.elements.get('pickerResults').children[0].onclick();t.elements.get('confirmAddSongs').onclick();
  saved=t.snapshot();assert.equal(saved.committed.songs.length,count);
  assert.equal(saved.working.repertoires.find(r=>r.id===id).songIds.length,1);
- t.elements.get('songRemove').onclick();saved=t.snapshot();
+ t.elements.get('songList').children[0].children[2].children[1].children.at(-1).onclick();saved=t.snapshot();
  assert.equal(saved.committed.songs.length,count);assert.equal(saved.activeSong,null);
 });
 
@@ -173,8 +173,9 @@ test('puente añade la canción y el lead sheet elegido a una playlist ya creada
  const original=t.storage.getItem(storageAPI.LIBRARY_KEY);
  const songId=t.snapshot().activeSong,source=t.snapshot().working.songs.find(s=>s.id===songId),sheetId=source.leadSheets.at(-1).id;
  t.elements.get('repAdd').onclick();t.elements.get('repNameInput').value='Nueva lista';t.elements.get('repForm').listeners.submit({preventDefault(){}});
- const row=t.elements.get('masterResults').children.find(row=>row.children[0].textContent===source.title);
- row.children[1].value=sheetId;row.children.at(-1).onclick();
+ t.elements.get('startAddSongs').onclick();t.elements.get('pickerSearch').value=source.title;t.elements.get('pickerSearch').oninput();
+ t.elements.get('pickerResults').children[0].onclick();t.elements.get('confirmAddSongs').onclick();
+ t.context.api.updateTab('sheet');t.elements.get('leadSheetSelect').value=sheetId;t.elements.get('leadSheetSelect').onchange();
  assert.equal(t.storage.getItem(storageAPI.LIBRARY_KEY),original);
  await t.elements.get('saveAll').onclick();
  const after=t.snapshot(),rep=after.committed.repertoires.find(r=>r.id===after.activeRep);
@@ -244,4 +245,18 @@ test('fallo al guardar nueva variante conserva selección, borrador y versión c
  assert.deepEqual(t.snapshot().working,draft);
  assert.deepEqual(t.snapshot().committed,before.committed);
  assert.equal(t.snapshot().hasDraft,true);assert.match(t.elements.get('editorNotice').textContent,/No se guardó/);
+});
+
+test('selección múltiple conserva filtro, orden, cancelación y evita duplicados',()=>{
+ const t=setup({tab:'song'});t.elements.get('repAdd').onclick();t.elements.get('repNameInput').value='Domingo';t.elements.get('repForm').listeners.submit({preventDefault(){}});
+ t.elements.get('startAddSongs').onclick();const rows=t.elements.get('pickerResults').children;rows[1].onclick();
+ t.elements.get('pickerSearch').value='zzz';t.elements.get('pickerSearch').oninput();assert.equal(t.elements.get('confirmAddSongs').textContent,'Añadir (1)');
+ t.elements.get('pickerSearch').value='';t.elements.get('pickerSearch').oninput();t.elements.get('pickerResults').children[0].onclick();
+ assert.equal(t.elements.get('confirmAddSongs').textContent,'Añadir (2)');
+ t.elements.get('cancelAddSongs').onclick();assert.deepEqual(t.snapshot().working.repertoires.find(r=>r.name==='Domingo').songIds,[]);
+ t.elements.get('startAddSongs').onclick();t.elements.get('pickerResults').children[1].onclick();t.elements.get('pickerResults').children[0].onclick();t.elements.get('confirmAddSongs').onclick();
+ const rep=t.snapshot().working.repertoires.find(r=>r.name==='Domingo');assert.equal(rep.songIds.length,2);
+ assert.equal(t.snapshot().working.songs.length,t.snapshot().committed.songs.length);
+ t.elements.get('startAddSongs').onclick();assert.equal(t.elements.get('pickerResults').children.filter(row=>row.disabled).length,2);
+ assert.equal(t.elements.get('confirmAddSongs').disabled,true);
 });

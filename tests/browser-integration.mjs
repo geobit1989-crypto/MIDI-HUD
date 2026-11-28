@@ -42,8 +42,13 @@ try{
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('hudLibraryV34')).songs.some(s=>s.title==='Salida sin publicar')),true);
  await page.goto('http://127.0.0.1:8766/editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  await page.locator('#libraryToggle').click();await page.locator('#repAdd').click();await page.locator('#repNameInput').fill('Domingo');await page.locator('#repFormSubmit').click();
- await page.locator('#masterResults button').first().click();
- await page.locator('#masterResults button').nth(1).click();
+ await page.locator('#startAddSongs').click();
+ await page.locator('#pickerResults .lib-picker-row:not(:disabled)').nth(1).click();
+ await page.locator('#pickerResults .lib-picker-row:not(:disabled)').first().click();
+ assert.equal(await page.locator('#confirmAddSongs').innerText(),'Añadir (2)');
+ await page.locator('#pickerSearch').fill('zzz sin resultados');assert.equal(await page.locator('#confirmAddSongs').innerText(),'Añadir (2)');
+ await page.locator('#pickerSearch').fill('');await page.locator('#confirmAddSongs').click();
+ assert.equal(await page.locator('#songList .song-row').count(),2);
  await page.locator('#libraryClose').click();
  await page.locator('[data-tab="sheet"]').click();
  await page.locator('#newVariantName').fill('Grados');await page.locator('#leadNotation').selectOption('grados');await page.locator('#songTone').fill('G');
