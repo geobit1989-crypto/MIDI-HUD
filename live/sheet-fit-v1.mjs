@@ -22,8 +22,6 @@ export function installAdaptiveLeadSheet(root){
  let queued=false;
  function applySize(px){
   root.style.setProperty("--sheet-chord-size",px+"px");
-  root.style.setProperty("--sheet-label-size",Math.max(9,px*.74).toFixed(2)+"px");
-  root.style.setProperty("--sheet-letter-size",Math.max(9,px*.65).toFixed(2)+"px");
   root.style.setProperty("--sheet-repeat-size",px+"px");
  }
  function fits(px){
@@ -50,33 +48,33 @@ export function installAdaptiveLeadSheet(root){
    const a=marker.getBoundingClientRect(),b=marker.parentElement.getBoundingClientRect();
    if(a.width>b.width-4||a.bottom>b.bottom+1)return false;
   }
-  for(const heading of root.querySelectorAll(".section-label")){
-   const area=heading.getBoundingClientRect();
-   const section=heading.parentElement.getBoundingClientRect();
-   if(heading.scrollWidth>heading.clientWidth+1||
-      heading.scrollHeight>heading.clientHeight+1||
-      area.height>section.height+1)return false;
-   // No dividir palabras musicales ("INTRO" -> "INT"+"RO") para simular
-   // que un título cabe. El ancho de su palabra más larga limita el tamaño.
-   const label=heading.querySelector("span:last-child");
-   if(label && typeof document.createElement==="function"){
-     const canvas=document.createElement("canvas");
-     const ctx=canvas.getContext("2d");
-     if(ctx){
-       ctx.font=getComputedStyle(label).font;
-       const words=(label.textContent||"").split(/\s+/).filter(Boolean);
-       // Los elementos flexibles suelen medir su propio texto y no todo
-       // el espacio asignado: se compara contra el ancho del encabezado.
-       const style=getComputedStyle(heading);
-       const letter=heading.querySelector(".section-letter");
-       const gap=parseFloat(style.gap||"0")||0;
-       const available=heading.getBoundingClientRect().width-
-         (style.flexDirection==="row"&&letter?(letter.getBoundingClientRect().width+gap):0);
-       if(words.some(word=>ctx.measureText(word).width>available-2))return false;
-     }
-   }
-  }
+
   return true;
+ }
+ function fitHeadings(max){
+  const headings=[...root.querySelectorAll(".section-label")];
+  function apply(px){
+   root.style.setProperty("--sheet-label-size",px+"px");
+   root.style.setProperty("--sheet-letter-size",Math.max(5,px*.85)+"px");
+  }
+  function fitsHeading(px){
+   apply(px);
+   for(const heading of headings){
+    const area=heading.getBoundingClientRect(),section=heading.parentElement.getBoundingClientRect();
+    const css=getComputedStyle(heading),right=area.right-(parseFloat(css.paddingRight)||0),bottom=Math.min(area.bottom,section.bottom)-(parseFloat(css.paddingBottom)||0);
+    for(const child of heading.children){
+     const range=document.createRange();range.selectNodeContents(child);
+     for(const ink of range.getClientRects()){
+      if(ink.left<area.left-.5||ink.right>right+.5||ink.top<area.top-.5||ink.bottom>bottom+.5)return false;
+     }
+     if(child.scrollWidth>child.clientWidth+1||child.scrollHeight>child.clientHeight+1)return false;
+    }
+   }
+   return true;
+  }
+  let low=5,high=Math.max(5,max);
+  for(let i=0;i<13;i++){const mid=(low+high)/2;if(fitsHeading(mid))low=mid;else high=mid;}
+  apply(Math.floor(low*10)/10);root.dataset.fitLabelSize=String(Math.floor(low*10)/10);
  }
  function fit(){
   if(!root.isConnected || !root.querySelector(".chord-line"))return null;
@@ -91,6 +89,7 @@ export function installAdaptiveLeadSheet(root){
   }
   const final=Math.max(min,Math.floor(lo*10)/10);
   applySize(final);
+  fitHeadings(Math.min(36,final*.85));
   root.dataset.fitSize=String(final);
   root.dataset.fitRows=String(root.querySelectorAll(".chord-line").length);
   root.classList.toggle("sheet-dense",final<12);

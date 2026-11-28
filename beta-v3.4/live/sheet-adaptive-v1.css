@@ -139,3 +139,11 @@
  }
  .lead-sheet .section-letter{flex:0 0 auto}
 }
+
+/* Section labels use their own fitted size; constrain the grid on both axes. */
+.lead-sheet .sheet-section{grid-template-rows:minmax(0,1fr);min-height:0}
+.lead-sheet .section-label{min-height:0;align-self:stretch;gap:2px;padding:2px 3px 1px 0;line-height:1.08}
+.lead-sheet .section-label>.section-letter{min-width:0;flex:0 0 auto;padding:0 .28em;line-height:1.08}
+.lead-sheet .section-label>span:last-child{flex:0 1 auto;min-height:0;line-height:1.08;overflow:visible}
+.lead-sheet .chord-lines{grid-template-rows:repeat(var(--rows,1),minmax(0,1fr))}
+@media (orientation:portrait){.lead-sheet .section-label{flex-direction:column;align-items:flex-start;gap:1px}.lead-sheet .section-label>span:last-child{width:100%}}

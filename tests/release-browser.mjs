@@ -290,12 +290,30 @@ try{
  const mode=page.locator('#hud-view-mode'),screen=page.locator('.screen'),sheet=page.locator('.lead-sheet');
  const modules=page.locator('.switch-grid'),header=page.locator('.topbar');
  const top=async locator=>(await locator.boundingBox()).y;
- for(const [width,height] of [[1440,900],[800,1280],[412,915],[320,568],[844,390]]){
+ for(const [width,height] of [[1440,900],[800,1280],[723,890],[601,850],[412,915],[320,568],[844,390]]){
   await page.setViewportSize({width,height});
   assert.equal(await screen.getAttribute('data-view-mode'),'full');
   assert.ok(await top(sheet)<await top(header)&&await top(header)<await top(modules));
   assert.ok(await sheet.locator('.bar').count()>0);
   assert.equal(await screen.evaluate(el=>getComputedStyle(el).borderTopWidth),'0px');
+  await page.waitForFunction(()=>{
+   const nav=document.querySelector('.song-navigation'),prev=nav.querySelector('#hud-prev').getBoundingClientRect(),next=nav.querySelector('#hud-next').getBoundingClientRect(),title=nav.querySelector('#song-title').getBoundingClientRect();
+   return Math.abs(prev.width-next.width)<1&&Math.abs(prev.top-next.top)<1&&title.left>=prev.right-1&&title.right<=next.left+1;
+  });
+  await page.waitForFunction(()=>{
+   const sheet=document.querySelector('.lead-sheet');
+   if(!sheet.dataset.fitLabelSize)return false;
+   for(const heading of sheet.querySelectorAll('.section-label')){
+    const box=heading.getBoundingClientRect();
+    for(const child of heading.children){const range=document.createRange();range.selectNodeContents(child);
+     if([...range.getClientRects()].some(r=>r.left<box.left-1||r.right>box.right+1||r.top<box.top-1||r.bottom>box.bottom+1))return false;}
+   }
+   return true;
+  });
+  assert.equal(await modules.evaluate(grid=>[...grid.querySelectorAll('.icon-wrap:not([hidden]),.exicon:not([hidden])')].every(icon=>{
+   const tile=icon.closest('[data-hud-index]'),box=tile.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(icon);
+   return [...range.getClientRects()].every(r=>r.left>=box.left-1&&r.right<=box.right+1&&r.top>=box.top-1&&r.bottom<=box.bottom+1)&&icon.scrollWidth<=icon.clientWidth+1;
+  })),true);
   await page.screenshot({path:`build/browser/${browserName}-${width}-full.png`});
   await mode.click();
   assert.equal(await screen.getAttribute('data-view-mode'),'states');

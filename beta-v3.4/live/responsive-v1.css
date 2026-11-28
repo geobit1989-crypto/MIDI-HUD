@@ -152,3 +152,9 @@ html,body{min-height:100%;overflow:auto;overscroll-behavior:auto}
  .expression-row{flex-basis:41px;height:41px}
  .expression{height:100%}
 }
+
+/* Explicit grid coordinates at every width; never inherit obsolete named areas. */
+.song-navigation{grid-template-columns:clamp(28px,5vw,44px) minmax(0,1fr) clamp(28px,5vw,44px);grid-template-rows:minmax(28px,auto);min-width:0}
+.song-navigation #hud-prev{grid-area:1/1;min-width:0;width:100%}
+.song-navigation #hud-next{grid-area:1/3;min-width:0;width:100%}
+.song-navigation #song-title{grid-area:1/2;min-width:0;width:100%;text-align:center;white-space:normal;overflow-wrap:anywhere}

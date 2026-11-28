@@ -41,6 +41,8 @@ function tileFor(doc,source,index){
  const icon=node(doc,'span',expression?'exicon':'icon-wrap',visual.glyph);
  icon.setAttribute('aria-hidden','true');
  icon.hidden=!visual.glyph;
+ tile.dataset.hasGlyph=String(!!visual.glyph);
+ tile.style.setProperty("--glyph-length",String(Math.max(1,[...visual.glyph].length)));
  sub.hidden=!sub.textContent;
  if(expression){
   const head=node(doc,'div','exhead');

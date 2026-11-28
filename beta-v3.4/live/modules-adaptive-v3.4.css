@@ -197,3 +197,10 @@
   .hud-meta > .brand { font-size:clamp(11px,3.4vw,18px); }
   .hud-right > .bank { font-size:clamp(13px,4vw,23px); }
 }
+
+/* Reserve a separate icon lane, sized by glyph length (CTL1 is four characters).
+   Text is never shortened or replaced by a partial glyph. */
+.switch-grid .switch[data-has-glyph="true"] .details{padding-left:25cqw;padding-right:9cqw}
+.switch-grid .switch .icon-wrap{inset:auto auto auto 3%;width:20cqw;max-width:none;overflow:visible;white-space:nowrap;text-align:center;font-size:clamp(1px,min(calc(20cqw / var(--glyph-length,1)),16cqh,22px),22px)!important}
+.switch-grid .adaptive-expression .exicon{flex:none;max-width:22cqw;white-space:nowrap;font-size:clamp(1px,min(calc(20cqw / var(--glyph-length,1)),16cqh,22px),22px)}
+.switch-grid .switch .details,.switch-grid .adaptive-expression .exlabel{min-height:0;min-width:0}
