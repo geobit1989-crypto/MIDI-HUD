@@ -41,17 +41,26 @@ try{
    await startup.goto(base+entry+'?home=1',{waitUntil:'domcontentloaded'});
    await requested;
    assert.equal(await startup.locator('#hud-startup').isVisible(),true);
+   assert.equal((await startup.locator('#hud-startup').textContent()).trim(),'');
    assert.equal(await startup.locator('.screen').isVisible(),false);
    assert.equal(await startup.locator('#hud-startup').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(3, 8, 13)');
   }finally{release();}
   const initialHome=startup.getByRole('dialog',{name:'MIDI HUD',exact:true});
   await initialHome.waitFor();
+  assert.equal(await initialHome.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(3, 8, 13)');
+  assert.deepEqual(await initialHome.evaluate(el=>[...el.children].map(child=>{const css=getComputedStyle(child);return [css.animationName,css.animationDuration,css.animationTimingFunction];})),Array(3).fill(['hud-home-enter','0.4s','ease-out']));
   await startup.waitForFunction(()=>!document.documentElement.hasAttribute('data-hud-startup'));
   assert.equal(await startup.locator('#hud-startup').isVisible(),false);
   await initialHome.getByRole('button',{name:'LIVE',exact:true}).click();
+  await startup.waitForFunction(()=>!document.querySelector('.hud-home').hasAttribute('data-entry-fade'));
   assert.equal(await startup.locator('.screen').isVisible(),true);
   await startup.unroute(pattern,hold);
  }
+ await startup.emulateMedia({reducedMotion:'reduce'});
+ await startup.goto(base+'v03.html?home=1');
+ const reducedHome=startup.getByRole('dialog',{name:'MIDI HUD',exact:true});
+ await reducedHome.waitFor();
+ assert.equal(await reducedHome.evaluate(el=>getComputedStyle(el.children[0]).animationName),'none');
  await startup.goto(base+'v03.html');
  await startup.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  assert.equal(await startup.locator('#hud-startup').isVisible(),false);

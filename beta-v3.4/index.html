@@ -1,7 +1,8 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" style="background:#03080d;color-scheme:dark">
 <head>
 <meta charset="utf-8">
+<meta name="color-scheme" content="dark">
 <meta name="midi-hud-build" content="v8.2-unified-library-qa-drive7">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#03080d">
@@ -11,7 +12,7 @@ html,body{margin:0;min-height:100%;background:#03080d;color:#fff;font-family:sys
 body{min-height:100dvh;display:grid;place-content:center;text-align:center;gap:12px}
 .hud-entry-title{margin:0;font-size:clamp(18px,5vmin,40px);letter-spacing:.09em}
 a{color:#fff}nav{font-size:12px}
-html[data-hud-redirect] body>a,html[data-hud-redirect] body>nav{display:none}
+html[data-hud-redirect] body>*{display:none}
 </style>
 <script>document.documentElement.setAttribute('data-hud-redirect','');</script>
 <link rel="icon" type="image/svg+xml" href="./core/brand/midi-hud.svg">
@@ -26,7 +27,7 @@ html[data-hud-redirect] body>a,html[data-hud-redirect] body>nav{display:none}
   const target = new URL(route, location.href);
   target.search = location.search;
   target.searchParams.set('home', '1');
-  target.searchParams.set('v', '20261128-home1');
+  target.searchParams.set('v', '20261128-home2');
   target.hash = location.hash;
   location.replace(target.href);
 </script>
