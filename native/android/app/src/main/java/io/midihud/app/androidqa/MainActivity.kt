@@ -206,7 +206,9 @@ class MainActivity : Activity() {
             "broker.open" -> {
                 val url = Uri.parse(payload.getString("url"))
                 require(url.scheme == "https" && url.host == "accounts.google.com" && url.port == -1 && url.userInfo == null && url.path == "/o/oauth2/v2/auth")
-                startActivity(Intent(Intent.ACTION_VIEW,url).putExtra("android.support.customtabs.extra.SESSION", null as android.os.IBinder?))
+                startActivity(Intent(Intent.ACTION_VIEW,url).putExtras(Bundle().apply {
+                    putBinder("android.support.customtabs.extra.SESSION", null)
+                }))
                 reply(Result.success(true))
             }
             "cloud.config" -> reply(Result.success(JSONObject().put("configured", false)))
