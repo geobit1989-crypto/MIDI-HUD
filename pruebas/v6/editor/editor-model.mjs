@@ -116,6 +116,25 @@ export function deleteSong(db,repertoireId,songId){
  if(rep.entryNotes)delete rep.entryNotes[songId];
  if(rep.leadSheetIds)delete rep.leadSheetIds[songId];
 }
+/** Eliminación explícita del catálogo completo, distinta de quitar una referencia de lista.
+ * El último registro se conserva hasta que el contrato admita una biblioteca sin canciones.
+ * Validamos una copia antes de modificar el borrador del llamante. */
+export function deleteCatalogSong(db,songId){
+ requireThat(db.catalogVersion===1,"la eliminación del Repertorio requiere catálogo migrado");
+ const song=locate(db.songs,songId,"canción");
+ requireThat(db.songs.length>1,"no se puede eliminar la última canción del Repertorio; puedes archivarla");
+ const next=copy(db),dead=new Set(song.stateIds);
+ const deadIndicators=new Set(next.states.filter(st=>dead.has(st.id)).flatMap(st=>(st.indicators||[]).map(ind=>ind.id)));
+ for(const r of next.repertoires)if(r.songIds.includes(songId))deleteSong(next,r.id,songId);
+ next.songs=next.songs.filter(s=>s.id!==songId);
+ next.states=next.states.filter(st=>!dead.has(st.id));
+ const remainingIndicators=new Set(next.states.flatMap(st=>(st.indicators||[]).map(ind=>ind.id)));
+ pruneActions(next,a=>(a.type==="ACTIVATE_STATE"&&dead.has(a.stateId))||
+  (a.type==="SELECT_SONG"&&a.songId===songId)||
+  (a.type==="SET_INDICATOR"&&deadIndicators.has(a.indicatorId)&&!remainingIndicators.has(a.indicatorId)));
+ validateLibrary(next);Object.assign(db,next);
+ return songId;
+}
 export function deleteRepertoire(db,repertoireId){
  requireThat(db.catalogVersion===1||db.repertoires.length>1,"debe existir al menos un repertorio");
  const rep=locate(db.repertoires,repertoireId,"repertorio");

@@ -1,4 +1,4 @@
-import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor2";
+import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor4";
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive7";
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
@@ -14,13 +14,13 @@ import {migrateCatalog,recordCatalogChanges,versionLabel,searchCatalog,versionUs
 import {prepareLeadSheetText} from "./lead-sheet-text.mjs";
 import {parseSongCatalog,mergeSongCatalog} from "./catalog-import.mjs?v=20261128-library2";
 import {
- newSong,newRepertoire,renameRepertoire,deleteSong,deleteRepertoire,moveSong,
+ newSong,newRepertoire,renameRepertoire,deleteSong,deleteCatalogSong,deleteRepertoire,moveSong,
  newState,duplicateState,deleteState,moveState,deleteBinding,bindingFor,setBindingActions,
  chocolateMatrix,actionDescription,diagnostics,addModule,moveModule,removeModule,
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
  addConfiguredModule,renameModule,setModulePurpose,modulePurpose,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261128-library2";
+} from "./editor-model.mjs?v=20261128-editor4";
 
 /**
  * Editor MIDI HUD v3
@@ -38,7 +38,7 @@ const LABELS={states:"Estados",sheet:"Lead sheet",midi:"MIDI"};
 let committed=null,working=null,activeRep=null,activeSong=null,activeState=null;
 let activeModule=0,activeTab="states",hasDraft=false,cc=20,value=127;
 let leadSource="",leadParse=null,catalogMode=false,masterSheetId=null;
-let libraryView="lists",pickerIds=[],pickerTarget=null,dragSong=null;
+let libraryView="lists",pickerIds=[],pickerTarget=null,dragSong=null,deleteTarget=null;
 let saving=false,leadDrafts=new Map(),isLeaving=false,draftStoreError=false,editSequence=0;
 const DRAFT_KEY="midiHudEditorDraftV6";
 function draftBase(){return [committed.libraryId??null,committed.revision??0,committed.updatedAt??null];}
@@ -314,10 +314,35 @@ function showLibraryView(view){
  $("libraryRepertoire").setAttribute("aria-pressed",String(view==="master"));$("libraryLists").setAttribute("aria-pressed",String(view==="lists"));
  $("libraryTools").open=false;
 }
+/* Lucide 0.456.0 — pencil, history, archive, archive-restore, trash-2.
+ * https://github.com/lucide-icons/lucide/tree/0.456.0/icons
+ISC License
+
+Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+const CATALOG_MENU_ICONS=Object.freeze({
+ "pencil": "<svg aria-hidden=\"true\" focusable=\"false\"\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" />\n  <path d=\"m15 5 4 4\" />\n</svg>",
+ "history": "<svg aria-hidden=\"true\" focusable=\"false\"\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" />\n  <path d=\"M3 3v5h5\" />\n  <path d=\"M12 7v5l4 2\" />\n</svg>",
+ "archive": "<svg aria-hidden=\"true\" focusable=\"false\"\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\" />\n  <path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8\" />\n  <path d=\"M10 12h4\" />\n</svg>",
+ "archive-restore": "<svg aria-hidden=\"true\" focusable=\"false\"\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\" />\n  <path d=\"M4 8v11a2 2 0 0 0 2 2h2\" />\n  <path d=\"M20 8v11a2 2 0 0 1-2 2h-2\" />\n  <path d=\"m9 15 3-3 3 3\" />\n  <path d=\"M12 12v9\" />\n</svg>",
+ "trash-2": "<svg aria-hidden=\"true\" focusable=\"false\"\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M3 6h18\" />\n  <path d=\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\" />\n  <path d=\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2\" />\n  <line x1=\"10\" x2=\"10\" y1=\"11\" y2=\"17\" />\n  <line x1=\"14\" x2=\"14\" y1=\"11\" y2=\"17\" />\n</svg>"
+});
 function libraryMenu(label,actions){
  const d=make("details",undefined,"lib-menu"),summary=make("summary","⋯"),items=make("div",undefined,"lib-options");
  summary.setAttribute("aria-label",label);
- for(const action of actions){const btn=button(action[0],()=>{d.open=false;action[1]();},action[2]||"");btn.disabled=!!action[3];items.append(btn);}
+ for(const action of actions){const btn=button(action[0],()=>{d.open=false;action[1]();},action[2]||"");btn.disabled=!!action[3];if(action[4]){const icon=make("span",undefined,"catalog-action-icon");icon.innerHTML=CATALOG_MENU_ICONS[action[4]];btn.className+=(btn.className?" ":"")+"catalog-action";btn.setAttribute("aria-label",action[0]);btn.replaceChildren(icon,make("span",action[0]));}items.append(btn);}
  d.append(summary,items);return d;
 }
 function openMasterSong(id){
@@ -354,6 +379,34 @@ function confirmAddSongs(){
 function createMasterSong(template){
  immediate(db=>{activeSong=newSong(db,null,template==="sig"?"Nueva canción SIG":"Nueva canción",template);catalogMode=true;masterSheetId=null;activeState=currentSong().initialStateId;activeModule=0;activeTab="states";},"Canción creada en el Repertorio.");
  toggleLibrary(false);
+}
+function requestCatalogDelete(id){
+ const song=working.songs.find(s=>s.id===id);if(!song)return;
+ deleteTarget=id;
+ const usage=versionUsage(working,id);
+ $("deleteSongName").textContent=versionLabel(song);
+ $("deleteSongUsage").textContent=usage.length?"Se quitará de "+usage.length+" lista(s): "+usage.map(r=>r.name).join(", ")+".":"No pertenece a ninguna lista.";
+ $("deleteSongError").hidden=true;
+ $("deleteSongRestriction").hidden=working.songs.length>1;
+ $("deleteSongConfirm").disabled=working.songs.length<=1;
+ $("deleteSongDialog").showModal();
+}
+function confirmCatalogDelete(){
+ const id=deleteTarget,song=working.songs.find(s=>s.id===id);
+ if(!song)return;
+ const sheetIds=(song.leadSheets||[]).map(sheet=>sheet.id);
+ const result=immediate(db=>{
+  deleteCatalogSong(db,id);
+  for(const sheetId of sheetIds)leadDrafts.delete(sheetId);
+  if(activeSong===id){
+   catalogMode=true;masterSheetId=null;
+   activeSong=repertoireContext(db).songIds[0]??db.songs[0]?.id??null;
+   activeState=currentSong()?.initialStateId??null;activeModule=currentState()?.displayIndex??null;
+  }
+  return true;
+ },"Canción eliminada del borrador del Repertorio.");
+ if(result===true){deleteTarget=null;$("deleteSongDialog").close();toggleLibrary(false);}
+ else{$("deleteSongError").textContent=$("editorNotice").textContent;$("deleteSongError").hidden=false;}
 }
 function removeListSong(id){
  if(window.confirm("¿Quitar esta canción de la lista? Se conserva en el Repertorio."))immediate(db=>deleteSong(db,activeRep,id),"Canción quitada de la lista.");
@@ -412,7 +465,7 @@ function showSongTools(kind){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261128-editor2&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261128-editor4&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";
@@ -845,7 +898,7 @@ function render(){
  for(const node of document.querySelectorAll("[data-panel]"))
   node.hidden=empty||node.dataset.panel!==activeTab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
- if(empty)$("liveLink").href="../v03.html?v=20261128-editor2";
+ if(empty)$("liveLink").href="../v03.html?v=20261128-editor4";
  syncStatus();
 }
 function registerIdentity(){
@@ -870,6 +923,9 @@ function register(){
  $("editorHistoryOpen").onclick=()=>{$("editorMenu").open=false;$("editorHistory").showModal();};
  $("editorHistoryClose").onclick=()=>$("editorHistory").close();
  $("songToolsClose").onclick=()=>$("sharedControls").close();
+ $("deleteSongCancel").onclick=()=>{deleteTarget=null;$("deleteSongDialog").close();};
+ $("deleteSongConfirm").onclick=confirmCatalogDelete;
+ $("deleteSongDialog").addEventListener("close",()=>{deleteTarget=null;});
  $("liveLink").addEventListener("click",()=>{$("editorMenu").open=false;});
  $("settingsLink").addEventListener("click",()=>{$("editorMenu").open=false;});
  $("libraryClose").onclick=()=>toggleLibrary(false);
@@ -1243,7 +1299,7 @@ function renderCatalog(){
  for(const item of items){
   const row=make("div",undefined,"song-row"+(catalogMode&&item.id===activeSong?" current":""));
   row.setAttribute("role","listitem");row.append(button(item.label+(item.archived?" · Archivada":""),()=>openMasterSong(item.id)));
-  row.append(libraryMenu("Opciones de "+item.label,[["Editar",()=>openMasterSong(item.id)],["Historial",()=>{openMasterSong(item.id);showSongTools("history");}],[item.archived?"Restaurar":"Archivar",()=>{if(window.confirm(item.archived?"¿Restaurar esta canción?":"¿Archivar esta canción? Las referencias se conservan."))immediate(db=>archiveCatalogVersion(db,item.id,!item.archived),"Estado de archivo actualizado.");}]]));root.append(row);
+  row.append(libraryMenu("Opciones de "+item.label,[["Editar",()=>openMasterSong(item.id),"",false,"pencil"],["Historial",()=>{openMasterSong(item.id);showSongTools("history");},"",false,"history"],[item.archived?"Restaurar":"Archivar",()=>{if(window.confirm(item.archived?"¿Restaurar esta canción?":"¿Archivar esta canción? Las referencias se conservan."))immediate(db=>archiveCatalogVersion(db,item.id,!item.archived),"Estado de archivo actualizado.");},"",false,item.archived?"archive-restore":"archive"],["Eliminar",()=>requestCatalogDelete(item.id),"danger",false,"trash-2"]]));root.append(row);
  }
  const song=currentSong();$("sharedControls").hidden=!song;if(!song)return;
  const usage=versionUsage(working,song.id);
