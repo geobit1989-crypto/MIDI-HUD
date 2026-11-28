@@ -57,7 +57,7 @@ test("sincroniza automáticamente al guardar, volver a la pestaña y reconectars
 
 test("trusted-device OAuth becomes active only when Worker confirms readiness",()=>{
  assert.match(syncUI,/import \{PersistentDriveAuth\}/);
- assert.match(syncUI,/const persistent=new PersistentDriveAuth\(\)/);
+ assert.match(syncUI,/const persistent=new PersistentDriveAuth\(\{getReturnView:getOAuthReturnView\}\)/);
  assert.match(syncUI,/persistent\.hasSession\|\|await persistent\.ready\(\)/);
  assert.match(syncUI,/auth=new GoogleDriveAuth/);
  assert.match(syncUI,/auth\.listDevices\(\)/);
