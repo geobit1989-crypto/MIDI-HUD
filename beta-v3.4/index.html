@@ -6,10 +6,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#03080d">
 <title>MIDI HUD</title>
+<style>
+html,body{margin:0;min-height:100%;background:#03080d;color:#fff;font-family:system-ui,sans-serif}
+body{min-height:100dvh;display:grid;place-content:center;text-align:center;gap:12px}
+.hud-entry-title{margin:0;font-size:clamp(18px,5vmin,40px);letter-spacing:.09em}
+a{color:#fff}nav{font-size:12px}
+html[data-hud-redirect] body>a,html[data-hud-redirect] body>nav{display:none}
+</style>
+<script>document.documentElement.setAttribute('data-hud-redirect','');</script>
 <link rel="icon" type="image/svg+xml" href="./core/brand/midi-hud.svg">
 <link rel="apple-touch-icon" href="./core/brand/apple-touch-icon.png">
 </head>
 <body>
+<h1 class="hud-entry-title">MIDI HUD</h1>
 <a href="./v03.html?home=1">Abrir MIDI HUD</a>
 <nav aria-label="Legal"><a href="./privacy.html">Privacidad</a> · <a href="./terms.html">Condiciones</a> · <a href="./privacy-en.html">Privacy</a> · <a href="./terms-en.html">Terms</a></nav>
 <script>
@@ -17,7 +26,7 @@
   const target = new URL(route, location.href);
   target.search = location.search;
   target.searchParams.set('home', '1');
-  target.searchParams.set('v', '20261127-drive7');
+  target.searchParams.set('v', '20261128-home1');
   target.hash = location.hash;
   location.replace(target.href);
 </script>

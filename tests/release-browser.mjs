@@ -24,6 +24,39 @@ try{
   Object.defineProperty(navigator,'requestMIDIAccess',{configurable:true,value:async()=>access});window.testMidi=access;
  });
  const origin='http://127.0.0.1:8767',base=origin+prefix;
+
+// HOME must never expose LIVE while the library is being fetched. Exercise both
+// entry documents (desktop/iOS and Android) with a deliberately stalled boot.
+const startupContext=await browser.newContext({viewport:{width:390,height:844}});
+try{
+ const startup=await startupContext.newPage();
+ await startup.route('https://**',route=>route.abort());
+ for(const entry of ['v03.html','v03-ble-test.html']){
+  let release,hit;
+  const gate=new Promise(r=>{release=r;}),requested=new Promise(r=>{hit=r;});
+  const pattern='**/config/midi-hud-data-v2.json';
+  const hold=async route=>{hit();await gate;await route.continue();};
+  await startup.route(pattern,hold);
+  try{
+   await startup.goto(base+entry+'?home=1',{waitUntil:'domcontentloaded'});
+   await requested;
+   assert.equal(await startup.locator('#hud-startup').isVisible(),true);
+   assert.equal(await startup.locator('.screen').isVisible(),false);
+   assert.equal(await startup.locator('#hud-startup').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(3, 8, 13)');
+  }finally{release();}
+  const initialHome=startup.getByRole('dialog',{name:'MIDI HUD',exact:true});
+  await initialHome.waitFor();
+  await startup.waitForFunction(()=>!document.documentElement.hasAttribute('data-hud-startup'));
+  assert.equal(await startup.locator('#hud-startup').isVisible(),false);
+  await initialHome.getByRole('button',{name:'LIVE',exact:true}).click();
+  assert.equal(await startup.locator('.screen').isVisible(),true);
+  await startup.unroute(pattern,hold);
+ }
+ await startup.goto(base+'v03.html');
+ await startup.waitForFunction(()=>!!window.MIDIHUD_LIVE);
+ assert.equal(await startup.locator('#hud-startup').isVisible(),false);
+ assert.equal(await startup.locator('.screen').isVisible(),true);
+}finally{await startupContext.close();}
  await page.goto(base+'privacy.html');await page.evaluate(()=>{localStorage.setItem('hudLibraryV34','stable-library');localStorage.setItem('midiHudSettingsV1','stable-settings');localStorage.setItem('midiHudTrustedDeviceSessionV1','stable-auth');});
  await page.goto(base+'index.html');
  const home=page.getByRole('dialog',{name:'MIDI HUD',exact:true});
