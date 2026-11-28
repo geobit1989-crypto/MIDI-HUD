@@ -326,6 +326,11 @@ body.state-edit-mode{height:100dvh;min-height:0;overflow:hidden}
  .state-edit-mode .tabs{margin:3px 0;padding-bottom:3px}.state-edit-mode .tabs button{flex-direction:row;min-height:33px;padding:3px}.state-edit-mode .tabs svg{width:20px;height:20px}
  .state-edit-mode .visual-states{gap:3px}.state-edit-mode .module-tool{min-height:31px;min-width:34px;padding:3px}.state-edit-mode .module-toolbar,.state-edit-mode .module-bottom{min-height:30px}.state-edit-mode .module-bottom button{min-height:30px}
 }
+
+/* Revision 7: graphical dialogs */
+.dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.dialog-heading h2{margin:0}.dialog-x{font-size:24px;min-height:32px;padding:0 8px;background:transparent;border:0;color:#aab9c8}.dialog-wide{width:100%}
+.module-add-options button.add-option{display:flex;align-items:center;gap:12px;padding:12px;background:#192638;border:1px solid #334155;border-radius:12px;color:var(--txt);width:100%;text-align:left}.add-option:hover{border-color:#7654c4!important}.type-icon{flex:0 0 54px;height:54px;border-radius:9px;display:grid;place-items:center;background:#302347;color:#b49af5}.option-copy{display:grid;gap:4px;flex:1;min-width:0}.option-copy small{font-size:12px;font-weight:400;color:#aab9c8;line-height:1.3}.option-arrow{font-size:24px;color:#8c9bad}
+.dialog-actions,.confirm-dialog .ctrlrow{display:flex;gap:8px;margin-top:14px}.dialog-actions button,.confirm-dialog .ctrlrow button{flex:1;min-width:0}.dialog-primary{background:#7654c4!important;border-color:#7654c4!important;color:#fff!important}.dialog-destructive{background:#a63840!important;border-color:#a63840!important;color:#fff!important}.confirm-dialog{text-align:center}.confirm-dialog h2{font-size:18px;line-height:1.3}.alert-icon{margin:0 auto 12px;width:46px;height:46px;display:grid;place-items:center;border-radius:50%;background:#40232a;color:#ff858a}.alert-icon svg{width:25px;height:25px}
 </style>
 </head>
 <body>
@@ -339,8 +344,8 @@ body.state-edit-mode{height:100dvh;min-height:0;overflow:hidden}
     <button type="button" id="saveAll" class="top-icon" data-state="confirmed" aria-label="Guardar" title="Sin cambios pendientes" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z"/><path d="M7 3v6h10V3M7 21v-8h10v8"/></svg></button>
     <details id="editorMenu" class="top-menu"><summary aria-label="Opciones del Editor" title="Opciones del Editor"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></summary>
       <div class="top-menu-items">
-        <a id="liveLink" href="../v03.html?v=20261128-editor6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 13 7-13 7z"/></svg>Abrir LIVE</a>
-        <a id="settingsLink" href="../v03.html?settings=1&amp;v=20261128-editor6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 4 0 .7 2.5 2 .9 2.3-1.2 2 3.4-1.7 1.8v2.4l1.7 1.8-2 3.4-2.3-1.2-2 .9L14 21h-4l-.7-2.3-2-.9L5 19l-2-3.4 1.7-1.8v-2.4L3 9l2-3.4 2.3 1.2 2-.9z"/><circle cx="12" cy="12" r="3"/></svg>Abrir Ajustes</a>
+        <a id="liveLink" href="../v03.html?v=20261128-editor7"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 13 7-13 7z"/></svg>Abrir LIVE</a>
+        <a id="settingsLink" href="../v03.html?settings=1&amp;v=20261128-editor7"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 4 0 .7 2.5 2 .9 2.3-1.2 2 3.4-1.7 1.8v2.4l1.7 1.8-2 3.4-2.3-1.2-2 .9L14 21h-4l-.7-2.3-2-.9L5 19l-2-3.4 1.7-1.8v-2.4L3 9l2-3.4 2.3 1.2 2-.9z"/><circle cx="12" cy="12" r="3"/></svg>Abrir Ajustes</a>
         <button id="editorHistoryOpen" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 1 3 6.7M3 4v8h8M12 7v5l4 2"/></svg>Historial</button>
       </div>
     </details>
@@ -353,14 +358,14 @@ body.state-edit-mode{height:100dvh;min-height:0;overflow:hidden}
  <p class="help">Recupera la biblioteca confirmada anterior. Esta acción afecta a toda la biblioteca.</p>
  <div class="ctrlrow"><button type="button" id="undo">Recuperar guardado anterior</button><button type="button" id="editorHistoryClose">Cerrar</button></div>
 </dialog>
-<dialog id="deleteSongDialog" class="editor-dialog" aria-labelledby="deleteSongTitle">
- <h2 id="deleteSongTitle">Eliminar canción del Repertorio</h2>
+<dialog id="deleteSongDialog" class="editor-dialog confirm-dialog" aria-labelledby="deleteSongTitle">
+ <div class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V3h8v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/></svg></div><h2 id="deleteSongTitle">¿Quieres eliminar esta canción del repertorio?</h2>
  <p id="deleteSongName"></p>
  <p id="deleteSongUsage"></p>
  <p class="help">Se eliminarán sus lead sheets, estados, asignaciones MIDI e historial de canción. También se quitarán las referencias a esta canción en las listas y los comandos MIDI afectados. Solo se confirmará al pulsar el disquete global.</p>
  <p id="deleteSongRestriction" class="warning" hidden>No puedes eliminar la última canción de la biblioteca. Puedes archivarla.</p>
  <p id="deleteSongError" class="warning" role="alert" hidden></p>
- <div class="ctrlrow"><button type="button" id="deleteSongCancel" autofocus>Cancelar</button><button type="button" id="deleteSongConfirm" class="danger">Eliminar</button></div>
+ <div class="ctrlrow"><button type="button" id="deleteSongCancel" autofocus>Cancelar</button><button type="button" id="deleteSongConfirm" class="dialog-destructive">Eliminar</button></div>
 </dialog>
 <button type="button" id="libraryBackdrop" hidden aria-label="Cerrar biblioteca"></button>
 <div class="workspace">
@@ -477,9 +482,9 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
       <span id="modulePaging" class="module-paging" hidden><button id="modulePagePrev" type="button" aria-label="Página anterior">‹</button><span id="modulePageLabel"></span><button id="modulePageNext" type="button" aria-label="Página siguiente">›</button></span>
     </div>
     <dialog id="moduleAddDialog" class="editor-dialog" aria-labelledby="moduleAddTitle">
-      <h2 id="moduleAddTitle">Añadir módulo</h2>
-      <div class="module-add-options"><button id="moduleAdd" type="button">Estado musical</button><button id="moduleEffectAdd" type="button">Efecto</button><button id="moduleExpressionAdd" type="button">Expresión</button></div>
-      <button id="moduleAddClose" type="button">Cancelar</button>
+      <div class="dialog-heading"><h2 id="moduleAddTitle">Añadir módulo</h2><button id="moduleAddX" class="dialog-x" type="button" aria-label="Cerrar">×</button></div>
+      <div class="module-add-options"><button id="moduleAdd" type="button" class="add-option"><span class="type-icon"><svg viewBox="0 0 36 36" width="34" height="34" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M6.4 1.4h6a5 5 0 0 1 5 5v6a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5v-6a5 5 0 0 1 5-5z M6.4 4.4h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"/><path fill-rule="evenodd" d="M6.4 18.6h6a5 5 0 0 1 5 5v6a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5v-6a5 5 0 0 1 5-5z M6.4 21.6h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"/><path fill-rule="evenodd" d="M23.6 1.4h6a5 5 0 0 1 5 5v6a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5v-6a5 5 0 0 1 5-5z M23.6 4.4h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"/><path fill-rule="evenodd" d="M23.6 18.6h6a5 5 0 0 1 5 5v6a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5v-6a5 5 0 0 1 5-5z M23.6 21.6h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"/></svg></span><span class="option-copy"><strong>Estado musical</strong><small>Selecciona un sonido o configuración.</small></span><span aria-hidden="true" class="option-arrow">›</span></button><button id="moduleEffectAdd" type="button" class="add-option"><span class="type-icon"><svg viewBox="0 0 120 84" width="42" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 65V19H43M16 41H38M70 19L104 65M104 19L70 65"/></svg></span><span class="option-copy"><strong>Efecto</strong><small>Activa o desactiva una función.</small></span><span aria-hidden="true" class="option-arrow">›</span></button><button id="moduleExpressionAdd" type="button" class="add-option"><span class="type-icon"><svg viewBox="0 0 180 84" width="46" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 19H45M16 19V65H45M16 42H40M72 19L106 65M106 19L72 65M133 65V19H151C173 19 173 45 151 45H133"/></svg></span><span class="option-copy"><strong>Expresión</strong><small>Controla un parámetro variable.</small></span><span aria-hidden="true" class="option-arrow">›</span></button></div>
+      <button id="moduleAddClose" class="dialog-wide" type="button">Cancelar</button>
     </dialog>
     <dialog id="moduleLayoutDialog" class="editor-dialog" aria-labelledby="moduleLayoutTitle">
       <h2 id="moduleLayoutTitle">Distribución</h2>
@@ -551,10 +556,10 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
     </details>
       <button id="moduleSettingsClose" type="button">Cerrar</button>
     </dialog>
-    <dialog id="moduleDeleteDialog" class="editor-dialog" aria-labelledby="moduleDeleteTitle">
-      <h2 id="moduleDeleteTitle">Eliminar módulo</h2><p id="moduleDeleteMessage"></p>
+    <dialog id="moduleDeleteDialog" class="editor-dialog confirm-dialog" aria-labelledby="moduleDeleteTitle">
+      <div class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V3h8v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/></svg></div><h2 id="moduleDeleteTitle">Eliminar módulo</h2><p id="moduleDeleteMessage"></p>
       <p class="help">Los cambios se confirman con el disquete global.</p>
-      <div class="ctrlrow"><button id="moduleDeleteCancel" type="button" autofocus>Cancelar</button><button id="moduleDeleteConfirm" type="button" class="danger">Eliminar</button></div>
+      <div class="ctrlrow"><button id="moduleDeleteCancel" type="button" autofocus>Cancelar</button><button id="moduleDeleteConfirm" type="button" class="dialog-destructive">Eliminar</button></div>
     </dialog>
   </section>
   <section data-panel="sheet" hidden>
@@ -653,7 +658,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 </div>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
 <input id="catalogFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
-<script type="module" src="./v3.mjs?v=20261128-editor6"></script>
+<dialog id="appConfirmDialog" class="editor-dialog confirm-dialog" aria-labelledby="appConfirmTitle"><div class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V3h8v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/></svg></div><h2 id="appConfirmTitle"></h2><p id="appConfirmMessage"></p><div class="dialog-actions"><button id="appConfirmCancel" type="button" autofocus>Cancelar</button><button id="appConfirmContinue" type="button" class="dialog-primary">Continuar</button></div></dialog><script type="module" src="./v3.mjs?v=20261128-editor7"></script>
 </div>
 </body>
 </html>

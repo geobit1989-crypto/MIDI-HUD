@@ -1,4 +1,4 @@
-import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor6";
+import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor7";
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive7";
 import {scanNotation} from "./chord-notation.mjs";
 import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs";
@@ -6,7 +6,7 @@ import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} fro
 import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-library2";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261128-library2";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive7";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor6";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor7";
 import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261127-drive7";
 import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
@@ -20,7 +20,7 @@ import {
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
  addConfiguredModule,renameModule,setModulePurpose,modulePurpose,deleteSelectedModule,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261128-editor6";
+} from "./editor-model.mjs?v=20261128-editor7";
 
 /**
  * Editor MIDI HUD v3
@@ -409,8 +409,13 @@ function confirmCatalogDelete(){
  if(result===true){deleteTarget=null;$("deleteSongDialog").close();toggleLibrary(false);}
  else{$("deleteSongError").textContent=$("editorNotice").textContent;$("deleteSongError").hidden=false;}
 }
+let confirmAction=null;
+function appConfirm(title,message,action){
+ confirmAction=action;$("appConfirmTitle").textContent=title;$("appConfirmMessage").textContent=message;$("appConfirmDialog").showModal();
+}
 function removeListSong(id){
- if(window.confirm("¿Quitar esta canción de la lista? Se conserva en el Repertorio."))immediate(db=>deleteSong(db,activeRep,id),"Canción quitada de la lista.");
+ const rep=activeRep;
+ appConfirm("¿Quieres quitar esta canción de la lista?","Se conservará en el repertorio.",()=>immediate(db=>deleteSong(db,rep,id),"Canción quitada de la lista."));
 }
 function dropListSong(id,target){
  if(!id||id===target)return;
@@ -466,7 +471,7 @@ function showSongTools(kind){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261128-editor6&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261128-editor7&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";
@@ -964,7 +969,7 @@ function render(){
   node.hidden=empty||node.dataset.panel!==activeTab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
  if(!empty&&activeTab==="states")layoutModuleGrid(true);
- if(empty)$("liveLink").href="../v03.html?v=20261128-editor6";
+ if(empty)$("liveLink").href="../v03.html?v=20261128-editor7";
  syncStatus();
 }
 function registerIdentity(){
@@ -1079,7 +1084,10 @@ function register(){
  };
  $("stateMakeInitial").onclick=makeSelectionInitial;
  $("moduleAddOpen").onclick=()=>$("moduleAddDialog").showModal();
- $("moduleAddClose").onclick=()=>$("moduleAddDialog").close();
+ $("moduleAddClose").onclick=$("moduleAddX").onclick=()=>$("moduleAddDialog").close();
+ $("appConfirmCancel").onclick=()=>$("appConfirmDialog").close();
+ $("appConfirmContinue").onclick=()=>{const action=confirmAction;confirmAction=null;$("appConfirmDialog").close();action?.();};
+ $("appConfirmDialog").addEventListener("close",()=>{confirmAction=null;});
  $("moduleLayoutOpen").onclick=()=>$("moduleLayoutDialog").showModal();
  $("moduleLayoutClose").onclick=()=>$("moduleLayoutDialog").close();
  $("moduleEditOpen").innerHTML=CATALOG_MENU_ICONS.pencil;
