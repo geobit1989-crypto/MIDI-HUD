@@ -90,7 +90,14 @@ try{
  await page.locator('#libraryToggle').click();await page.locator('#libraryRepertoire').click();
  const row=page.locator('#masterResults .song-row').first();
  const name=await row.locator(':scope > button').innerText();
- await row.locator('summary').click();await row.getByRole('button',{name:'Editar',exact:true}).click();
+ await row.locator('summary').click();
+ for(const action of ['Editar','Historial','Archivar','Eliminar']){
+  const control=row.getByRole('button',{name:action,exact:true});
+  assert.equal(await control.locator('svg').count(),1);
+  assert.equal(await control.locator('svg').getAttribute('aria-hidden'),'true');
+  assert.equal(await control.locator('svg').isVisible(),true);
+ }
+ await row.getByRole('button',{name:'Editar',exact:true}).click();
  assert.equal(await page.locator('#songHeading').innerText(),name);
  await page.locator('#libraryToggle').click();
  const item=page.locator('#masterResults .song-row').filter({has:page.getByRole('button',{name,exact:true})}).first();
