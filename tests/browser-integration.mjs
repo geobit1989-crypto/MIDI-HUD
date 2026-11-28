@@ -134,6 +134,25 @@ try{
  assert.equal(await page.locator('#moduleSettingsDialog').isVisible(),true);
  assert.equal(await page.locator('#modulePalette button').count(),10);
  assert.equal(await page.locator('#stateAdvanced').isVisible(),false);
+ const visibleSwitch=page.locator('#moduleVisible');
+ const initialSwitch=page.locator('#stateMakeInitial');
+ for(const [width,height] of [[320,568],[390,844],[535,837],[844,390]]){
+  await page.setViewportSize({width,height});
+  const bounds=await page.locator('#moduleSettingsDialog').evaluate(dialog=>{
+   const track=dialog.querySelector('#moduleVisible'),initial=dialog.querySelector('#stateMakeInitial');
+   const css=getComputedStyle(track),knob=getComputedStyle(track,'::after'),a=track.getBoundingClientRect(),b=initial.getBoundingClientRect();
+   return {width:a.width,height:a.height,initialWidth:b.width,initialHeight:b.height,left:parseFloat(knob.left),knobWidth:parseFloat(knob.width),fits:dialog.scrollWidth<=dialog.clientWidth+1,appearance:css.appearance};
+  });
+  assert.equal(bounds.width,44,JSON.stringify(bounds));assert.equal(bounds.height,25,JSON.stringify(bounds));
+  assert.equal(bounds.width,bounds.initialWidth);assert.equal(bounds.height,bounds.initialHeight);
+  assert.ok(bounds.left>=0&&bounds.left+bounds.knobWidth<=bounds.width,JSON.stringify(bounds));
+  assert.ok(bounds.fits,JSON.stringify({width,height,bounds}));
+ }
+ await page.setViewportSize({width:390,height:844});
+ const wasVisible=await visibleSwitch.isChecked();
+ await visibleSwitch.click();assert.equal(await visibleSwitch.isChecked(),!wasVisible);
+ await visibleSwitch.click();assert.equal(await visibleSwitch.isChecked(),wasVisible);
+ assert.equal(await initialSwitch.getAttribute('role'),'switch');
  await page.locator('#modulePalette button').last().click();
  assert.equal(await page.locator('#customColorDialog').isVisible(),true);
  await page.locator('#customHex').fill('#1a2b3c');await page.locator('#customColorCancel').click();
@@ -153,7 +172,9 @@ try{
  assert.equal(await page.locator('#moduleSettingsDialog').isVisible(),true);
  await page.locator('#moduleName').fill('Delay de prueba');await page.locator('#moduleSettingsClose').click();
  assert.equal(await stateGrid.locator('[data-activity="active"]').count(),1);
- await page.locator('#moduleDeleteSelected').click();await page.locator('#moduleDeleteConfirm').click();
+ await page.locator('#moduleDeleteSelected').click();
+ assert.doesNotMatch(await page.locator('#moduleDeleteDialog').innerText(),/disquete global/i);
+ await page.locator('#moduleDeleteConfirm').click();
  assert.equal(await stateGrid.locator('[data-activity="active"]').count(),0);
  assert.equal(await page.locator('#moduleDeleteSelected').isVisible(),false);
  assert.equal(await page.locator('#moduleEditOpen').isVisible(),false);
