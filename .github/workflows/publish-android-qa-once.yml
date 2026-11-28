@@ -1,0 +1,30 @@
+name: Publish Android QA build 36 once
+on:
+  push:
+    branches: [release/android-qa-20261127-once]
+    paths: ['.github/workflows/publish-android-qa-once.yml']
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: midi-hud-android-qa
+          run-id: 46084520155
+          github-token: ${{ github.token }}
+          path: artifact
+      - name: Publish exact QA APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find artifact -type f -name app-debug.apk)
+          test "${#apks[@]}" -eq 1
+          cp "${apks[0]}" MIDI-HUD-Android-QA.apk
+          unzip -t MIDI-HUD-Android-QA.apk
+          gh release create android-qa-20261127 MIDI-HUD-Android-QA.apk --target 717864368d0f688210a2489859f7b0f7a0815dd1 --prerelease --title "Android QA build 36" --notes "One-time QA publication of existing Android build 36. Runtime validation pending."
+          gh release view android-qa-20261127 --json url,assets,isPrerelease
