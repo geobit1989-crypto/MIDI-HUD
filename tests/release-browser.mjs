@@ -155,8 +155,8 @@ try{
  await page.locator('#hud-close-btn').click();
  assert.equal(await home.isVisible(),false);
  await page.goto(base+'editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
- assert.equal(await page.locator('#saveAll').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(118, 84, 196)');
- await page.locator('#songTitle').fill('Guardado completo de pruebas');await page.locator('[data-tab="states"]').click();await page.locator('#saveAll').click();
+ assert.equal(await page.locator('#saveAll').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(16, 26, 39)');
+ await page.locator('#songHeading').click();await page.locator('#songTitle').fill('Guardado completo de pruebas');await page.locator('[data-tab="states"]').click();await page.locator('#saveAll').click();
  await page.waitForFunction(()=>!!localStorage.getItem('midiHudTest:midiHudQa20261127:hudLibraryV34'));
  assert.equal(await page.evaluate(()=>localStorage.getItem('hudLibraryV34')),'stable-library');
  await page.goto(base+'lab/midi-v1.html');

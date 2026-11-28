@@ -13,3 +13,13 @@ test('approved Editor shell, exact E3, retained automatic sync and direct settin
  assert.match(h,/id="editorHistory"/);assert.match(h,/id="songSummary" class="song-metadata"/);
  assert.match(h,/<dialog id="sharedControls"/);assert.ok(s.includes('["Historial",()=>{openMasterSong'));assert.ok(s.includes('["Notas",()=>{useSong'));
 });
+
+test('three tabs and inline identity, DIN five pins, legal links centralized, icon-only global save',()=>{
+ const h=read('editor/v3.html'),s=read('editor/v3.mjs');
+ assert.equal((h.match(/data-tab="/g)||[]).length,3);assert.doesNotMatch(h,/data-panel="song"/);
+ for(const id of ['songTitle','songAuthor','songTone','songBpm','songBank'])assert.match(h,new RegExp('<input id="'+id+'"[^>]* hidden'));
+ assert.match(h,/id="songBankSummary"/);assert.match(s,/function registerIdentity/);
+ assert.match(h,/data-state="saving"\] svg\{animation:editor-save-pulse/);
+ assert.doesNotMatch(h,/<nav aria-label="Legal"/);assert.doesNotMatch(read('v03.html'),/<nav aria-label="Legal"/);
+ assert.match(read('live/home-qa.mjs'),/Privacidad.*Condiciones.*Privacy.*Terms/);
+});

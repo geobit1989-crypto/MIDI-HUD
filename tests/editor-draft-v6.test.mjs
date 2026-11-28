@@ -57,7 +57,7 @@ function session(storage,committedLibrary=fixture(),overrides={}){
 test('pestañas conservan borrador sin modificar la biblioteca de LIVE',()=>{
  const store=makeStorage(),{api}=session(store);
  api.editTitle('Fuzz');
- api.switchTab('states');api.switchTab('midi');api.switchTab('song');
+ api.switchTab('states');api.switchTab('midi');api.switchTab('sheet');
  assert.equal(api.snapshot().working.songs[0].title,'Fuzz');
  assert.equal(api.snapshot().committed.songs[0].title,'Clean');
  assert.equal(api.snapshot().hasDraft,true);
@@ -102,7 +102,7 @@ test('UI incorpora un único Guardar global y oculta acciones por sección',()=>
  const html=readFileSync(new URL('../editor/v3.html',import.meta.url),'utf8');
  assert.match(html,/id="saveAll"/);
  assert.match(html,/id="lastConfirmedSave"/);
- assert.match(html,/#songSave,#statesSave,#sheetSave,#midiSave,#versionSave\{display:none\}/);
+ assert.doesNotMatch(html,/<button[^>]*id="(?:song|states|sheet|midi)Save"/);
 });
 
 test('edición durante confirmación asíncrona conserva todo el borrador y bloquea otro Guardar',async()=>{

@@ -34,9 +34,12 @@ try{
  await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  await page.getByRole('dialog',{name:'AJUSTES'}).waitFor({state:'visible'});
  await page.goto('http://127.0.0.1:8766/editor/v3.html');await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
- await page.locator('#songTitle').fill('Borrador recuperable');
- assert.equal(await page.locator('#songHeading').innerText(),'Borrador recuperable');
- for(const tab of ['states','sheet','midi','song'])await page.locator('[data-tab="'+tab+'"]').click();
+ await page.locator('#songHeading').click();await page.locator('#songTitle').fill('Borrador recuperable');
+ await page.locator('#songTitle').press('Enter');assert.equal(await page.locator('#songHeading').innerText(),'Borrador recuperable');
+ assert.equal(await page.locator('[data-tab]').count(),3);
+ assert.equal(await page.locator('#editorNotice').isVisible(),false);
+ assert.equal(await page.locator('#saveAll').getAttribute('data-state'),'pending');
+ for(const tab of ['states','sheet','midi'])await page.locator('[data-tab="'+tab+'"]').click();
  assert.equal(await page.locator('#songTitle').inputValue(),'Borrador recuperable');
  assert.equal(await page.evaluate(()=>MIDIHUD_EDITOR.getLibrary().songs.some(s=>s.title==='Borrador recuperable')),false);
  await page.reload();await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
@@ -44,11 +47,11 @@ try{
  await editorMenuAction('#liveLink');
  await page.getByRole('button',{name:'Seguir editando',exact:true}).click();
  assert.equal(await page.locator('dialog[open]').count(),0);
- await page.locator('#songTitle').fill('Prueba integrada iPhone');await page.locator('#saveAll').click();
+ await page.locator('#songHeading').click();await page.locator('#songTitle').fill('Prueba integrada iPhone');await page.locator('#saveAll').click();
  await page.waitForFunction(()=>!window.MIDIHUD_EDITOR.hasDraft());
  await page.reload();await page.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
  assert.equal(await page.locator('#songTitle').inputValue(),'Prueba integrada iPhone');
- await page.locator('#songTitle').fill('Salida sin publicar');
+ await page.locator('#songHeading').click();await page.locator('#songTitle').fill('Salida sin publicar');
  await editorMenuAction('#liveLink');
  await page.getByRole('button',{name:'Salir sin confirmar',exact:true}).click();
  await page.waitForURL(/\/v03\.html(?:\?|$)/);
@@ -70,7 +73,7 @@ try{
  assert.equal(await page.locator('#songList .song-row').count(),2);
  await page.locator('#libraryClose').click();
  await page.locator('[data-tab="sheet"]').click();
- await page.locator('#newVariantName').fill('Grados');await page.locator('#leadNotation').selectOption('grados');await page.locator('#songTone').fill('G');
+ await page.locator('#newVariantName').fill('Grados');await page.locator('#leadNotation').selectOption('grados');await page.locator('#songToneSummaryEdit').click();await page.locator('#songTone').fill('G');
  await page.locator('#leadText').fill('A - Intro\n| I | V | vi | IV |');await page.locator('#versionNew').click();await page.locator('#saveAll').click();
  await page.waitForFunction(()=>window.MIDIHUD_EDITOR.getLibrary().songs.some(s=>s.leadSheets?.some(v=>v.name==='Grados')));
  await mkdir('build/browser',{recursive:true});await page.screenshot({path:'build/browser/editor-portrait.png',fullPage:true});
@@ -82,5 +85,5 @@ try{
  await page.screenshot({path:'build/browser/live-portrait.png',fullPage:true});
  await page.setViewportSize({width:844,height:390});await page.screenshot({path:'build/browser/live-landscape.png',fullPage:true});
  assert.deepEqual(errors,[]);
- console.log('Browser integration passed: global menu (LIVE, Ajustes, Historial), song identification, four tabs, draft reload, three exit choices, global save/reload, empty playlist, shared song, degree variant/key, LIVE snapshot, portrait/landscape, no JavaScript errors.');
+ console.log('Browser integration passed: global menu (LIVE, Ajustes, Historial), song identification, three tabs, draft reload, three exit choices, global save/reload, empty playlist, shared song, degree variant/key, LIVE snapshot, portrait/landscape, no JavaScript errors.');
 }finally{await browser?.close();server.kill();}
