@@ -1,4 +1,5 @@
 #hud-settings-overlay {
+  --settings-accent:#B56829;--settings-accent-light:#E79A51;--settings-accent-bg:rgba(181,104,41,.16);--settings-accent-hover:#C97C3B;
   position:fixed; inset:0; width:100%; height:100%; max-width:none; max-height:none;
   margin:0; padding:0; box-sizing:border-box; border:0; overflow:auto;
   background:#03080d; color:#fff; font:16px/1.4 system-ui,sans-serif;
@@ -6,19 +7,12 @@
 #hud-settings-overlay header {
   position:sticky; top:0; z-index:1; display:grid; grid-template-columns:44px 1fr 44px;
   align-items:center; padding:env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left));
-  min-height:57px; border-bottom:3px solid #b56829; background:#03080d;
+  min-height:57px; border-bottom:3px solid var(--settings-accent); background:#03080d;
 }
 #hud-settings-title { grid-column:2; text-align:center; margin:0; font-size:20px; letter-spacing:.06em; }
 #hud-settings-overlay #hud-close-btn { padding:0; border:0; background:none; font-size:32px; color:white; }
 #hud-settings-overlay main { width:min(660px,100%); box-sizing:border-box; margin:auto; padding:16px 12px max(16px,env(safe-area-inset-bottom)); }
-#hud-settings-overlay details { border:1px solid #273543; border-radius:12px; background:#111d28; margin-bottom:12px; overflow:hidden; }
-#hud-settings-overlay summary { display:flex; align-items:center; gap:12px; cursor:pointer; min-height:54px; padding:0 14px; list-style:none; font-weight:750; }
-#hud-settings-overlay summary::-webkit-details-marker { display:none; }
-#hud-settings-overlay summary svg { width:29px; }
-#hud-settings-overlay details[open] > summary svg { color:#e79a51; }
-.hud-settings-chevron { margin-left:auto; width:9px; height:9px; border:solid #cbd5e1; border-width:0 2px 2px 0; transform:rotate(45deg); }
-#hud-settings-overlay details[open] > summary .hud-settings-chevron { transform:rotate(225deg); }
-.hud-settings-section { padding:14px; background:#0b141d; border-top:1px solid #273543; }
+.hud-settings-section{padding:clamp(12px,2.5vw,20px);background:#111f2d;border:1px solid #31485e;border-radius:12px;min-width:0}
 #hud-settings-overlay button,#hud-settings-overlay select {
   color:#fff; background:#263646; border:1px solid #52657c; border-radius:8px; min-height:44px; padding:6px 10px; font:inherit;
 }
@@ -32,14 +26,14 @@
 .hud-channel-grid label,.hud-settings-repertoire { position:relative; cursor:pointer; }
 .hud-channel-grid input,.hud-settings-repertoire input { position:absolute; opacity:0; }
 .hud-channel-grid span { display:grid; place-items:center; min-height:44px; border-radius:6px; background:#263646; }
-.hud-channel-grid input:checked + span { background:#305ff3; }
-#hud-settings-overlay :focus-visible,.hud-channel-grid input:focus-visible + span,.hud-settings-repertoire input:focus-visible + span { outline:2px solid #fff; outline-offset:-2px; }
+.hud-channel-grid input:checked + span { background:var(--settings-accent); }
+#hud-settings-overlay :focus-visible,.hud-channel-grid input:focus-visible + span,.hud-settings-repertoire input:focus-visible + span { outline:2px solid var(--settings-accent-light); outline-offset:-2px; }
 .hud-settings-repertoire { display:block; margin-bottom:6px; }
 .hud-settings-repertoire > span { display:grid; grid-template-columns:24px 1fr 20px; gap:10px; align-items:center; min-height:44px; padding:8px 12px; border:1px solid #273543; border-radius:8px; background:#111d28; overflow-wrap:anywhere; }
 .hud-settings-repertoire small { display:block; color:#aab9c8; }
 .hud-settings-repertoire .hud-choice { width:16px; height:16px; border:2px solid #52657c; border-radius:50%; }
-.hud-settings-repertoire input:checked + span { background:#263646; border-color:#b56829; }
-.hud-settings-repertoire input:checked + span svg,.hud-settings-repertoire input:checked + span .hud-choice { color:#e79a51; }
+.hud-settings-repertoire input:checked + span { background:var(--settings-accent-bg); border-color:var(--settings-accent); }
+.hud-settings-repertoire input:checked + span svg,.hud-settings-repertoire input:checked + span .hud-choice { color:var(--settings-accent-light); }
 .hud-settings-repertoire input:checked + span .hud-choice { border-color:transparent; }
 .hud-settings-repertoire input:checked + span .hud-choice::after { content:"✓"; }
 .hud-settings-drive { display:flex; align-items:flex-start; gap:10px; }
@@ -53,9 +47,33 @@
 
 /* Bound every Settings icon in both axes, including WebKit grid SVG sizing. */
 #hud-settings-overlay { --hud-summary-icon:clamp(24px, 5vmin, 29px); --hud-repertoire-icon:clamp(20px, 4.5vmin, 24px); --hud-drive-icon:clamp(24px, 5vmin, 28px); }
-#hud-settings-overlay summary > svg { display:block; width:var(--hud-summary-icon); height:var(--hud-summary-icon); max-width:100%; flex:none; }
 #hud-settings-overlay .hud-settings-repertoire > span { grid-template-columns:var(--hud-repertoire-icon) minmax(0,1fr) 20px; }
 #hud-settings-overlay .hud-settings-repertoire > span > svg { display:block; width:var(--hud-repertoire-icon); height:var(--hud-repertoire-icon); max-width:100%; min-width:0; justify-self:center; }
 #hud-settings-overlay .hud-settings-repertoire > span > span:nth-child(2) { min-width:0; }
 #hud-settings-overlay .hud-settings-drive > svg { display:block; width:var(--hud-drive-icon); height:var(--hud-drive-icon); max-width:100%; flex:none; }
 #hud-settings-overlay .hud-settings-drive > div { flex:1; min-width:0; }
+
+/* Direct navigation: equal horizontal modules, existing functionality. */
+#hud-settings-overlay #hud-settings-back{grid-column:1;grid-row:1;padding:0;border:0;background:none;color:var(--settings-accent-light);font-size:32px}
+#hud-settings-overlay #hud-settings-title{grid-column:2;grid-row:1}
+#hud-settings-overlay #hud-close-btn{grid-column:3;grid-row:1;color:var(--settings-accent-light)}
+#hud-settings-overlay[data-settings-section="menu"]{overflow:hidden}
+#hud-settings-overlay[data-settings-section="menu"] main{height:calc(100dvh - 57px - env(safe-area-inset-top));display:flex;flex-direction:column;padding:clamp(8px,2vw,16px) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));width:100%;max-width:660px;min-height:0}
+#hud-settings-overlay .hud-settings-menu{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(3,minmax(0,1fr));gap:clamp(5px,1.1dvh,12px);flex:1;min-height:0}
+#hud-settings-overlay .hud-settings-tile{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:clamp(3px,1dvh,12px);background:var(--settings-accent);border:0;min-height:0;padding:4px;color:#fff;font-weight:750;font-size:clamp(14px,min(4vw,5dvh),28px);overflow:hidden}
+#hud-settings-overlay .hud-settings-tile>svg{display:block;width:clamp(20px,min(12vw,12dvh),68px);height:clamp(20px,min(12vw,12dvh),68px);flex:none;max-width:100%}
+#hud-settings-overlay .hud-settings-tile:enabled:hover{background:var(--settings-accent-hover);color:white}
+#hud-settings-overlay button:enabled:hover,#hud-settings-overlay select:hover{border-color:var(--settings-accent-hover)}
+#hud-settings-overlay :is([data-sync],[data-connect],#hud-midi-btn,#hud-midi-connect){background:var(--settings-accent);border-color:var(--settings-accent);font-weight:700}
+#hud-settings-overlay input[type=checkbox]{accent-color:var(--settings-accent)}
+#hud-settings-overlay .hud-sync-actions{position:static;background:transparent;display:flex;flex-wrap:wrap;gap:8px}
+#hud-settings-overlay .hud-sync-actions button{min-width:0;max-width:100%;overflow-wrap:anywhere}
+#hud-settings-overlay #hud-midi-devices{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+#hud-settings-overlay #hud-midi-status{flex:1 1 100%;margin:4px 0}
+#hud-settings-overlay #hud-midi-choice{max-width:100%;min-width:0}
+#hud-settings-overlay #hud-midi-input{max-width:100%;min-width:0}
+#hud-settings-overlay #hud-channel legend,#hud-settings-overlay #hud-repertoire-list legend{color:var(--settings-accent-light);font-weight:650}
+#hud-settings-overlay .hud-settings-repertoire input:checked + span{background:var(--settings-accent-bg);border-color:var(--settings-accent)}
+#hud-settings-overlay [hidden]{display:none!important}
+body:has(#hud-settings-overlay[open]) .hud-sync-dialog :is([data-connect],[data-sync]){background:#B56829;border-color:#B56829}
+body:has(#hud-settings-overlay[open]) .hud-sync-dialog :focus-visible{outline:2px solid #E79A51;outline-offset:2px}

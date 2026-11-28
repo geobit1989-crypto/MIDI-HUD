@@ -95,16 +95,10 @@ export function installHome({settings, editor, syncRoot}) {
     }
     showConnections();
   }
-  function openSettings() { home.close(); settings(); }
-  indicator('bluetooth', 'Bluetooth', () => {
-    openSettings();
-    document.querySelector('#hud-midi-devices')?.closest('details').setAttribute('open','');
-  });
-  if (desktop) indicator('usb', 'USB', openSettings);
-  indicator('drive', 'Drive', () => {
-    openSettings();
-    syncRoot.querySelector('button')?.click();
-  });
+  function openSettings(section='menu') { home.close(); settings(section); }
+  indicator('bluetooth', 'Bluetooth', () => openSettings('devices'));
+  if (desktop) indicator('usb', 'USB', () => openSettings('devices'));
+  indicator('drive', 'Drive', () => openSettings('account'));
   function updateDrive() {
     const state = syncRoot.querySelector('[data-sync-state]')?.dataset.syncState;
     setState('drive', ['connected', 'synced'].includes(state) ? 'connected' : state === 'syncing' ? 'busy' :

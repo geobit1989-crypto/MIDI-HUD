@@ -79,7 +79,7 @@ try{
   await zeroPage.goto(base+'v03.html');await zeroPage.waitForFunction(()=>!!window.MIDIHUD_LIVE);
   assert.equal(await zeroPage.evaluate(()=>MIDIHUD_LIVE.getEngine().getState().activeRepertoireId),'@repertorio');
   await zeroPage.locator('.topbar .settings').click();
-  await zeroPage.locator('summary').filter({hasText:'LISTAS'}).click();
+  await zeroPage.locator('[data-settings-section="library"]').click();
   assert.equal(await zeroPage.locator('#hud-repertoire-list input[type=radio]').count(),1);
   assert.equal(await zeroPage.locator('#hud-repertoire-list input[type=radio]').isChecked(),true);
   await zeroPage.goto(base+'editor/v3.html');await zeroPage.waitForFunction(()=>!!window.MIDIHUD_EDITOR);
@@ -130,34 +130,38 @@ try{
  }
  await page.setViewportSize({width:390,height:844});
  await home.getByRole('button',{name:'AJUSTES',exact:true}).click();
- const settings=page.getByRole('dialog',{name:'AJUSTES'});
+ const settings=page.locator('#hud-settings-overlay');
  await settings.waitFor();
- assert.deepEqual(await settings.locator('main > details > summary').allTextContents(),['CUENTA','DISPOSITIVOS','LISTAS']);
- assert.equal(await settings.locator('header button').count(),1);
+ assert.deepEqual(await settings.locator('.hud-settings-tile').allTextContents(),['CUENTA','DISPOSITIVOS','LISTAS']);
+ assert.equal(await settings.locator('main > details').count(),0);
+ assert.equal(await settings.locator('header button:visible').count(),1);
  assert.equal(await settings.evaluate(node=>node.querySelector('header').getBoundingClientRect().width),390);
- await settings.locator('main > details > summary').last().click();
- assert.equal(await settings.getByRole('radio',{name:/cancion/}).count()>0,true);
- // Settings SVG regression: explicit bounds on both axes and independent text/choice columns.
- for (const summary of await settings.locator('main > details > summary').all()) {
-  if (!await summary.evaluate(el=>el.parentElement.open)) await summary.click();
- }
- for (const [width,height] of [[320,568],[390,844],[393,852],[844,390],[800,1280],[1440,900]]) {
+ for(const [width,height] of [[320,568],[390,844],[393,852],[844,390],[800,1280],[1440,900]]){
   await page.setViewportSize({width,height});
   const geometry=await settings.evaluate(root=>{
-   const icons=[...root.querySelectorAll('summary > svg,.hud-settings-repertoire > span > svg,.hud-settings-drive > svg')];
-   const rows=[...root.querySelectorAll('.hud-settings-repertoire > span')];
-   return {icons:icons.map(icon=>{const b=icon.getBoundingClientRect();return {w:b.width,h:b.height};}),
-    rows:rows.map(row=>{const [icon,text,choice]=[...row.children].map(el=>el.getBoundingClientRect());return icon.right<=text.left+0.5&&text.right<=choice.left+0.5;}),
-    fits:root.scrollWidth<=root.clientWidth+1};
+   const tiles=[...root.querySelectorAll('.hud-settings-tile')].map(el=>el.getBoundingClientRect());
+   const icons=[...root.querySelectorAll('.hud-settings-tile > svg')].map(el=>el.getBoundingClientRect());
+   return {same:tiles.every(b=>Math.abs(b.width-tiles[0].width)<1&&Math.abs(b.height-tiles[0].height)<1),vertical:tiles.every((b,i)=>i===0||b.top>=tiles[i-1].bottom),icons:icons.every(b=>b.width>0&&Math.abs(b.width-b.height)<1),fits:tiles.every(b=>b.bottom<=root.clientHeight+1)&&root.scrollWidth<=root.clientWidth+1};
   });
-  assert.ok(geometry.icons.length>=5, 'Settings icons must be present');
-  assert.ok(geometry.icons.every(b=>b.w>=20&&b.w<=29.1&&Math.abs(b.w-b.h)<0.5), JSON.stringify({width,height,geometry}));
-  assert.ok(geometry.rows.length>0&&geometry.rows.every(Boolean)&&geometry.fits, JSON.stringify({width,height,geometry}));
+  assert.deepEqual(geometry,{same:true,vertical:true,icons:true,fits:true},JSON.stringify({width,height,geometry}));
+  for(const id of ['account','devices','library']){
+   await settings.locator('[data-settings-section="'+id+'"]').click();
+   assert.equal(await settings.locator('[data-settings-panel]:visible').count(),1);
+   const geometry=await settings.evaluate(root=>{
+    const icons=[...root.querySelectorAll('.hud-settings-repertoire > span > svg,.hud-settings-drive > svg')].filter(el=>el.getClientRects().length).map(el=>el.getBoundingClientRect());
+    const rows=[...root.querySelectorAll('.hud-settings-repertoire > span')].filter(el=>el.getClientRects().length);
+    return {icons:icons.every(b=>b.width>=20&&b.width<=29.1&&Math.abs(b.width-b.height)<.5),rows:rows.every(row=>{const [icon,text,choice]=[...row.children].map(el=>el.getBoundingClientRect());return icon.right<=text.left+.5&&text.right<=choice.left+.5;}),fits:root.scrollWidth<=root.clientWidth+1};
+   });
+   assert.deepEqual(geometry,{icons:true,rows:true,fits:true},JSON.stringify({width,height,id,geometry}));
+   if(id==='library')assert.ok(await settings.getByRole('radio',{name:/cancion/}).count()>0);
+   if(id==='devices'){assert.ok(await settings.locator('#hud-midi-btn').isVisible());assert.equal(await settings.locator('.hud-channel-grid input').count(),16);}
+   await settings.locator('#hud-settings-back').click();
+  }
  }
  await page.setViewportSize({width:390,height:844});
  await mkdir('build/browser',{recursive:true});
  await settings.screenshot({path:`build/browser/${browserName}-settings-390.png`});
-
+ 
  await page.locator('#hud-close-btn').click();
  await home.getByRole('button',{name:'LIVE',exact:true}).click();
  assert.equal(await home.isVisible(),false);
@@ -214,7 +218,7 @@ try{
   await syncPage.goto(base+'v03.html');
   await syncPage.waitForFunction(()=>!!window.MIDIHUD_LIVE);
   await syncPage.locator('.topbar .settings').click();
-  await syncPage.locator('summary').filter({hasText:'LISTAS'}).click();
+  await syncPage.locator('[data-settings-section="library"]').click();
   assert.match(await syncPage.locator('#hud-library-status').textContent(),/datos de ejemplo/i);
   releaseDownload();
   await syncPage.getByRole('radio',{name:/Biblioteca central/}).waitFor({state:'attached'});
@@ -247,21 +251,21 @@ try{
  await page.evaluate(library=>localStorage.setItem('midiHudTest:midiHudQa20261127:hudLibraryV34',JSON.stringify(library)),library);
  await page.goto(base+'v03.html');await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  await page.locator('.topbar .settings').click();
- await settings.locator('summary').filter({hasText:'LISTAS'}).click();
+ await settings.locator('[data-settings-section="library"]').click();
  await settings.getByText('Ensayo vacío',{exact:false}).click();
  assert.equal(await settings.getByRole('radio',{name:/Ensayo vacío/}).isChecked(),true);
  await page.reload();
  await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  assert.equal(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getViewModel().active.repertoireId),'test-empty');
  await page.locator('.topbar .settings').click();
- await settings.locator('summary').filter({hasText:'LISTAS'}).click();
+ await settings.locator('[data-settings-section="library"]').click();
  assert.equal(await settings.getByRole('radio',{name:/Repertorio completo/}).count(),0);
  assert.equal(await settings.getByRole('radio',{name:/^Repertorio\b/}).count(),1);
  assert.deepEqual(await page.evaluate(()=>MIDIHUD_LIVE.getLibrary().repertoires),library.repertoires);
  await settings.getByText('Worship',{exact:false}).click();
  assert.equal(await settings.getByRole('radio',{name:/Worship/}).isChecked(),true);
- const account=settings.locator('summary').filter({hasText:'CUENTA'});
- await account.click();
+ const account=settings.locator('[data-settings-section="account"]');
+ await settings.locator('#hud-settings-back').click();await account.click();
  assert.equal(await settings.getByRole('checkbox',{name:'Sincronización automática'}).isDisabled(),true);
  await page.evaluate(()=>localStorage.setItem('midiHudTest:midiHudAutoSync','off'));
  await page.reload();
@@ -271,7 +275,7 @@ try{
  assert.equal(await settings.getByRole('checkbox',{name:'Sincronización automática'}).isChecked(),true);
  assert.equal(await page.evaluate(()=>localStorage.getItem('midiHudTest:midiHudAutoSync')),'on');
  assert.equal(await page.evaluate(()=>MIDIHUD_LIVE.getEngine().getViewModel().active.repertoireId),'worship-main');
- await page.locator('summary').filter({hasText:'DISPOSITIVOS'}).click();await page.getByText('2',{exact:true}).and(page.locator('.hud-channel-grid span')).click();
+ await settings.locator('#hud-settings-back').click();await page.locator('[data-settings-section="devices"]').click();await page.getByText('2',{exact:true}).and(page.locator('.hud-channel-grid span')).click();
  await page.locator('#hud-midi-btn').click();
  await page.locator('#hud-midi-input').selectOption('Chocolate');
  await page.locator('#hud-midi-connect').click();
@@ -344,7 +348,7 @@ try{
  await page.waitForFunction(()=>!!window.MIDIHUD_LIVE);
  assert.equal(await screen.getAttribute('data-view-mode'),'states');
  await page.locator('.topbar .settings').click();
- const devices=page.locator('summary').filter({hasText:'DISPOSITIVOS'});
+ const devices=page.locator('[data-settings-section="devices"]');
  if(!await devices.evaluate(node=>node.parentElement.open))await devices.click();
  assert.ok(await page.locator('#hud-midi-btn').isVisible());
  assert.deepEqual(await page.evaluate(()=>['hudLibraryV34','midiHudSettingsV1','midiHudTrustedDeviceSessionV1'].map(k=>localStorage.getItem(k))),['stable-library','stable-settings','stable-auth']);

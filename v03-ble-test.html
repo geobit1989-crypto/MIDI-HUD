@@ -317,7 +317,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 <link rel="stylesheet" href="./live/sheet-adaptive-v1.css?v=20261128-editor8f">
 <link rel="stylesheet" href="./live/modules-adaptive-v3.4.css?v=20261128-editor8f">
 <link rel="stylesheet" href="./live/home-qa.css">
-<link rel="stylesheet" href="./live/settings-qa.css?v=20261127-drive7">
+<link rel="stylesheet" href="./live/settings-qa.css?v=20261128-settings8g">
 </head>
 <body>
   <div id="hud-startup" role="status" aria-live="polite"><p id="hud-startup-message"></p></div>
@@ -441,12 +441,12 @@ import {installCloudSync} from "./core/sync-ui.mjs?v=20261127-return8";
 import {readOAuthSettingsReturn} from "./core/persistent-drive-auth.mjs?v=20261127-return8";
 import {renderLiveModules} from "./live/modules-v34.mjs?v=20261128-editor8f";
 import {readLibrarySource} from "./core/library-storage.mjs?v=20261127-drive7";
-import {installHome} from "./live/home-qa.mjs?v=20261128-violet1";
+import {installHome} from "./live/home-qa.mjs?v=20261128-settings8g";
 import {readSettings,saveSettings} from "./core/settings-v1.mjs";
 import {installMidiDevices} from "./live/midi-devices.mjs";
 import {chooseSheetColumns,sheetRowCounts,occupiedBeatSpans,installAdaptiveLeadSheet} from "./live/sheet-fit-v1.mjs?v=20261128-editor8f";
 import {installLiveViewMode} from "./live/view-mode.mjs";
-import {createSettings,installChannelPicker} from "./live/settings-qa.mjs?v=20261128-library2";
+import {createSettings,installChannelPicker} from "./live/settings-qa.mjs?v=20261128-settings8g";
 const SETTINGS=readSettings(localStorage);
 const $=s=>document.querySelector(s);
 let engine,library,midiPort,libraryPicker,initialSelection,usingSavedLibrary=false;
@@ -463,8 +463,8 @@ let unsubscribeEngine;
 // A demo is a placeholder. Only an already adopted library needs LIVE protection.
 const safeToRefresh=()=>!usingSavedLibrary||!!document.querySelector('.hud-home[open]')||dialog.open&&returnToHome;
 let cloud;
-function popup(open){
- if(open){if(!dialog.open)dialog.showModal();}
+function popup(open,section='menu'){
+ if(open){if(!dialog.open){dialog.showSection(section);dialog.showModal();}}
  else if(dialog.open)dialog.close();
 }
 dialog.querySelector('#hud-close-btn').onclick=()=>popup(false);
@@ -479,8 +479,8 @@ function refreshLocal(){
 }
 function showHome(){openHome();refreshLocal();void cloud?.synchronize();}
 const openHome=installHome({
- settings:()=>{
-  returnToHome=true;popup(true);
+ settings:(section='menu')=>{
+  returnToHome=true;popup(true,section);
   const raw=readLibrarySource(localStorage);
   if(raw&&raw!==loadedRaw)refreshLocal();
   void cloud?.synchronize();
@@ -672,7 +672,7 @@ function render(){
   setInterval(()=>{if(document.visibilityState!=="hidden")engine.dispatch({type:"CLOCK_TIMEOUT",timestampMs:performance.now()});},500);
   subscribeEngine();
   render();window.dispatchEvent(new CustomEvent("midi-hud-render",{detail:engine.getViewModel()}));
-  if(oauthSettingsReturn||new URLSearchParams(location.search).get('settings')==='1')popup(true);
+  if(oauthSettingsReturn||new URLSearchParams(location.search).get('settings')==='1')popup(true,oauthSettingsReturn?'account':'menu');
    else if(new URLSearchParams(location.search).get('home')==='1'){
     const home=document.querySelector('.hud-home');
     home.setAttribute('data-entry-fade','');
