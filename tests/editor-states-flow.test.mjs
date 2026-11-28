@@ -1,3 +1,4 @@
+import {readSettings} from "../core/settings-v1.mjs";
 import * as meter from "../core/meter.mjs";
 import * as midiModules from "../core/module-midi.mjs";
 import * as layouts from "../core/layout-v3.4.mjs";
@@ -62,7 +63,7 @@ function setup({prepare=()=>{},tab='states'}={}){
  prepare(fixture,song,initial);
  data.set(storageAPI.LIBRARY_KEY,JSON.stringify(fixture));
  const downloads=[],copiedLinks=[];
- const context=vm.createContext({...meter,...midiModules,...layouts,...notation,...sheetSave,...catalog,...sheets,...imports,...selection,...transfer,...recovery,...model,...engine,...visuals,...notation,...parser,...sheetSave,...storageAPI,...recovery,...selection,...transfer,
+ const context=vm.createContext({readSettings,...meter,...midiModules,...layouts,...notation,...sheetSave,...catalog,...sheets,...imports,...selection,...transfer,...recovery,...model,...engine,...visuals,...notation,...parser,...sheetSave,...storageAPI,...recovery,...selection,...transfer,
   document:{body:new Element('body'),getElementById:id=>elements.get(id),createElement:tag=>new Element(tag),querySelectorAll:()=>[],addEventListener(){}},
   Option:class extends Element{constructor(label,value){super('option');this.textContent=label;this.value=String(value);}},
   localStorage:storage,navigator:{clipboard:{writeText:async value=>copiedLinks.push(value)}},window:{location:{href:'https://geobit1989-crypto.github.io/MIDI-HUD/beta-v3.4/editor/v3.html',search:''},confirm:()=>context.confirmResult,prompt:()=>context.promptResult,addEventListener(){}},confirmResult:true,promptResult:null,
@@ -665,4 +666,25 @@ test('paleta personalizada: cancelar mantiene el color; aplicar modifica solamen
  t.elements.get('customHex').value='#1a2b3c';t.elements.get('customHex').oninput();t.elements.get('customColorApply').onclick();
  assert.equal(t.currentSong().displaySlots[0].color,'#1a2b3c');assert.equal(t.snapshot().hasDraft,true);
  assert.deepEqual(t.snapshot().committed,before.committed);
+});
+
+test("MIDI Learn: filtra CC por módulo y guarda el borrador sin Aplicar",async()=>{
+ const t=setup({tab:"midi",prepare:(_db,song)=>{song.displaySlots[0].midiValue=2;}});
+ t.elements.get("midiModuleEdit").onclick();
+ vm.runInContext("learnActive=true;learnToken=1;",t.context);
+ for(const event of [{type:"MIDI_CC",channel:2,cc:0,value:0},{type:"MIDI_PC",channel:2,program:25},{type:"MIDI_CC",channel:2,cc:81,value:4},{type:"MIDI_CC",channel:2,cc:91,value:64},{type:"MIDI_CC",channel:1,cc:80,value:5}]){
+  t.context.testMessage=event;vm.runInContext("captureMidi(testMessage,1)",t.context);
+ }
+ assert.equal(t.currentSong().displaySlots[0].midiValue,2);
+ t.context.testMessage={type:"MIDI_CC",channel:2,cc:80,value:3};vm.runInContext("captureMidi(testMessage,1)",t.context);
+ assert.equal(t.currentSong().displaySlots[0].midiValue,3);
+ assert.equal(t.elements.get("midiSub").textContent,"CC80 = 3");
+ assert.equal(vm.runInContext("learnActive",t.context),false);
+ assert.equal(t.elements.get("midiModuleDialog").open,true);
+ t.elements.get("midiDraftValue").value="4";t.elements.get("midiDraftValue").listeners.blur();
+ assert.equal(t.currentSong().displaySlots[0].midiValue,4);
+ t.elements.get("midiModuleX").onclick();
+ assert.equal(t.snapshot().hasDraft,true);
+ assert.equal(t.snapshot().committed.songs.find(s=>s.id===t.songId).displaySlots[0].midiValue,2);
+ await t.context.api.save();assert.equal(t.snapshot().committed.songs.find(s=>s.id===t.songId).displaySlots[0].midiValue,4);
 });

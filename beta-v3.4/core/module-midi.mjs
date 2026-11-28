@@ -35,3 +35,16 @@ export function validateModuleMidi(slots=[]){
  return true;
 }
 export function expressionPercent(slot,value){const {min,max}=expressionRange(slot);return Math.round(Math.max(0,Math.min(1,(value-min)/(max-min)))*100);}
+
+/** Learn only a CC belonging to the selected module's configured contract.
+ * An unassigned expression may learn the three legacy expression CCs;
+ * a custom CC is selected manually before learning. No PC, clock or bank select.
+ */
+export function midiLearnCCs(slot){
+ const cc=midiCCFor(slot);
+ if(slot.kind==="expression"&&cc==null)return [7,91,11];
+ return valid(cc,1,127)?[cc]:[];
+}
+export function matchesMidiLearn(message,slot,channel){
+ return message?.type==="MIDI_CC"&&message.channel===channel&&valid(message.value)&&midiLearnCCs(slot).includes(message.cc);
+}

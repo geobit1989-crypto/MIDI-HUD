@@ -1,19 +1,19 @@
 import {moduleRows} from "../core/layout-v3.4.mjs";
 import {normalizeMeter,meterLabel,meterGroups,beatCount,groupBoundaries,resizeScore} from "../core/meter.mjs";
-import {midiModuleText,midiCCFor,expressionRange,validateModuleMidi} from "../core/module-midi.mjs";
+import {midiModuleText,midiCCFor,expressionRange,validateModuleMidi,midiLearnCCs,matchesMidiLearn} from "../core/module-midi.mjs?v=20261128-editor8d";
 import {createBrowserMidiSession} from "../core/midi-session-browser.mjs";
 import {connectBleMidi} from "../core/midi-ble-android.mjs";
 import {readSettings} from "../core/settings-v1.mjs";
-import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor8c";
+import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor8d";
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive7";
 import {scanNotation} from "./chord-notation.mjs";
-import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs?v=20261128-editor8c";
+import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs?v=20261128-editor8d";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261127-drive7";
-import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-editor8c";
+import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-editor8d";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261128-library2";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive7";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor8c";
-import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs?v=20261128-editor8c";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor8d";
+import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs?v=20261128-editor8d";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261127-drive7";
 import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
 import {migrateCatalog,recordCatalogChanges,versionLabel,searchCatalog,versionUsage,duplicateCatalogRepertoire,archiveCatalogVersion,restoreCatalogHistory,setRepertoireNote} from "../core/catalog-v1.mjs";
@@ -26,7 +26,7 @@ import {
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
  addConfiguredModule,renameModule,setModulePurpose,modulePurpose,deleteSelectedModule,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261128-editor8c";
+} from "./editor-model.mjs?v=20261128-editor8d";
 
 /**
  * Editor MIDI HUD v3
@@ -479,7 +479,7 @@ function showSongTools(kind){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261128-editor8c&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261128-editor8d&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";updatePresetLabels();
@@ -1136,7 +1136,7 @@ function render(){
   node.hidden=empty||node.dataset.panel!==activeTab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
  if(!empty&&["states","midi"].includes(activeTab))layoutModuleGrid(true);
- if(empty)$("liveLink").href="../v03.html?v=20261128-editor8c";
+ if(empty)$("liveLink").href="../v03.html?v=20261128-editor8d";
  syncStatus();
 }
 function registerIdentity(){
@@ -1163,7 +1163,7 @@ function directNumber(displayId,inputId,onFinish){
  input.addEventListener("blur",()=>{if(input.value!==""&&(!Number.isInteger(Number(input.value))||Number(input.value)<0||Number(input.value)>127)){input.value=display.textContent==="—"?"":display.textContent;notice("Valor MIDI entre 0 y 127.",true);}display.textContent=input.value===""?"—":input.value;input.hidden=true;display.hidden=false;onFinish?.();});
  input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();input.blur();}});
 }
-let midiDraft=null,learnSession=null,learnBle=null,learnToken=0,learnActive=false,learnPhase=0;
+let midiDraft=null,learnSession=null,learnBle=null,learnToken=0,learnActive=false,learnPhase=0,learnOn=null;
 const draftNum=id=>$(id).value===""?null:Number($(id).value);
 function refreshMidiDraft(){
  if(!midiDraft)return;
@@ -1178,43 +1178,51 @@ function refreshMidiDraft(){
  return candidate;
 }
 function setMidiNumber(input,display,value){$(input).value=value??"";$(display).textContent=value??"—";}
-function openMidiModule(){
- if(!Number.isInteger(activeModule)||!currentSong().displaySlots?.[activeModule])return;
- const slot=normalSlot(activeModule),exp=slot.kind==="expression",{min,max}=expressionRange(slot);
+function resetMidiFields(){
+ const slot=normalSlot(activeModule),{min,max}=expressionRange(slot);
  midiDraft={mode:slot.midiMode||"toggle"};
  paintDialogPreview("midi");
  setMidiNumber("midiDraftCC","midiCCDisplay",midiCCFor(slot));setMidiNumber("midiDraftValue","midiValueDisplay",slot.midiValue);
  setMidiNumber("midiDraftOff","midiOffDisplay",slot.midiOffValue??0);setMidiNumber("midiDraftMin","midiMinDisplay",min);setMidiNumber("midiDraftMax","midiMaxDisplay",max);
+ refreshMidiDraft();
+}
+function openMidiModule(){
+ if(!Number.isInteger(activeModule)||!currentSong().displaySlots?.[activeModule])return;
+ resetMidiFields();
  $("midiDialogError").hidden=true;$("midiLearnStatus").hidden=true;$("midiLearnChoice").hidden=true;
- refreshMidiDraft();$("midiModuleDialog").showModal();
+ $("midiModuleDialog").showModal();
 }
 function stopMidiLearn(){
- ++learnToken;learnActive=false;learnPhase=0;
+ ++learnToken;learnActive=false;learnPhase=0;learnOn=null;
  const session=learnSession,ble=learnBle;learnSession=null;learnBle=null;
  void session?.close().catch(()=>{});ble?.disconnect();
- $("midiLearnLabel").textContent="MIDI Learn";$("midiLearnChoice").hidden=true;$("midiLearnStatus").hidden=true;
+ $("midiLearnLabel").textContent="MIDI Learn";$("midiLearn").setAttribute("aria-pressed","false");$("midiLearnChoice").hidden=true;$("midiLearnStatus").hidden=true;
 }
 function learnStatus(message){$("midiLearnStatus").hidden=false;$("midiLearnStatus").textContent=message;}
+function learnPrompt(){
+ const ccs=midiLearnCCs(normalSlot(activeModule));return "Esperando "+ccs.map(cc=>"CC"+cc).join(" / ")+" · canal "+readSettings(localStorage).midiChannel;
+}
 function captureMidi(message,token){
- if(!learnActive||token!==learnToken||!midiDraft||message.type!=="MIDI_CC"||message.channel!==readSettings(localStorage).midiChannel)return;
- if(message.cc===0){learnStatus("CC0 está reservado al Preset.");return;}
+ if(!learnActive||token!==learnToken||!midiDraft)return;
  const slot=normalSlot(activeModule);
- if(slot.kind==="expression"){setMidiNumber("midiDraftCC","midiCCDisplay",message.cc);}
- else{
-  if([7,11,91].includes(message.cc)){learnStatus("CC reservado a expresión. Envía otro mensaje.");return;}
-  if(slot.stateMode==="effect"&&midiDraft.mode==="onoff"&&learnPhase===1){
-   if(message.cc!==draftNum("midiDraftCC")||message.value===draftNum("midiDraftValue"))return;
-   setMidiNumber("midiDraftOff","midiOffDisplay",message.value);
-  }else{
-   setMidiNumber("midiDraftCC","midiCCDisplay",message.cc);setMidiNumber("midiDraftValue","midiValueDisplay",message.value);
-   if(slot.stateMode==="effect"&&midiDraft.mode==="onoff"){learnPhase=1;refreshMidiDraft();learnStatus("Envía ahora el mensaje OFF.");return;}
-  }
+ if(!matchesMidiLearn(message,slot,readSettings(localStorage).midiChannel))return;
+ if(slot.kind==="expression"){
+  setMidiNumber("midiDraftCC","midiCCDisplay",message.cc);
+ }else if(slot.stateMode==="effect"&&midiDraft.mode==="onoff"){
+  // Two distinct messages are needed for a complete ON/OFF assignment.
+  // Keep the previous valid pair until both arrive; closing cancels only the incomplete capture.
+  if(learnPhase===0){learnOn=message.value;learnPhase=1;learnStatus("Envía OFF · CC"+message.cc);return;}
+  if(message.value===learnOn)return;
+  setMidiNumber("midiDraftValue","midiValueDisplay",learnOn);
+  setMidiNumber("midiDraftOff","midiOffDisplay",message.value);
+ }else{
+  setMidiNumber("midiDraftValue","midiValueDisplay",message.value);
  }
- refreshMidiDraft();stopMidiLearn();
+ commitMidiModule();stopMidiLearn();
 }
 async function startMidiLearn(){
  if(learnActive){stopMidiLearn();return;}
- const token=++learnToken;learnActive=true;learnPhase=0;$("midiLearnLabel").textContent="Escuchando…";learnStatus("Buscando entrada MIDI…");
+ const token=++learnToken;learnActive=true;learnPhase=0;learnOn=null;$("midiLearnLabel").textContent="Escuchando…";$("midiLearn").setAttribute("aria-pressed","true");$("midiDialogError").hidden=true;learnStatus("Buscando entrada MIDI…");
  const onMessage=msg=>captureMidi(msg,token);
  try{
   const native=globalThis.MidiHudNative,nav=globalThis.navigator;
@@ -1234,17 +1242,28 @@ async function startMidiLearn(){
     $("midiLearnChoice").hidden=false;learnStatus("Selecciona la entrada MIDI.");return;
    }
   }
-  if(token===learnToken)learnStatus("Acciona el controlador · canal "+readSettings(localStorage).midiChannel);
+  if(token===learnToken)learnStatus(learnPrompt());
  }catch(error){if(token===learnToken){stopMidiLearn();learnStatus(error.message);}}
 }
-function applyMidiModule(){
+function commitMidiModule(){
  try{
-  const next=refreshMidiDraft();if(!next)return;
-  if(next.kind==="expression"){delete next.midiCC;delete next.midiValue;delete next.midiMode;delete next.midiOffValue;}
-  else {if(next.midiValue!=null&&draftNum("midiDraftCC")==null)throw Error("Indica el número CC.");delete next.expressionMin;delete next.expressionMax;}
+  const next=refreshMidiDraft();if(!next)return false;
+  if(next.kind==="expression"){
+   delete next.midiCC;delete next.midiValue;delete next.midiMode;delete next.midiOffValue;
+  }else{
+   if(next.midiValue!=null&&draftNum("midiDraftCC")==null)throw Error("Indica el número CC.");
+   delete next.expressionMin;delete next.expressionMax;
+   if(next.midiMode!=="onoff"||next.stateMode!=="effect")delete next.midiOffValue;
+  }
   const slots=currentSong().displaySlots.map((s,i)=>i===activeModule?next:s);
-  validateModuleMidi(slots);currentSong().displaySlots=slots;dirty();$("midiModuleDialog").close();renderStates();renderMidi();
- }catch(error){$("midiDialogError").textContent=error.message;$("midiDialogError").hidden=false;}
+  validateModuleMidi(slots);
+  if(JSON.stringify(slots[activeModule])!==JSON.stringify(currentSlot())){
+   currentSong().displaySlots=slots;dirty();renderStates();renderMidi();
+  }
+  $("midiDialogError").hidden=true;return true;
+ }catch(error){
+  resetMidiFields();$("midiDialogError").textContent=error.message;$("midiDialogError").hidden=false;return false;
+ }
 }
 
 let meterDraft=null;
@@ -1288,16 +1307,17 @@ function register(){
  for(const id of ["meterNumerator","meterDenominator"])$(id).onchange=()=>{const n=Number($("meterNumerator").value),d=Number($("meterDenominator").value);if(Number.isInteger(n)&&n>0&&n<=32)$("meterGroups").value=meterGroups(n,d).join("+");};
  directNumber("presetBankDisplay","songCC0",commitPreset);directNumber("presetPCDisplay","songPC",commitPreset);
  for(const [display,input] of [["midiCCDisplay","midiDraftCC"],["midiValueDisplay","midiDraftValue"],["midiOffDisplay","midiDraftOff"],["midiMinDisplay","midiDraftMin"],["midiMaxDisplay","midiDraftMax"]]){
-  directNumber(display,input,refreshMidiDraft);$(input).addEventListener("input",()=>{const v=draftNum(input);if(v===null||Number.isInteger(v)&&v>=0&&v<=127)refreshMidiDraft();});
+  directNumber(display,input,commitMidiModule);
+  const edit=$(display).onclick;$(display).onclick=()=>{stopMidiLearn();$("midiDialogError").hidden=true;edit();};
  }
- $("midiToggleMode").onclick=()=>{midiDraft.mode="toggle";refreshMidiDraft();};
- $("midiOnOffMode").onclick=()=>{midiDraft.mode="onoff";refreshMidiDraft();};
+ $("midiToggleMode").onclick=()=>{stopMidiLearn();midiDraft.mode="toggle";commitMidiModule();};
+ $("midiOnOffMode").onclick=()=>{stopMidiLearn();midiDraft.mode="onoff";if(draftNum("midiDraftOff")===draftNum("midiDraftValue"))setMidiNumber("midiDraftOff","midiOffDisplay",draftNum("midiDraftValue")===0?127:0);commitMidiModule();};
  $("midiModuleEdit").onclick=openMidiModule;
  $("midiAdvancedOpen").onclick=()=>$("midiAdvancedDialog").showModal();$("midiAdvancedClose").onclick=()=>$("midiAdvancedDialog").close();
- $("midiModuleX").onclick=$("midiModuleCancel").onclick=()=>$("midiModuleDialog").close();
+ $("midiModuleX").onclick=()=>$("midiModuleDialog").close();
  $("midiModuleDialog").addEventListener("close",()=>{stopMidiLearn();midiDraft=null;});
- $("midiModuleApply").onclick=applyMidiModule;$("midiLearn").onclick=startMidiLearn;
- $("midiLearnConnect").onclick=async()=>{try{if(await learnSession?.select($("midiLearnDevice").value)){$("midiLearnChoice").hidden=true;learnStatus("Acciona el controlador.");}else learnStatus("No se pudo conectar.");}catch(error){learnStatus(error.message);}};
+ $("midiLearn").onclick=startMidiLearn;
+ $("midiLearnConnect").onclick=async()=>{try{if(await learnSession?.select($("midiLearnDevice").value)){$("midiLearnChoice").hidden=true;learnStatus(learnPrompt());}else learnStatus("No se pudo conectar.");}catch(error){learnStatus(error.message);}};
 
  $("midiModulePagePrev").onclick=()=>changeModulePage(-1);$("midiModulePageNext").onclick=()=>changeModulePage(1);
  for(const field of ['songCC0','songPC'])$(field).addEventListener('input',commitPreset);
