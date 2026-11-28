@@ -112,6 +112,31 @@ try{
  assert.equal(await page.evaluate(()=>MIDIHUD_EDITOR.getLibrary().songs.length),beforeDelete);
  await page.locator('#saveAll').click();await page.waitForFunction(()=>!MIDIHUD_EDITOR.hasDraft());
  assert.equal(await page.evaluate(()=>MIDIHUD_EDITOR.getLibrary().songs.length),beforeDelete-1);
+ // Visual States: exclusive selection and contextual actions.
+ await page.locator('[data-tab="states"]').click();
+ const stateGrid=page.locator('#moduleGrid');
+ await stateGrid.locator('.module-select-tile:visible').first().click();
+ assert.equal(await stateGrid.locator('[data-activity="active"]').count(),1);
+ const second=stateGrid.locator('.module-select-tile:visible').nth(1);
+ if(await second.count()){
+  await second.click();
+  assert.equal(await stateGrid.locator('[data-activity="active"]').count(),1);
+  assert.equal(await second.getAttribute('aria-pressed'),'true');
+  assert.equal(await second.locator('.tile-symbol').count(),0);
+ }
+ await page.locator('#moduleAddOpen').click();await page.locator('#moduleEffectAdd').click();
+ assert.equal(await page.locator('#moduleSettingsDialog').isVisible(),true);
+ await page.locator('#moduleName').fill('Delay de prueba');await page.locator('#moduleSettingsClose').click();
+ assert.equal(await stateGrid.locator('[data-activity="active"]').count(),1);
+ await page.locator('#moduleDeleteSelected').click();await page.locator('#moduleDeleteConfirm').click();
+ assert.equal(await stateGrid.locator('[data-activity="active"]').count(),0);
+ assert.equal(await page.locator('#moduleDeleteSelected').isVisible(),false);
+ await page.locator('#moduleLayoutOpen').click();assert.equal(await page.locator('#moduleLayoutDialog').isVisible(),true);await page.locator('#moduleLayoutClose').click();
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),true);
+ await page.screenshot({path:'build/browser/states-editor-portrait.png',fullPage:true});
+ await page.setViewportSize({width:844,height:390});
+ await page.waitForFunction(()=>document.documentElement.scrollHeight<=innerHeight+1);
+ await page.screenshot({path:'build/browser/states-editor-landscape.png',fullPage:true});
  assert.deepEqual(errors,[]);
  console.log('Browser integration passed: global menu (LIVE, Ajustes, Historial), song identification, three tabs, draft reload, three exit choices, global save/reload, empty playlist, shared song, degree variant/key, LIVE snapshot, portrait/landscape, no JavaScript errors.');
 }finally{await browser?.close();server.kill();}

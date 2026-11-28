@@ -48,12 +48,23 @@ export function moduleDefaults(index){
  const safe=Number.isInteger(index)&&index>=0?index%MODULE_COLORS.length:0;
  return {color:MODULE_COLORS[safe].hex,icon:DEFAULT_ICONS[safe]};
 }
+/** Same chromatic attenuation and contrast as LIVE. */
+export function moduleActivityColor(color,muted=false){
+ const rgb=color.slice(1).match(/../g).map(channel=>parseInt(channel,16));
+ const background=muted?rgb.map(channel=>Math.round(channel*.17+41)):rgb;
+ const luminance=background.reduce((sum,channel,i)=>{
+  const s=channel/255;
+  return sum+[.2126,.7152,.0722][i]*(s<=.04045?s/12.92:((s+.055)/1.055)**2.4);
+ },0);
+ return {background:'#'+background.map(channel=>channel.toString(16).padStart(2,'0')).join(''),
+ foreground:luminance>=Math.sqrt(.05*1.05)-.05?'#000':'#fff'};
+}
 export function resolveModuleVisual(slot,index){
  const fallback=moduleDefaults(index);
  const color=validModuleColor(slot?.color)?slot.color:fallback.color;
  const icon=validModuleIcon(slot?.icon)?slot.icon:fallback.icon;
  return {color,icon,glyph:MODULE_ICONS.find(x=>x.id===icon)?.glyph??"",
-   light:color,dark:adjust(color,.48),meter:lighten(color)};
+   light:color,dark:adjust(color,.48),meter:lighten(color),active:moduleActivityColor(color),inactive:moduleActivityColor(color,true)};
 }
 export function normalizeSlot(slot,index){
  const style=resolveModuleVisual(slot,index);

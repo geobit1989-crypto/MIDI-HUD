@@ -610,3 +610,33 @@ test('el enlace LIVE conserva selección y no confirma automáticamente el borra
  const saved=JSON.parse(t.storage.getItem(storageAPI.LIBRARY_KEY));
  assert.equal(saved.states.find(st=>st.id===t.snapshot().activeState).name,'Intro nueva');
 });
+
+
+test('Estados visual: color apagado, selección exclusiva y eliminación contextual',()=>{
+ const t=setup(),tiles=t.elements.get('moduleGrid').children;
+ assert.equal(tiles.filter(x=>x.dataset.activity==='active').length,1);
+ assert.notEqual(tiles[0].style.background,tiles[1].style.background);
+ assert.equal(tiles[0].querySelector('.tile-symbol'),null);
+ assert.equal(tiles[0].querySelector('.tile-initial').hidden,false);
+ assert.equal(t.elements.get('moduleDeleteSelected').hidden,false);
+ assert.equal(t.elements.get('moduleDeleteSelected').disabled,true);
+ t.elements.get('moduleEffectAdd').onclick();
+ const effect=t.snapshot().activeModule;
+ assert.equal(t.elements.get('moduleGrid').children.filter(x=>x.dataset.activity==='active').length,1);
+ assert.equal(t.elements.get('moduleGrid').children[effect].dataset.activity,'active');
+ t.elements.get('moduleDeleteSelected').onclick();t.elements.get('moduleDeleteCancel').onclick();
+ assert.equal(t.currentSong().displaySlots.length,5);
+ t.elements.get('moduleDeleteSelected').onclick();t.elements.get('moduleDeleteConfirm').onclick();
+ assert.equal(t.currentSong().displaySlots.length,4);
+ assert.equal(t.elements.get('moduleDeleteSelected').hidden,true);
+ assert.equal(t.elements.get('moduleGrid').children.filter(x=>x.dataset.activity==='active').length,0);
+ assert.doesNotThrow(()=>engine.validateLibrary(t.snapshot().working));
+});
+test('eliminar módulo musical elimina estado y referencias, conserva los demás',()=>{
+ const t=setup(),initial=t.currentSong().initialStateId,db=t.snapshot().working,id=t.songId;
+ const added=model.addConfiguredModule(db,id,'control');model.deleteSelectedModule(db,id,added.index);
+ assert.equal(db.songs.find(s=>s.id===id).stateIds.includes(added.stateId),false);
+ assert.equal(db.songs.find(s=>s.id===id).initialStateId,initial);
+ assert.throws(()=>model.deleteSelectedModule(db,id,0),/al menos un estado musical/);
+ assert.doesNotThrow(()=>engine.validateLibrary(db));
+});
