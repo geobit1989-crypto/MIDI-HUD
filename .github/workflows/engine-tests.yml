@@ -9,13 +9,30 @@ permissions:
 jobs:
   web:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: python3 scripts/sync-web-resources.py --check
-      - run: node --test tests/*.test.mjs
+      - name: Unit tests with per-file diagnostics
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          failed=0
+          for file in tests/*.test.mjs; do
+            echo "::group::$file"
+            rc=0
+            timeout --kill-after=5s 25s node --test --test-reporter=spec "$file" || rc=$?
+            echo "Exit status: $rc ($file)"
+            echo "::endgroup::"
+            if [ "$rc" -ne 0 ]; then
+              echo "::error file=$file::Unit test file failed or timed out (exit $rc)"
+              failed=1
+            fi
+          done
+          exit "$failed"
       - run: node --test worker/tests/*.test.mjs
       - run: node scripts/check-site.mjs
       - run: python3 native/ios/prepare_web.py
