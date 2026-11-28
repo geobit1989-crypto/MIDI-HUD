@@ -127,3 +127,33 @@ test('cancelar validación de una partitura impide confirmar las otras secciones
  assert.equal(store.getItem('hudLibraryV34'),null);
  assert.ok(store.getItem('midiHudEditorDraftV6'));
 });
+
+test('sin diferencias: navegar, escribir el mismo valor o restaurar el texto original no marca borrador',()=>{
+ const store=makeStorage(),{api}=session(store);
+ api.switchTab('midi');api.switchTab('sheet');api.editTitle('Clean');api.stageLead('sheet1','| C |');
+ assert.equal(api.snapshot().hasDraft,false);assert.equal(store.getItem('midiHudEditorDraftV6'),null);
+ assert.equal(api.ui().status,'Confirmado');
+});
+test('revertir el último cambio elimina el borrador obsoleto, sin guardar ni incrementar revisión',()=>{
+ const store=makeStorage(),{api}=session(store);
+ api.editTitle('Temporal');api.stageLead('sheet1','| G |');
+ api.editTitle('Clean');assert.equal(api.snapshot().hasDraft,true);
+ api.stageLead('sheet1','| C |');assert.equal(api.snapshot().hasDraft,false);
+ assert.equal(store.getItem('midiHudEditorDraftV6'),null);
+ assert.equal(store.getItem('hudLibraryV34'),null);
+ assert.equal(api.snapshot().committed.revision,1);
+});
+test('un borrador idéntico recuperado no muestra aviso ni modifica biblioteca',()=>{
+ const store=makeStorage(),library=fixture();
+ const identical={...library,songs:library.songs.map(song=>({...song,author:null,bank:null}))};
+ store.setItem('midiHudEditorDraftV6',JSON.stringify({version:1,base:[library.libraryId,library.revision,library.updatedAt],working:identical,leadDrafts:[['sheet1','| C |']],activeRep:'rep',activeSong:'song1',activeTab:'sheet'}));
+ const {api}=session(store,library);
+ assert.equal(api.restore(),false);
+ assert.equal(api.snapshot().hasDraft,false);
+ assert.equal(store.getItem('midiHudEditorDraftV6'),null);
+ assert.equal(store.getItem('hudLibraryV34'),null);
+});
+test('recuperar un cambio real exclusivamente en lead sheet sigue activando la protección',()=>{
+ const store=makeStorage();session(store).api.stageLead('sheet1','| G |');
+ const {api}=session(store);assert.equal(api.restore(),true);assert.equal(api.snapshot().hasDraft,true);
+});

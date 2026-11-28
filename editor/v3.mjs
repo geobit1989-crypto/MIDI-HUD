@@ -1,19 +1,19 @@
 import {moduleRows} from "../core/layout-v3.4.mjs";
 import {normalizeMeter,meterLabel,meterGroups,beatCount,groupBoundaries,resizeScore} from "../core/meter.mjs";
-import {midiModuleText,midiCCFor,expressionRange,validateModuleMidi,midiLearnCCs,matchesMidiLearn} from "../core/module-midi.mjs?v=20261128-editor8d";
+import {midiModuleText,midiCCFor,expressionRange,validateModuleMidi,midiLearnCCs,matchesMidiLearn} from "../core/module-midi.mjs?v=20261128-editor8e";
 import {createBrowserMidiSession} from "../core/midi-session-browser.mjs";
 import {connectBleMidi} from "../core/midi-ble-android.mjs";
 import {readSettings} from "../core/settings-v1.mjs";
-import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor8d";
+import {LIBRARY_ICONS} from "../core/library-icons.mjs?v=20261128-editor8e";
 import {appStorage as localStorage,appSessionStorage as sessionStorage} from "../core/environment.mjs?v=20261127-drive7";
 import {scanNotation} from "./chord-notation.mjs";
-import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs?v=20261128-editor8d";
+import {prepareLeadSheetSave,convertLeadSheetDraft} from "./sheet-save.mjs?v=20261128-editor8e";
 import {LIBRARY_KEY,BACKUP_KEY,readLibrarySource,saveLibrary,replaceLibrary} from "../core/library-storage.mjs?v=20261127-drive7";
-import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-editor8d";
+import {normalizeLibrary,validateLibrary,REPERTOIRE_CONTEXT_ID,repertoireContext} from "../core/engine-v1.mjs?v=20261128-editor8e";
 import {resolveLiveSelection} from "../core/live-selection-v34.mjs?v=20261128-library2";
 import {installCloudSync} from "../core/sync-ui.mjs?v=20261127-drive7";
-import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor8d";
-import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs?v=20261128-editor8d";
+import {MODULE_COLORS,MODULE_ICONS,normalizeSlot,resolveModuleVisual} from "../core/module-visuals.mjs?v=20261128-editor8e";
+import {parseLeadSheetText,formatLeadSheetText} from "./lead-sheet-text.mjs?v=20261128-editor8e";
 import {findRecoverable,mergeRecoveredRepertoire} from "./recovery-v1.mjs?v=20261127-drive7";
 import {resolveLeadSheet,createLeadSheetVariant,selectPlaylistLeadSheet,addSongToPlaylist,syncDefaultLeadSheet} from "../core/lead-sheet-variants.mjs";
 import {migrateCatalog,recordCatalogChanges,versionLabel,searchCatalog,versionUsage,duplicateCatalogRepertoire,archiveCatalogVersion,restoreCatalogHistory,setRepertoireNote} from "../core/catalog-v1.mjs";
@@ -26,7 +26,7 @@ import {
  newStateWithModule,duplicateStateWithModule,assignStateModule,setInitialState,useModuleAsInitialState,ensureModuleState,
  addConfiguredModule,renameModule,setModulePurpose,modulePurpose,deleteSelectedModule,
  moduleActivation,setModuleActiveOnEntry,moduleActivationActions
-} from "./editor-model.mjs?v=20261128-editor8d";
+} from "./editor-model.mjs?v=20261128-editor8e";
 
 /**
  * Editor MIDI HUD v3
@@ -49,6 +49,29 @@ let modulePage=0,modulePageSong=null;
 let saving=false,leadDrafts=new Map(),isLeaving=false,draftStoreError=false,editSequence=0;
 const DRAFT_KEY="midiHudEditorDraftV6";
 function draftBase(){return [committed.libraryId??null,committed.revision??0,committed.updatedAt??null];}
+// Compare content, not events, object key order or UI selection.
+// Only documented empty optional identity fields and Editor slot defaults
+// are canonicalized; all other data (including unknown extension fields) remains significant.
+function comparableLibrary(library){
+ const value=copy(library);
+ for(const song of value.songs||[]){
+  for(const key of ["author","bank","tempoBpm","midiAddress"])if(song[key]==null||song[key]==="")delete song[key];
+  song.displaySlots??=Array.from({length:4},()=>({name:"—",sub:"Sin asignar",kind:"control"}));
+  for(const sheet of song.leadSheets||[])if(sheet.tono==null||sheet.tono==="")delete sheet.tono;
+ }
+ return JSON.stringify(value,(_key,v)=>v&&typeof v==="object"&&!Array.isArray(v)
+  ?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
+}
+function hasContentChanges(){
+ if(!committed||!working)return false;
+ if(comparableLibrary(working)!==comparableLibrary(committed))return true;
+ // A text draft is not a data change when it exactly matches its stored source.
+ for(const [sheetId,source] of leadDrafts){
+  const sheet=working.songs.flatMap(song=>song.leadSheets||[]).find(item=>item.id===sheetId);
+  if(sheet&&source!==formatLeadSheetText(sheet.leadSheet))return true;
+ }
+ return false;
+}
 function clearDrafts(){
  leadDrafts.clear();draftStoreError=false;
  // La confirmación ya escrita sigue siendo válida si falla la limpieza.
@@ -77,7 +100,9 @@ function restoreDraft(){
  activeRep=data.activeRep;activeSong=data.activeSong;activeState=data.activeState;activeModule=data.activeModule;
  activeTab=SECTIONS.includes(data.activeTab)?data.activeTab:"states";
  catalogMode=!!data.catalogMode;masterSheetId=data.masterSheetId;
- hasDraft=true;return true;
+ hasDraft=hasContentChanges();
+ if(!hasDraft){working=copy(committed);clearDrafts();return false;}
+ return true;
 }
 function confirmationTime(){
  const date=new Date(committed?.updatedAt);
@@ -184,7 +209,12 @@ function syncStatus(error=false){
  }
 }
 function dirty(){
- editSequence++;hasDraft=true;persistDraft();syncStatus();renderIdentification();
+ editSequence++;
+ const previous=hasDraft;
+ hasDraft=hasContentChanges();
+ if(hasDraft)persistDraft();
+ else if(previous||draftStoreError||leadDrafts.size)clearDrafts();
+ syncStatus();renderIdentification();
  if(!draftStoreError)$("editorNotice").hidden=true;
 }
 function selected(){
@@ -479,7 +509,7 @@ function showSongTools(kind){
 }
 function renderSong(){
  const s=currentSong();
- $("liveLink").href='../v03.html?v=20261128-editor8d&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
+ $("liveLink").href='../v03.html?v=20261128-editor8e&repertoire='+encodeURIComponent(catalogMode?REPERTOIRE_CONTEXT_ID:activeRep)+'&song='+encodeURIComponent(activeSong);
  $("songTitle").value=s.title;
  $("songAuthor").value=s.author||"";
  $("songCC0").value=s.midiAddress?.cc0??"";$("songPC").value=s.midiAddress?.pc??"";updatePresetLabels();
@@ -1136,7 +1166,7 @@ function render(){
   node.hidden=empty||node.dataset.panel!==activeTab;
  $("undo").disabled=!localStorage.getItem(BACKUP);
  if(!empty&&["states","midi"].includes(activeTab))layoutModuleGrid(true);
- if(empty)$("liveLink").href="../v03.html?v=20261128-editor8d";
+ if(empty)$("liveLink").href="../v03.html?v=20261128-editor8e";
  syncStatus();
 }
 function registerIdentity(){
@@ -1160,7 +1190,7 @@ function commitPreset(){
 function directNumber(displayId,inputId,onFinish){
  const display=$(displayId),input=$(inputId);
  display.onclick=()=>{display.hidden=true;input.hidden=false;input.focus();};
- input.addEventListener("blur",()=>{if(input.value!==""&&(!Number.isInteger(Number(input.value))||Number(input.value)<0||Number(input.value)>127)){input.value=display.textContent==="—"?"":display.textContent;notice("Valor MIDI entre 0 y 127.",true);}display.textContent=input.value===""?"—":input.value;input.hidden=true;display.hidden=false;onFinish?.();});
+ input.addEventListener("blur",()=>{if(input.value!==""&&(!Number.isInteger(Number(input.value))||Number(input.value)<0||Number(input.value)>127)){input.value=display.textContent==="—"?"":display.textContent;notice("Valor MIDI entre 0 y 127.",true);}const next=input.value===""?"—":input.value,changed=display.textContent!==next;display.textContent=next;input.hidden=true;display.hidden=false;if(changed)onFinish?.();});
  input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();input.blur();}});
 }
 let midiDraft=null,learnSession=null,learnBle=null,learnToken=0,learnActive=false,learnPhase=0,learnOn=null;
